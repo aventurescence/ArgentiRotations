@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "8AWNWPeGrNs=",
+  "success": true,
+  "projectFilePath": "D:\\GitHub\\LeliaRotations - 05 - 4.0.0.0 - Spec2\\BasicRotations\\LeliaRotationsR.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Kouichi\\.nuget\\packages\\excss\\4.2.3\\excss.4.2.3.nupkg.sha512",
+    "C:\\Users\\Kouichi\\.nuget\\packages\\microsoft.win32.systemevents\\8.0.0\\microsoft.win32.systemevents.8.0.0.nupkg.sha512",
+    "C:\\Users\\Kouichi\\.nuget\\packages\\rotationsolverreborn.basic\\7.0.5.92\\rotationsolverreborn.basic.7.0.5.92.nupkg.sha512",
+    "C:\\Users\\Kouichi\\.nuget\\packages\\svg\\3.4.7\\svg.3.4.7.nupkg.sha512",
+    "C:\\Users\\Kouichi\\.nuget\\packages\\system.drawing.common\\8.0.8\\system.drawing.common.8.0.8.nupkg.sha512"
+  ],
+  "logs": []
+}

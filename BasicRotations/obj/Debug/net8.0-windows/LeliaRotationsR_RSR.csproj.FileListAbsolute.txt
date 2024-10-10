@@ -1,0 +1,43 @@
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\LeliaRotationsR_RSR.deps.json
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\LeliaRotationsR_RSR.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\LeliaRotationsR_RSR.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\RotationSolver.Basic.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\ECommons.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\XIVPainter.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\RotationSolver.Basic.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\RotationSolver.Basic.xml
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\ECommons.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\ECommons.xml
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\XIVPainter.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\bin\Debug\net8.0-windows\XIVPainter.xml
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.csproj.AssemblyReference.cache
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.GeneratedMSBuildEditorConfig.editorconfig
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.AssemblyInfoInputs.cache
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.AssemblyInfo.cs
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.csproj.CoreCompileInputs.cache
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.sourcelink.json
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRot.2ED3DDD4.Up2Date
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\refint\LeliaRotationsR_RSR.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0\BasicRotations\obj\Debug\net8.0-windows\ref\LeliaRotationsR_RSR.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.csproj.AssemblyReference.cache
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.GeneratedMSBuildEditorConfig.editorconfig
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.AssemblyInfoInputs.cache
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.AssemblyInfo.cs
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.csproj.CoreCompileInputs.cache
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.sourcelink.json
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\refint\LeliaRotationsR_RSR.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRotationsR_RSR.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\RotationSolver.Basic.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\LeliaRotationsR_RSR.deps.json
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\LeliaRotationsR_RSR.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\LeliaRotationsR_RSR.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\ECommons.dll
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\RotationSolver.Basic.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\RotationSolver.Basic.xml
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\ECommons.pdb
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\bin\Debug\net8.0-windows\ECommons.xml
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\LeliaRot.2ED3DDD4.Up2Date
+D:\GitHub\LeliaRotations - 05 - 4.0.0.0 - Spec2\BasicRotations\obj\Debug\net8.0-windows\ref\LeliaRotationsR_RSR.dll
