@@ -1,0 +1,4 @@
+LTS:
+BRD: adjust aoe logic to kick in, ignoring dot application if you can use aoe
+SGE: E.Diagnosis and E.Prognosis use fix
+DRG: adjust dot to be reapplied soonner so it doesnt fall off
