@@ -1,3 +1,4 @@
+namespace DefaultRotations.Ranged;
 
 [Rotation("369BRD_Test", CombatType.PvE, GameVersion = "7.05",
     Description = "Please make sure that the three song times add up to 120 seconds, Wanderers default first song for now.")]
