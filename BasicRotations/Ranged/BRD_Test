@@ -1,6 +1,6 @@
 namespace DefaultRotations.Ranged;
 
-[Rotation("Default", CombatType.PvE, GameVersion = "7.05",
+[Rotation("369BRD_Test", CombatType.PvE, GameVersion = "7.05",
     Description = "Please make sure that the three song times add up to 120 seconds, Wanderers default first song for now.")]
 [SourceCode(Path = "main/BasicRotations/Ranged/BRD_Default.cs")]
 [Api(4)]
@@ -25,31 +25,32 @@ public sealed class BRD_Default : BardRotation
     private float WANDRemainTime => 45 - WANDTime;
     private float MAGERemainTime => 45 - MAGETime;
     private float ARMYRemainTime => 45 - ARMYTime;
-
-    private static int burstStatusCounter = 0;
     
-    private static bool InBurstStatus
+    private static int burstStatusCounter = 0; // Ensure this is declared as a static integer
+    
+    private static bool InBurstStatus // Ensure this is a static boolean property
     {
         get
         {
             bool inBurst = (Player.Level > 50 && !Player.WillStatusEnd(0, true, StatusID.RagingStrikes))
                 || (Player.Level >= 50 && Player.Level < 90 && !Player.WillStatusEnd(0, true, StatusID.RagingStrikes) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
-                || (MinstrelsCodaTrait.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RagingStrikes) && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice));
+                || (MinstrelsCodaTrait.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RagingStrikes) && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
+                || (Player.HasStatus(true, StatusID.WanderersMinuet) && Player.CanUseAbility(AbilityID.RadiantFinalePvE)); // Ensure PvE version is used
     
             if (inBurst)
             {
-                burstStatusCounter++;
+                burstStatusCounter++; // Ensure counter is incremented correctly
             }
     
             return inBurst;
         }
     }
     
-    public static int GetBurstStatusCounter()
+    public static int GetBurstStatusCounter() // Ensure this is a static method returning the counter
     {
         return burstStatusCounter;
     }
-
+    
     #endregion
 
     #region oGCD Logic
