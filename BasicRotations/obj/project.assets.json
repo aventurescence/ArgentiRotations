@@ -33,7 +33,7 @@
           }
         }
       },
-      "RotationSolverReborn.Basic/7.0.5.92": {
+      "RotationSolverReborn.Basic/7.0.5.138": {
         "type": "package",
         "dependencies": {
           "Svg": "3.4.7",
@@ -142,10 +142,10 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "RotationSolverReborn.Basic/7.0.5.92": {
-      "sha512": "EzyNVS+31Ilkhbws7BW+PSIT2opR9NAZj1RDZdXGhx4PS78zCwNkx3voUOaZJLwO7uTfvVYR55J1zgP73WvpPQ==",
+    "RotationSolverReborn.Basic/7.0.5.138": {
+      "sha512": "FPLDoQbg2ndK4yukGUDi2x8WGHEhRjpXAY2grE2J9Ldx0EzmHvoApniCgyC/B5bPi3tv4PyAn9RysldZAssXpw==",
       "type": "package",
-      "path": "rotationsolverreborn.basic/7.0.5.92",
+      "path": "rotationsolverreborn.basic/7.0.5.138",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -154,7 +154,7 @@
         "README.md",
         "lib/net8.0-windows7.0/RotationSolver.Basic.dll",
         "lib/net8.0-windows7.0/RotationSolver.Basic.xml",
-        "rotationsolverreborn.basic.7.0.5.92.nupkg.sha512",
+        "rotationsolverreborn.basic.7.0.5.138.nupkg.sha512",
         "rotationsolverreborn.basic.nuspec"
       ]
     },
@@ -229,39 +229,29 @@
   },
   "projectFileDependencyGroups": {
     "net8.0-windows7.0": [
-      "RotationSolverReborn.Basic >= 7.0.5.92"
+      "RotationSolverReborn.Basic >= 7.0.5.138"
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Kouichi\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\bryan\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "7.0.5.61",
+    "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\GitHub\\LeliaRotations - 05 - 4.0.0.0 - Spec2\\BasicRotations\\LeliaRotationsR.csproj",
-      "projectName": "LeliaRotationsR",
-      "projectPath": "D:\\GitHub\\LeliaRotations - 05 - 4.0.0.0 - Spec2\\BasicRotations\\LeliaRotationsR.csproj",
-      "packagesPath": "C:\\Users\\Kouichi\\.nuget\\packages\\",
-      "outputPath": "D:\\GitHub\\LeliaRotations - 05 - 4.0.0.0 - Spec2\\BasicRotations\\obj\\",
+      "projectUniqueName": "C:\\Users\\bryan\\Documents\\GitHub\\RebornRotations\\BasicRotations\\RebornRotations.csproj",
+      "projectName": "RebornRotations",
+      "projectPath": "C:\\Users\\bryan\\Documents\\GitHub\\RebornRotations\\BasicRotations\\RebornRotations.csproj",
+      "packagesPath": "C:\\Users\\bryan\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\bryan\\Documents\\GitHub\\RebornRotations\\BasicRotations\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\Kouichi\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "C:\\Users\\bryan\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0-windows"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
-        "C:\\Users\\Kouichi\\Documents\\GitHub\\RotationSolver.Basic": {},
-        "https://api.nuget.org/v3/index.json": {},
-        "https://www.nuget.org/api/v2/": {}
+        "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0-windows7.0": {
@@ -277,9 +267,8 @@
       "restoreAuditProperties": {
         "enableAudit": "true",
         "auditLevel": "low",
-        "auditMode": "all"
-      },
-      "SdkAnalysisLevel": "9.0.100"
+        "auditMode": "direct"
+      }
     },
     "frameworks": {
       "net8.0-windows7.0": {
@@ -287,7 +276,7 @@
         "dependencies": {
           "RotationSolverReborn.Basic": {
             "target": "Package",
-            "version": "[7.0.5.92, )"
+            "version": "[7.0.5.138, )"
           }
         },
         "imports": [
@@ -306,7 +295,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.100-rc.1.24452.12/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.403/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

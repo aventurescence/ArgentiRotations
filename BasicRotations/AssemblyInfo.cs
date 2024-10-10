@@ -1,1 +1,1 @@
-﻿[assembly: AssemblyLink(Donate = "", UserName = "Lelia", Repository = "LeliaDefaults")]
+﻿[assembly: AssemblyLink(Donate = "", UserName = "FFXIV-CombatReborn", Repository = "RebornRotations")]
