@@ -1,5 +1,5 @@
 # To be used with [RotationSolverReborn](https://github.com/FFXIV-CombatReborn/RotationSolverReborn)
-![GitHub all releases](https://img.shields.io/github/downloads/FFXIV-CombatReborn/RebornRotations/total)
+![GitHub all releases](https://img.shields.io/github/downloads/aventurescence/ArgntiRotations/total)
 
 Download the latest version of RebornRotations:
 
