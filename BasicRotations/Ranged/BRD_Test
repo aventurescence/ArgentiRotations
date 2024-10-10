@@ -1,4 +1,4 @@
-```csharp
+```cs
 for (int i = 0 ; i < 10; i++)
 {
 namespace DefaultRotations.Ranged;
@@ -256,4 +256,5 @@ public sealed class BRD_Default : BardRotation
         return false;
     }
     #endregion
+}
 }
