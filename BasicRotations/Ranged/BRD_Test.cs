@@ -24,15 +24,44 @@ public sealed class BRD_369Test : BardRotation
     [RotationConfig(CombatType.PvE, Name = "Potion Timings")]
     public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
     public enum PotionTimingOption
+        {
+            None,
+            ZeroAndSixMins,
+            TwoAndEightMins,
+            ZeroFiveAndTenMins
+        }
+
+    protected bool UseBurstMedicine(out IAction? act, bool clippingCheck = false)
     {
-        None,
-        [Description("0 and 6 mins")]
-        ZeroAndSixMins,
-        [Description("2 and 8 mins")]
-        TwoAndEightMins,
-        [Description("0, 5 and 10 mins")]
-        ZeroFiveAndTenMins
-    } 
+    act = null;
+    if (!(HostileTarget?.IsDummy() ?? false) && !DataCenter.IsInHighEndDuty) return false;
+
+    // Implement PotionTimings logic
+    switch (PotionTimings)
+    {
+        case PotionTimingOption.ZeroAndSixMins:
+            // Logic for ZeroAndSixMins
+            break;
+        case PotionTimingOption.TwoAndEightMins:
+            // Logic for TwoAndEightMins
+            break;
+        case PotionTimingOption.ZeroFiveAndTenMins:
+            // Logic for ZeroFiveAndTenMins
+            break;
+        case PotionTimingOption.None:
+        default:
+            // Default logic
+            break;
+    }
+
+    foreach (var medicine in Medicines)
+    {
+        if (medicine.Type != MedicineType) continue;
+        if (medicine.CanUse(out act, clippingCheck)) return true;
+    }
+
+    return false;
+    }
     private float WANDRemainTime => 45 - WANDTime;
     private float MAGERemainTime => 45 - MAGETime;
     private float ARMYRemainTime => 45 - ARMYTime;
