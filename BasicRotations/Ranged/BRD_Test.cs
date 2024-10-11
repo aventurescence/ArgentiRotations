@@ -80,7 +80,7 @@ public sealed class BRD_Default : BardRotation
 
         if (Song == Song.NONE && InCombat)
         {
-            if preBurstStatusCount <= 1
+           if (preBurstStatusCount <= 1)
                 { 
                 if (TheWanderersMinuetPvE.CanUse(out act, isLastAbility: true)) return true;
                 if (MagesBalladPvE.CanUse(out act, isLastAbility: true)) return true;
@@ -96,12 +96,12 @@ public sealed class BRD_Default : BardRotation
 
         if (IsBurst && Song != Song.NONE && MagesBalladPvE.EnoughLevel)
         {
-            if preBurstStatusCount <= 1
+            if (preBurstStatusCount <= 1)
             {
             if (HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true && HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true && RadiantFinalePvE.CanUse(out act, isLastAbility: true)) return true;
 
-            if (((RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.EnoughLevel || RagingStrikesPvE.Cooldown.WillHaveOneCharge)))
-                    && HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true && HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true && BattleVoicePvE.CanUse(out act, isFirstAbility: true) return true;
+            if ((RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.EnoughLevel || RagingStrikesPvE.Cooldown.WillHaveOneCharge))
+                    && HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true && HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true && BattleVoicePvE.CanUse(out act, isFirstAbility: true)) return true;
 
             if (((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
                 || (!RadiantFinalePvE.EnoughLevel && BattleVoicePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
