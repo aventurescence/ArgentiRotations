@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
 	<Compile Include="Ranged\BRD_Test.cs" />
+ </ItemGroup>
   <ItemGroup>
     <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.145" />
   </ItemGroup>
@@ -51,6 +52,5 @@
 	  <Using Include="RotationSolver.Basic.Rotations" />
 	  <Using Include="RotationSolver.Basic.Rotations.Basic" />
 	  <Using Include="System.Numerics" />
-	  <Using Include="System.Reflection" />
-  </ItemGroup>
+	  <Using Include="System.Reflection" /
 </Project>
