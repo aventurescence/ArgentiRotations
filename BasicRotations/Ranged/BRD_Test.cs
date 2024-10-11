@@ -21,41 +21,41 @@ public sealed class BRD_369Test : BardRotation
 
     // Removed RotationConfig attribute for First song to disable changing the option
 
-    [RotationConfig(CombatType.PvE, Name = "Potion Timings")]
-    public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
-    public enum PotionTimingOption
-        {
-            None,
-            ZeroAndSixMins,
-            TwoAndEightMins,
-            ZeroFiveAndTenMins
-        }
+    //[RotationConfig(CombatType.PvE, Name = "Potion Timings")]
+    //public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
+    //public enum PotionTimingOption
+        //{
+            //None,
+            //ZeroAndSixMins,
+            //TwoAndEightMins,
+            //ZeroFiveAndTenMins
+        //}
     // Implement PotionTimings logic
-    switch (PotionTimings)
-    {
-        case PotionTimingOption.ZeroAndSixMins:
+    //switch (PotionTimings)
+    //{
+        //case PotionTimingOption.ZeroAndSixMins:
             // Logic for ZeroAndSixMins
-            break;
-        case PotionTimingOption.TwoAndEightMins:
+            //break;
+        //case PotionTimingOption.TwoAndEightMins:
             // Logic for TwoAndEightMins
-            break;
-        case PotionTimingOption.ZeroFiveAndTenMins:
+            //break;
+        //case PotionTimingOption.ZeroFiveAndTenMins:
             // Logic for ZeroFiveAndTenMins
-            break;
-        case PotionTimingOption.None:
-        default:
+            //break;
+        //case PotionTimingOption.None:
+        //default:
             // Default logic
-            break;
-    }
+            //break;
+    //}
 
-    foreach (var medicine in Medicines)
-    {
-        if (medicine.Type != MedicineType) continue;
-        if (medicine.CanUse(out act, clippingCheck)) return true;
-    }
+    //foreach (var medicine in Medicines)
+    //{
+        //if (medicine.Type != MedicineType) continue;
+        //if (medicine.CanUse(out act, clippingCheck)) return true;
+    //}
 
-    return false;
-    }
+    //return false;
+    //}
     private float WANDRemainTime => 45 - WANDTime;
     private float MAGERemainTime => 45 - MAGETime;
     private float ARMYRemainTime => 45 - ARMYTime;
