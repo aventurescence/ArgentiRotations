@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+	  <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+	  <Version>7.0.5.145</Version>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Ranged\BRD_Test.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.145" />
+    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.138" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Dalamud">
