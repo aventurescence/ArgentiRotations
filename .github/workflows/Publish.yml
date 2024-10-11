@@ -42,4 +42,4 @@ jobs:
           files: |
             ./build/RebornRotations.dll
             ./build/RebornRotations.pdb
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ AVENTURESCENCE }}
