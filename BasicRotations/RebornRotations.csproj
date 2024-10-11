@@ -4,17 +4,7 @@
 	  <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Duty\PVPRotations\**" />
-    <EmbeddedResource Remove="Duty\PVPRotations\**" />
-    <None Remove="Duty\PVPRotations\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="Duty\EmanationDefault" />
-    <None Remove="Duty\VariantDefault" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Duty\EmanationDefault" />
-  </ItemGroup>
+	<Compile Include="Ranged\BRD_Test.cs" />
   <ItemGroup>
     <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.138" />
   </ItemGroup>
