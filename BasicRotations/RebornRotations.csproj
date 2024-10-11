@@ -52,5 +52,6 @@
 	  <Using Include="RotationSolver.Basic.Rotations" />
 	  <Using Include="RotationSolver.Basic.Rotations.Basic" />
 	  <Using Include="System.Numerics" />
-	  <Using Include="System.Reflection" /
+	  <Using Include="System.Reflection" />
+   </ItemGroup>
 </Project>
