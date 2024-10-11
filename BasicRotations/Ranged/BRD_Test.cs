@@ -30,12 +30,6 @@ public sealed class BRD_369Test : BardRotation
             TwoAndEightMins,
             ZeroFiveAndTenMins
         }
-
-    protected bool UseBurstMedicine(out IAction? act, bool clippingCheck = false)
-    {
-    act = null;
-    if (!(HostileTarget?.IsDummy() ?? false) && !DataCenter.IsInHighEndDuty) return false;
-
     // Implement PotionTimings logic
     switch (PotionTimings)
     {
