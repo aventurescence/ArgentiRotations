@@ -3,7 +3,6 @@ on:
   push:
     tags:
       - '*.*.*.*'
-  workflow_dispatch:
 jobs:
   Build:
     permissions:
@@ -18,22 +17,18 @@ jobs:
       - name: Get Environment Variables
         run: |
           $tag = "${{ github.ref }}" -replace 'refs/tags/', ''
-          "tag=$tag" | Out-File -Append -FilePath $Env:GITHUB_ENV
 
+          "tag=$tag" | Out-File -Append -FilePath $Env:GITHUB_ENV
+          
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 8.0.x
 
       - name: Download Dalamud Latest
         run: |
           Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
-          if ($?) {
-            Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
-          } else {
-            Write-Error "Failed to download Dalamud Latest"
-            exit 1
-          }
+          Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
 
       - name: Restore Nuget Packages
         run: dotnet restore BasicRotations/RebornRotations.csproj
