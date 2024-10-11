@@ -7,7 +7,7 @@
       <Compile Include="Ranged\BRD_Test.cs" />
   </ItemGroup>
  <ItemGroup>
-     <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.145" />
+     <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.147" />
   </ItemGroup>
   <ItemGroup>
 	  <Reference Include="Dalamud">
@@ -54,4 +54,7 @@
 	  <Using Include="System.Numerics" />
 	  <Using Include="System.Reflection" />
    </ItemGroup>
+   <ItemGroup>
+    <Folder Include="Ranged\" />
+  </ItemGroup>
 </Project>
