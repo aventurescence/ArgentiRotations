@@ -4,9 +4,6 @@
 	  <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
 <ItemGroup>
-    <Compile Include="Ranged\BRD_Test.cs" />
-</ItemGroup>
-<ItemGroup>
     <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.147" />
 </ItemGroup>
 <ItemGroup>
