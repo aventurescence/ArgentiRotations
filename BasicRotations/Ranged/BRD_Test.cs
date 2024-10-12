@@ -65,7 +65,7 @@ public sealed class BRD_369Test : BardRotation
     {
         get
         {
-            bool BurstReadystatus = Player.HasStatus(true, StatusID.TheWanderersMinuet_2216, StatusID.Repertoire) && Player.CanUseAbility(AbilityID.RadiantFinalePvE);
+            bool BurstReadystatus = (Player.HasStatus(true, StatusID.TheWanderersMinuetPvE) && Player.CanUse(AbilityID.RadiantFinalePvE));
             if (BurstReadystatus)
             {
                 preBurstStatusCount++;
@@ -128,8 +128,8 @@ if (IsBurst && Song != Song.NONE && MagesBalladPvE.EnoughLevel)
             return true;
         }
 
-        if (RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown &&
-            RagingStrikesPvE.EnoughLevel && !RagingStrikesPvE.Cooldown.WillHaveOneCharge &&
+        if ((RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown) &&
+            (RagingStrikesPvE.EnoughLevel && !RagingStrikesPvE.Cooldown.WillHaveOneCharge) &&
             HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true &&
             HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true &&
             BattleVoicePvE.CanUse(out act, isFirstAbility: true))
