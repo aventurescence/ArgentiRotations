@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
 	  <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-	  <Version>7.0.5.147</Version>
+	  <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
 <ItemGroup>
     <Compile Include="Ranged\BRD_Test.cs" />
