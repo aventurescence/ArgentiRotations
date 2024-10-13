@@ -51,4 +51,7 @@
 	  <Using Include="System.Numerics" />
 	  <Using Include="System.Reflection" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Ranged\" />
+  </ItemGroup>
 </Project>
