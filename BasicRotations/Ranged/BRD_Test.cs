@@ -130,10 +130,10 @@ public sealed class BRD_369Test : BardRotation
                         || ((RadiantFinalePvE.EnoughLevel && BattleVoicePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))) 
                         || ((RadiantFinalePvE.EnoughLevel && !BattleVoicePvE.EnoughLevel)))
                         && (RagingStrikesPvE.CanUse(out act, isLastAbility: true))) return true;
-                    }
-                    else
-                    {
-                    if ((TheWanderersMinuetPvE.EnoughLevel && TheWanderersMinuetPvE.Cooldown.IsCoolingDown && !TheWanderersMinuetPVE.Cooldown.ElapsedAfterGCD(1)) 
+                }
+            else
+                {
+                    if ((TheWanderersMinuetPvE.EnoughLevel && (TheWanderersMinuetPvE.Cooldown.IsCoolingDown && TheWanderersMinuetPVE.Cooldown.ElapsedAfterGCD(1))) 
                         && (RadiantFinalePvE.EnoughLevel && RadiantFinalePVE.CanUse(out act, isFirstAbility: true))) return true;    
 
                     if ((RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown && IsLastAbility(true, RadiantFinalePVE)) 
@@ -141,7 +141,7 @@ public sealed class BRD_369Test : BardRotation
 
                     if ((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice) && (BattleVoicePvE.Cooldown.ElapsedAfter(1.25f))) 
                         && (RagingStrikesPvE.EnoughLevel && RagingStrikesPVE.CanUse(out act, isLastAbility: true))) return true;
-                    }   
+                }   
         }
         if (RadiantFinalePvE.EnoughLevel && RadiantFinalePvE.Cooldown.IsCoolingDown && BattleVoicePvE.EnoughLevel && !BattleVoicePvE.Cooldown.IsCoolingDown) return false;
 
