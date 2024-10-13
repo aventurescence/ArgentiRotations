@@ -114,7 +114,6 @@ public sealed class BRD_369Test : BardRotation
                 }
         }
     
-//aa
         if (IsBurst && Song != Song.NONE && MagesBalladPvE.EnoughLevel)
         {
             if (inBurstStatusCount <= 1)
