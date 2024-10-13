@@ -4,7 +4,7 @@ namespace DefaultRotations.Ranged;
     Description = "Please make sure that the three song times add up to 120 seconds, Wanderers default first song for now.")]
 [SourceCode(Path = "main/BasicRotations/Ranged/BRD_Default.cs")]
 [Api(4)]
-public sealed class BRD_369Test : BardRotation
+public sealed class BRD_Test : BardRotation
 {
     #region Config Options
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
