@@ -119,11 +119,11 @@ public sealed class BRD_369Test : BardRotation
         {
             if (inBurstStatusCount <= 1)
                  {
-                    if (((HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true) && CausticBitePvE.Cooldown.ElapsedAfter(1.25, 0))
+                    if (((HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true) && CausticBitePvE.Cooldown.ElapsedAfter(1.25))
                         && (RadiantFinalePvE.EnoughLevel && RadiantFinalePvE.CanUse(out act, isLastAbility: true))) return true;
 
                     if (((RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown) &&
-                        (RagingStrikesPvE.EnoughLevel && RagingStrikesPvE.Cooldown.WillHaveOneCharge)) 
+                        (RagingStrikesPvE.EnoughLevel && RagingStrikesPvE.Cooldown.WillHaveOneCharge(1.5))) 
                         && (HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true) && BattleVoicePvE.CanUse(out act, isFirstAbility: true))  return true;
 
                     if (((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)) 
@@ -133,14 +133,14 @@ public sealed class BRD_369Test : BardRotation
                     }
                     else
                     {
-                    if ((!Player.WillStatusEnd(0, true, StatusID.TheWanderersMinuet_2216) && TheWanderersMinuetPVE.Cooldown.ElapsedAfterGCD(1)) 
-                        && (RadiantFinalePVE.canuse(out act, isFirstAbility: true))) return true;    
+                    if ((!Player.WillStatusEnd(0, true, StatusID.TheWanderersMinuet_2216) && !TheWanderersMinuetPVE.Cooldown.ElapsedAfterGCD(1)) 
+                        && RadiantFinalePVE.canuse(out act, isFirstAbility: true)) return true;    
 
                     if ((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale)) 
-                        && (BattleVoicePVE.CanUse(out act, isLastAbility: true))) return true;
+                        && BattleVoicePVE.CanUse(out act, isLastAbility: true)) return true;
 
-                    if ((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice) && (BattleVoicePvE.Cooldown.ElapsedAfter(1.25))) 
-                        && (RagingStrikesPVE.CanUse(out act, isLastAbility: true))) return true;
+                    if ((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice) && (BattleVoicePvE.Cooldown.ElapsedAfter(1.25f))) 
+                        && RagingStrikesPVE.CanUse(out act, isLastAbility: true)) return true;
                     }   
         }
         if (RadiantFinalePvE.EnoughLevel && RadiantFinalePvE.Cooldown.IsCoolingDown && BattleVoicePvE.EnoughLevel && !BattleVoicePvE.Cooldown.IsCoolingDown) return false;
