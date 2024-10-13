@@ -1,10 +1,8 @@
 # To be used with [RotationSolverReborn](https://github.com/FFXIV-CombatReborn/RotationSolverReborn)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/aventurescence/ArgentiRotations/total)
+![GitHub all releases](https://img.shields.io/github/downloads/LTS-FFXIV/LTSDefaults/total)
 
-Download the latest version of RebornRotations:
-
-- [`ArgentiRotations.dll`](https://github.com/aventurescence/ArgentiRotations/releases/latest/download/ArgentiRotations.dll)
+Download the latest version of ArgentiRotations:
 
 ```
-https://github.com/aventurescence/ArgentiRotations/releases/latest/download/ArgentiRotations.dll
+https://github.com/aventurescence/ArgentiRotations/releases/latest/download/LeliaRotationsR.dll
 ```
