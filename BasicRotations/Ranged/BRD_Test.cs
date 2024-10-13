@@ -135,8 +135,9 @@ public sealed class BRD_Test : BardRotation
                 {
                 if (Song == Song.WANDERER && WANDTime > 2
                     && Player.HasStatus(true, StatusID.ArmysEthos)
-                    && (RadiantFinalePVE.EnoughLevel && RagingStrikesPVE.Cooldown.IsCoolingDown)
-                    && !RadiantFinalePVE.CanUse(out act, isFirstAbility: true)) return true;    
+                    && ((!RadiantFinalePVE.EnoughLevel && RagingStrikesPVE.Cooldown.IsCoolingDown)
+                    || (RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.EnoughLevel && (!RagingStrikesPvE.Cooldown.IsCoolingDown || RagingStrikesPvE.Cooldown.WillHaveOneCharge(2.5f))))
+                    && RadiantFinalePVE.CanUse(out act)) return true;    
 
                 if ((((IsLastAbility(true, RadiantFinalePvE)
                     && RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown)
