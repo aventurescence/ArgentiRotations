@@ -3,6 +3,9 @@
 	  <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
 	  <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
+ <ItemGroup>
+    <Compile Remove="Melee\" />
+ </ItemGroup
 <ItemGroup>
     <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.137" />
 </ItemGroup>
