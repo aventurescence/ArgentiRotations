@@ -4,7 +4,7 @@
 	  <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
 <ItemGroup>
-    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.147" />
+    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.137" />
 </ItemGroup>
 <ItemGroup>
 	  <Reference Include="Dalamud">
