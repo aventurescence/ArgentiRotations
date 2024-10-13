@@ -134,7 +134,7 @@ public sealed class BRD_369Test : BardRotation
                     else
                     {
                     if ((Song == Song.WANDERER && !Player.WillStatusEnd(0, true, StatusID.TheWanderersMinuet_2216) && (TheWanderersMinuetPvE.Cooldown.IsCoolingDown && !TheWanderersMinuetPVE.Cooldown.ElapsedAfterGCD(1))) 
-                        && (RadiantFinalePvE.EnoughLevel && RadiantFinalePVE.CanUse(out act, isFirstAbility: true))) return true;    
+                        && (RadiantFinalePvE.EnoughLevel && !RadiantFinalePVE.CanUse(out act, isFirstAbility: true))) return true;    
 
                     if ((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale)) 
                         && (IsLastAbility(true, RadiantFinalePVE) && BattleVoicePVE.CanUse(out act, isLastAbility: true))) return true;
