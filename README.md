@@ -6,5 +6,5 @@ Download the latest version of RebornRotations:
 - [`RebornRotations.dll`](https://github.com/aventurescence/ArgentiRotations/releases/latest/download/RebornRotations.dll)
 
 ```
-https://github.com/FFXIV-CombatReborn/RebornRotations/releases/latest/download/RebornRotations.dll
+https://github.com/aventurescence/ArgentiRotations/releases/latest/download/RebornRotations.dll
 ```
