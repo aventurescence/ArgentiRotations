@@ -135,16 +135,15 @@ public sealed class BRD_369Test : BardRotation
                 {
                 if (Song == Song.WANDERER && WANDTime > 2
                     && Player.HasStatus(true, StatusID.ArmysEthos)
-                    && (RadiantFinalePvE.EnoughLevel && RadiantFinalePVE.CanUse(out act, isFirstAbility: true))) return true;    
+                    && RadiantFinalePVE.CanUse(out act, isFirstAbility: true)) return true;    
 
                 if (IsLastAbility(true, RadiantFinalePvE)
-                    && BattleVoicePVE.EnoughLevel 
                     && BattleVoicePVE.CanUse(out act, isLastAbility: true)) return true;
 
                 if ((Player.HasStatus(true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale))
                     && (Player.HasStatus(true, StatusID.BattleVoice) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
                     && WeaponRemain < 1.25f 
-                    && (RagingStrikesPvE.EnoughLevel && RagingStrikesPVE.CanUse(out act, isLastAbility: true))) return true;
+                    && RagingStrikesPVE.CanUse(out act, isLastAbility: true)) return true;
                 }   
         }
         if (RadiantFinalePvE.EnoughLevel && RadiantFinalePvE.Cooldown.IsCoolingDown && BattleVoicePvE.EnoughLevel && !BattleVoicePvE.Cooldown.IsCoolingDown) return false;
