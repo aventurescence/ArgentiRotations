@@ -135,15 +135,14 @@ public sealed class BRD_Test : BardRotation
                 {
                 if (Song == Song.WANDERER && WANDTime > 2
                     && Player.HasStatus(true, StatusID.ArmysEthos)
-                    && ((!RadiantFinalePVE.EnoughLevel && RagingStrikesPVE.Cooldown.IsCoolingDown)
-                    || (RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.EnoughLevel && (!RagingStrikesPvE.Cooldown.IsCoolingDown || RagingStrikesPvE.Cooldown.WillHaveOneCharge(2.5f))))
-                    && RadiantFinalePVE.CanUse(out act)) return true;    
+                    && (((RadiantFinalePVE.EnoughLevel && RagingStrikesPVE.Cooldown.IsCoolingDown) 
+                    || (RadiantFinalePVE.EnoughLevel && RadiantFinalePVE.Cooldown.IsCoolingDown 
+                    && RagingStrikesPVE.EnoughLevel && (RagingStrikesPVE.Cooldown.IsCoolingDown || RagingStrikesPvE.Cooldown.WillHaveOneCharge(2.5f)))))
+                    && RadiantFinalePVE.CanUse(out act)) return true;   
 
-                if ((((IsLastAbility(true, RadiantFinalePvE)
-                    && RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown)
-                    && RagingStrikesPvE.EnoughLevel && RagingStrikesPvE.Cooldown.WillHaveOneCharge(1.5f))
-                    || Player.HasStatus(true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale))
-                    && (BattleVoicePVE.CanUse(out act, isLastAbility: true))) return true;
+                if (((RadiantFinalePvE.EnoughLevel && !RadiantFinalePvE.Cooldown.IsCoolingDown) 
+                    && RagingStrikesPvE.EnoughLevel && RagingStrikesPvE.Cooldown.WillHaveOneCharge(1.5f)) 
+                    && BattleVoicePVE.CanUse(out act, isLastAbility: true)) return true;
 
                 if (((RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)) 
                     || (RadiantFinalePvE.EnoughLevel && BattleVoicePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)) 
