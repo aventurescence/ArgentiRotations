@@ -131,7 +131,7 @@ public sealed class BRD_369Test : BardRotation
                     && WeaponRemain < 1.25f
                     && RagingStrikesPvE.CanUse(out act, isLastAbility: true)) return true;
                 }
-            else
+            else if (inBurstStatusCount > 1)
                 {
                 if (Song == Song.WANDERER && WANDTime > 2
                     && Player.HasStatus(true, StatusID.ArmysEthos)
@@ -141,8 +141,8 @@ public sealed class BRD_369Test : BardRotation
                     && BattleVoicePVE.EnoughLevel 
                     && BattleVoicePVE.CanUse(out act, isLastAbility: true)) return true;
 
-                if ((Player.HasStatus(true, StatusID.RadiantFinalePVE) && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale))
-                    && (Player.HasStatus(true, StatusID.BattleVoicePVE) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
+                if ((Player.HasStatus(true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale))
+                    && (Player.HasStatus(true, StatusID.BattleVoice) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
                     && WeaponRemain < 1.25f 
                     && (RagingStrikesPvE.EnoughLevel && RagingStrikesPVE.CanUse(out act, isLastAbility: true))) return true;
                 }   
