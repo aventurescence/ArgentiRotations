@@ -4,5 +4,5 @@
 Download the latest version of ArgentiRotations:
 
 ```
-https://github.com/aventurescence/ArgentiRotations/releases/latest/download/LeliaRotationsR.dll
+https://github.com/aventurescence/ArgentiRotations/releases/latest/download/ArgentiRotations.dll
 ```
