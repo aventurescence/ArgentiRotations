@@ -60,7 +60,13 @@ public sealed class BRD_Test : BardRotation
 
     //return false;
     private static int InBurstStatusCount = 0;
-    private static bool PostBurst => if (RadiantFinalePvE.Cooldown.IsCoolingDown) return true;
+    private static bool PostBurst
+	{
+    	get
+    		{
+        	return RadiantFinalePvE.Cooldown.IsCoolingDown;
+    		}
+	}
     private static bool InBurstStatus => (Player.Level > 50 && !Player.WillStatusEnd(0, true, StatusID.RagingStrikes))
         || (Player.Level >= 50 && Player.Level < 90 && !Player.WillStatusEnd(0, true, StatusID.RagingStrikes) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice))
         || (MinstrelsCodaTrait.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RagingStrikes) && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale) && !Player.WillStatusEnd(0, true, StatusID.BattleVoice));
