@@ -125,9 +125,7 @@ public sealed class BRD_Test : BardRotation
         }
       
         if (IsBurst && Song == Song.WANDERER)
-        {
-            UpdateBurstStatus();
-            
+        {   
             if (InBurstStatusCount < 1)
                 {
                     if ((HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true)
@@ -142,6 +140,8 @@ public sealed class BRD_Test : BardRotation
                         && BattleVoicePvE.EnoughLevel! && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)
                         && WeaponRemain < 1.25f 
                     && RagingStrikesPvE.CanUse(out act, isLastAbility: true)) return true;
+
+					UpdateBurstStatus();
                 } 
             else if (InBurstStatusCount >= 1)
                 {
@@ -155,8 +155,8 @@ public sealed class BRD_Test : BardRotation
                         && BattleVoicePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)
                         && WeaponRemain < 1.05f
                         && RagingStrikesPvE.CanUse(out act, isLastAbility: true)) return true;
-                }
-                   
+
+                   		UpdateBurstStatus();
         }
         if (RadiantFinalePvE.EnoughLevel && RadiantFinalePvE.Cooldown.IsCoolingDown && BattleVoicePvE.EnoughLevel && !BattleVoicePvE.Cooldown.IsCoolingDown) return false;
 
