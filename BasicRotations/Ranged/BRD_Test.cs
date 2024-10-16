@@ -1,3 +1,6 @@
+using System.Runtime.Serialization;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
+
 namespace DefaultRotations.Ranged;
 
 [Rotation("369 BRD Test", CombatType.PvE, GameVersion = "7.05",
@@ -86,14 +89,14 @@ public sealed class BRD_Test : BardRotation
             UpdateBurstStatus();
            if (InBurstStatusCount < 1)
                 { 
-                if (TheWanderersMinuetPvE.CanUse(out act, isLastAbility: true)) return true;
-                if (MagesBalladPvE.CanUse(out act, isLastAbility: true)) return true;
+                if (TheWanderersMinuetPvE.CanUse(out act, isLastAbility: true) && WeaponRemain < 1.05f) return true;
+                if (MagesBalladPvE.CanUse(out act, isLastAbility: true) && WeaponRemain < 1.25f) return true;
                 if (ArmysPaeonPvE.CanUse(out act, isLastAbility: true)) return true;
                 }
             else if (InBurstStatusCount >= 1)
                 {
-                if (TheWanderersMinuetPvE.CanUse(out act, isLastAbility: true)) return true;
-                if (MagesBalladPvE.CanUse(out act, isLastAbility: true)) return true;
+                if (TheWanderersMinuetPvE.CanUse(out act, isLastAbility: true) && WeaponRemain < 1.05f) return true;
+                if (MagesBalladPvE.CanUse(out act, isLastAbility: true) && WeaponRemain < 1.25f) return true;
                 if (ArmysPaeonPvE.CanUse(out act, isFirstAbility: true)) return true;
                 }
         }
@@ -118,6 +121,7 @@ public sealed class BRD_Test : BardRotation
                         && BattleVoicePvE.EnoughLevel! && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)
                         && WeaponRemain < 1.25f 
                         && RagingStrikesPvE.CanUse(out act, isLastAbility: true)) return true;
+                    UpdateBurstStatus();
                 }
             else if (InBurstStatusCount >= 1)
                 {
@@ -133,13 +137,14 @@ public sealed class BRD_Test : BardRotation
                     if (RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale)
                         && BattleVoicePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)
                         && WeaponRemain < 1.05f
-                        && RagingStrikesPvE.CanUse(out act, isLastAbility: true)) return true;  
+                        && RagingStrikesPvE.CanUse(out act, isLastAbility: true)) return true;
+                    UpdateBurstStatus();  
                 }
                    
         }
         if (RadiantFinalePvE.EnoughLevel && RadiantFinalePvE.Cooldown.IsCoolingDown && BattleVoicePvE.EnoughLevel && !BattleVoicePvE.Cooldown.IsCoolingDown) return false;
 
-        if (TheWanderersMinuetPvE.CanUse(out act, isLastAbility: true) && InCombat)
+        if (TheWanderersMinuetPvE.CanUse(out act, isLastAbility: true) && InCombat && WeaponRemain < 1.05f)
         {
             if (SongEndAfter(ARMYRemainTime) && (Song != Song.NONE || Player.HasStatus(true, StatusID.ArmysEthos))) return true;
         }
@@ -172,7 +177,7 @@ public sealed class BRD_Test : BardRotation
             if (Repertoire == 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(0) && RadiantFinalePvE.Cooldown.IsCoolingDown) return true;
         }
 
-        if (MagesBalladPvE.CanUse(out act, isLastAbility: true) && InCombat)
+        if (MagesBalladPvE.CanUse(out act, isLastAbility: true) && InCombat && WeaponRemain < 1.25f)
         {
             if (Song == Song.WANDERER && SongEndAfter(WANDRemainTime) && WeaponRemain < 1.25f) return true;
             if (Song == Song.ARMY && SongEndAfterGCD(2) && TheWanderersMinuetPvE.Cooldown.IsCoolingDown) return true;
@@ -193,6 +198,7 @@ public sealed class BRD_Test : BardRotation
             if (TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2) && MagesBalladPvE.Cooldown.IsCoolingDown && Song == Song.WANDERER) return true;
             if (!TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2)) return true;
             }
+            UpdateBurstStatus();
         }
         if (SidewinderPvE.CanUse(out act))
         {
@@ -214,7 +220,7 @@ public sealed class BRD_Test : BardRotation
         }
 
         // Prevents Bloodletter bumpcapping when MAGE is the song due to Repetoire procs
-        if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.MAGE && !SongEndAfterGCD(2))
+        if (BloodletterPvE.Cooldown.WillHaveXCharges(3, 12f) && Song == Song.MAGE && !SongEndAfterGCD(2))
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
 
