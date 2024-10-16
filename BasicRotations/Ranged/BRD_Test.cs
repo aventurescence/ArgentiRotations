@@ -123,7 +123,7 @@ public sealed class BRD_Test : BardRotation
                         && RagingStrikesPvE.CanUse(out act, isLastAbility: true)) return true;
                     UpdateBurstStatus();
                 }
-            else if (InBurstStatusCount >= 1)
+            else
                 {
                     if (BattleVoicePvE.Cooldown.WillHaveOneChargeGCD(1)
                         && RadiantFinalePvE.CanUse(out act, isFirstAbility: true)) return true;
@@ -163,10 +163,13 @@ public sealed class BRD_Test : BardRotation
                 && BattleVoicePvE.Cooldown.IsCoolingDown
                 && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
             }
-            else if (Song == Song.MAGE) return true;
-
-            else if (Song == Song.ARMY) return true;
-                
+            else
+            { 
+                if (Song == Song.MAGE) return true;
+            
+            else 
+                if (Song == Song.ARMY) return true;
+            }    
         }
         if (PitchPerfectPvE.CanUse(out act, skipCastingCheck: true, skipAoeCheck: true, skipComboCheck: true))
         {
@@ -192,11 +195,11 @@ public sealed class BRD_Test : BardRotation
                 if (TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2) && MagesBalladPvE.Cooldown.IsCoolingDown && Song == Song.WANDERER) return true;
                 if (!TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2)) return true;
             }
-            else if (InBurstStatusCount >= 1)
+            else
             {
-            if (TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(MAGERemainTime) && Song == Song.MAGE) return true;
-            if (TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2) && MagesBalladPvE.Cooldown.IsCoolingDown && Song == Song.WANDERER) return true;
-            if (!TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2)) return true;
+                if (TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(MAGERemainTime) && Song == Song.MAGE) return true;
+                if (TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2) && MagesBalladPvE.Cooldown.IsCoolingDown && Song == Song.WANDERER) return true;
+                if (!TheWanderersMinuetPvE.EnoughLevel && SongEndAfter(2)) return true;
             }
             UpdateBurstStatus();
         }
