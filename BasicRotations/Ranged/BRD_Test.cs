@@ -1,8 +1,6 @@
-using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-
 namespace DefaultRotations.Ranged;
 
-[Rotation("369 BRD Test", CombatType.PvE, GameVersion = "7.05",
+[Rotation("369 BRDv1", CombatType.PvE, GameVersion = "7.05",
     Description = "Please make sure that the three song times add up to 120 seconds, Wanderers default first song for now. Only intended to be used in level 100 content.")]
 [SourceCode(Path = "main/BasicRotations/Ranged/BRD_Default.cs")]
 [Api(4)]
@@ -95,7 +93,7 @@ public sealed class BRD_Test : BardRotation
             {
                 if (!Player.HasStatus(true, StatusID.HawksEye_3861) && BarragePvE.CanUse(out act)) return true;
             }
-            if (HeartbreakShotPvE.Cooldown.WillHaveXChargesGCD(BloodletterMax, 1)) 
+            if (HeartbreakShotPvE.Cooldown.WillHaveXChargesGCD(BloodletterMax)) 
             {
                 if (HeartbreakShotPvE.CanUse(out act)) return true;
             }
@@ -229,11 +227,11 @@ public sealed class BRD_Test : BardRotation
                     else return true;
                 }
             }
-            else if (Song == Song.ARMY && WeaponRemain > 0.75f) return true; 
+            else if (Song == Song.ARMY && WeaponRemain > 0.8f) return true; 
         }
         if (PitchPerfectPvE.CanUse(out act))
         {
-            if (SongEndAfter(WANDRemainTime - 0.8f) && Repertoire > 0 && WeaponRemain > 0.8f) return true;
+            if (SongEndAfter(WANDRemainTime - 0.8f) && Repertoire > 0 && WeaponRemain > 1.25f) return true;
             
             if (Repertoire == 3)
             {
@@ -252,7 +250,7 @@ public sealed class BRD_Test : BardRotation
 
         if (MagesBalladPvE.CanUse(out act) && InCombat && WeaponRemain < 0.8f)
         {
-            if (Song == Song.WANDERER && SongEndAfter(WANDRemainTime - 0.8f)) return true;
+            if (Song == Song.WANDERER && SongEndAfter(WANDRemainTime)) return true;
         }
 
         if (ArmysPaeonPvE.CanUse(out act) && InCombat) 
@@ -274,7 +272,7 @@ public sealed class BRD_Test : BardRotation
 
         
         // Bloodletter Overcap protection
-        if (BloodletterPvE.Cooldown.WillHaveXCharges(BloodletterMax, 3f) && WeaponRemain > 0.8)
+        if (BloodletterPvE.Cooldown.WillHaveXCharges(BloodletterMax, 3) && WeaponRemain > 0.8f)
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
 
@@ -284,7 +282,7 @@ public sealed class BRD_Test : BardRotation
         }
 
         // Prevents Bloodletter bumpcapping when MAGE is the song due to Repetoire procs
-        if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.MAGE && !SongEndAfterGCD(1) && WeaponRemain > 0.8f)
+        if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.MAGE && !SongEndAfterGCD(1))
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
 
