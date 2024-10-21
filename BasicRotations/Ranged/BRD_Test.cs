@@ -245,21 +245,21 @@ public sealed class BRD_Test : BardRotation
                 if (!InBurstStatus) return true;
             }
         
-            if (Repertoire >= 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(0,1) && RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
+            if (Repertoire >= 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(0) && RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
         }
 
         if (InBurstStatusCount == 2 && Song == Song.WANDERER && PotionTimings == PotionTimingOption.ZeroFiveAndTenMins && SongEndAfter(5) && UseBurstMedicine(out act)) return true;
 
-        if (MagesBalladPvE.CanUse(out act) && InCombat && WeaponRemain < 0.7f)
+        if (MagesBalladPvE.CanUse(out act) && InCombat && WeaponRemain < 0.8f)
         {
-            if (Song == Song.WANDERER && SongEndAfter(WANDRemainTime - 0.7f)) return true;
+            if (Song == Song.WANDERER && SongEndAfter(WANDRemainTime - 0.8f)) return true;
         }
 
         if (ArmysPaeonPvE.CanUse(out act) && InCombat) 
         {
             if (Song == Song.MAGE && SongEndAfter(MAGERemainTime) && InBurstStatusCount <= 1)
             {
-                if (WeaponRemain < 0.9f) return true;
+                if (WeaponRemain < 0.8f) return true;
             }
             else if (Song == Song.MAGE && SongEndAfter(MAGERemainTime) && InBurstStatusCount > 1) return true;
         }
@@ -273,9 +273,8 @@ public sealed class BRD_Test : BardRotation
         }
 
         
-            
         // Bloodletter Overcap protection
-        if (BloodletterPvE.Cooldown.WillHaveXCharges(BloodletterMax, 2.49f) && WeaponRemain > 1)
+        if (BloodletterPvE.Cooldown.WillHaveXCharges(BloodletterMax, 3f) && WeaponRemain > 0.8)
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
 
@@ -285,7 +284,7 @@ public sealed class BRD_Test : BardRotation
         }
 
         // Prevents Bloodletter bumpcapping when MAGE is the song due to Repetoire procs
-        if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.MAGE && !SongEndAfterGCD(1) && WeaponRemain > 1)
+        if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.MAGE && !SongEndAfterGCD(1) && WeaponRemain > 0.8f)
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
 
