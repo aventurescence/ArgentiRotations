@@ -231,7 +231,7 @@ public sealed class BRD_Test : BardRotation
         }
         if (PitchPerfectPvE.CanUse(out act))
         {
-            if (SongEndAfter(WANDRemainTime - 0.8f) && Repertoire > 0 && WeaponRemain > 1.25f) return true;
+            if (SongEndAfter(WANDRemainTime) && Repertoire > 0 && WeaponRemain > 1.25f) return true;
             
             if (Repertoire == 3)
             {
@@ -243,7 +243,7 @@ public sealed class BRD_Test : BardRotation
                 if (!InBurstStatus) return true;
             }
         
-            if (Repertoire >= 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(0) && RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
+            if (Repertoire >= 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneCharge(1.25f) && RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
         }
 
         if (InBurstStatusCount == 2 && Song == Song.WANDERER && PotionTimings == PotionTimingOption.ZeroFiveAndTenMins && SongEndAfter(5) && UseBurstMedicine(out act)) return true;
