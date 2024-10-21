@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="DalamudPackager" Version="2.1.13" />
-    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.147" />
+    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.149" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Melee\*.cs" />
@@ -70,7 +70,7 @@
     <Using Include="System.Reflection" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="plugin.json">
+    <None Update="ArgentiRotations.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
