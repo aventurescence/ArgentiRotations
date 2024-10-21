@@ -287,11 +287,17 @@ public sealed class BRD_Test : BardRotation
         // Prevents Bloodletter bumpcapping when MAGE is the song due to Repetoire procs
         if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.MAGE && !SongEndAfterGCD(1) && WeaponRemain > 1)
         {
-            if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
-
-            if (HeartbreakShotPvE.CanUse(out act, usedUp: true)) return true;
-
-            if (BloodletterPvE.CanUse(out act, usedUp: true)) return true;
+            if (RagingStrikesPvE.Cooldown.RecastTimeRemainOneCharge <= 45f)
+            {
+                if (BloodletterPvE.Cooldown.WillHaveXCharges(0, 45f))
+                {
+                    if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
+        
+                    if (HeartbreakShotPvE.CanUse(out act, usedUp: true)) return true;
+        
+                    if (BloodletterPvE.CanUse(out act, usedUp: true)) return true;
+                }
+            }
         }
         // Stop using HeartbreakShotPvE during Army's Paeon to ensure 3 charges before Raging Strikes in Wanderer's Minuet
         if (Song == Song.ARMY && HeartbreakShotPvE.Cooldown.WillHaveXCharges(3, RagingStrikesPvE.Cooldown.RecastTimeRemainOneCharge))
