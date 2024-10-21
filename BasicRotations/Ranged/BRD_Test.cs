@@ -1,10 +1,10 @@
 namespace DefaultRotations.Ranged;
 
 [Rotation("369 BRDv1", CombatType.PvE, GameVersion = "7.05",
-    Description = "Please make sure that the three song times add up to 120 seconds, Wanderers default first song for now. Only intended to be used in level 100 content.")]
+    Description = "Please make sure that the three song times add up to 120 seconds, Wanderers default first song for now. Only intended to be used in level 100 content. :3")]
 [SourceCode(Path = "main/BasicRotations/Ranged/BRD_Default.cs")]
 [Api(4)]
-public sealed class BRD_Test : BardRotation
+public sealed class BRDv1_369 : BardRotation
 {
     #region Config Options
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
@@ -248,7 +248,7 @@ public sealed class BRD_Test : BardRotation
 
         if (InBurstStatusCount == 2 && Song == Song.WANDERER && PotionTimings == PotionTimingOption.ZeroFiveAndTenMins && SongEndAfter(5) && UseBurstMedicine(out act)) return true;
 
-        if (MagesBalladPvE.CanUse(out act) && InCombat && WeaponRemain < 0.8f)
+        if (MagesBalladPvE.CanUse(out act) && InCombat && WeaponRemain < 1)
         {
             if (Song == Song.WANDERER && SongEndAfter(WANDRemainTime)) return true;
         }
