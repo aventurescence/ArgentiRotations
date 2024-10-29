@@ -7,6 +7,7 @@ namespace DefaultRotations.Ranged;
 public sealed class BRDv1_369 : BardRotation
 {
     #region Config Options
+    "DO NOT TOUCH"
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Wanderer's Minuet Uptime")]
     public float WANDTime { get; set; } = 42;
@@ -59,7 +60,7 @@ public sealed class BRDv1_369 : BardRotation
 
     private static void UpdateBurstStatus()
     {
-        if (CombatTime < 5)
+        if (CombatTime < 5 || DutyWiped)
         {
             InBurstStatusCount = 0;
             lastIncrementTime = DateTime.Now; // Update the timestamp
