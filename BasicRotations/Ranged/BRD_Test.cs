@@ -7,7 +7,6 @@ namespace DefaultRotations.Ranged;
 public sealed class BRDv1_369 : BardRotation
 {
     #region Config Options
-    "DO NOT TOUCH"
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Wanderer's Minuet Uptime")]
     public float WANDTime { get; set; } = 42;
@@ -130,11 +129,11 @@ public sealed class BRDv1_369 : BardRotation
             {
                 if ((HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true)
                     && IsLastGCD(true, VenomousBitePvE))
-                {   
+                {
                     if ((PotionTimings == PotionTimingOption.ZeroAndSixMins || PotionTimings == PotionTimingOption.ZeroFiveAndTenMins) && UseBurstMedicine(out act)) return true;
 
                     if (WeaponRemain < 1.25 && RadiantFinalePvE.CanUse(out act)) return true;
-                
+
 
                     if (RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale)
                         && BattleVoicePvE.EnoughLevel && BattleVoicePvE.CanUse(out act)) return true;
@@ -241,7 +240,7 @@ public sealed class BRDv1_369 : BardRotation
                 if (!InBurstStatus) return true;
             }
 
-            if (Repertoire >= 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(0,1.25f) && RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
+            if (Repertoire >= 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(0, 1.25f) && RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
         }
 
         if (InBurstStatusCount == 2 && Song == Song.WANDERER && PotionTimings == PotionTimingOption.ZeroFiveAndTenMins && SongEndAfter(5) && UseBurstMedicine(out act)) return true;
