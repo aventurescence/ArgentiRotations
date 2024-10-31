@@ -105,7 +105,6 @@ public sealed class BRDv1_369 : BardRotation
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
         act = null;
-        UpdateBurstStatus();
         if (Song == Song.NONE && InCombat)
         {
             if (InBurstStatusCount < 1)
