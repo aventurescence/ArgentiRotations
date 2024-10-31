@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="DalamudPackager" Version="2.1.13" />
-    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.152" />
+    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.153" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Melee\*.cs" />
