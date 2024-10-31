@@ -126,19 +126,17 @@ public sealed class BRDv1_369 : BardRotation
             UpdateBurstStatus();
             if (InBurstStatusCount < 1)
             {
-                if ((HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true)
-                    && IsLastGCD(true, VenomousBitePvE))
+                if ((HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true))
                 {   
                     if ((PotionTimings == PotionTimingOption.ZeroAndSixMins || PotionTimings == PotionTimingOption.ZeroFiveAndTenMins) && UseBurstMedicine(out act)) return true;
 
                     if (WeaponRemain < 1.25 && RadiantFinalePvE.CanUse(out act)) return true;
                 
+                    if  (Player.HasStatus(true, StatusID.RadiantFinale)
+                        && BattleVoicePvE.CanUse(out act)) return true;
 
-                    if (RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale)
-                        && BattleVoicePvE.EnoughLevel && BattleVoicePvE.CanUse(out act)) return true;
-
-                    if (RadiantFinalePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.RadiantFinale)
-                        && BattleVoicePvE.EnoughLevel && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)
+                    if (!Player.WillStatusEnd(0, true, StatusID.RadiantFinale)
+                        && !Player.WillStatusEnd(0, true, StatusID.BattleVoice)
                         && WeaponRemain < 1.25f
                         && RagingStrikesPvE.CanUse(out act)) return true;
                 }
