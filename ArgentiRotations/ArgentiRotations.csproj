@@ -1,83 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.13" />
-    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.149" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Melee\*.cs" />
-    <Compile Remove="Tank\**" />
-    <Compile Remove="Healer\*.cs" />
-    <Compile Remove="Magical\**" />
-    <Compile Remove="Duty\**" />
-    <Compile Remove="PVPRotations\*\*.cs" />
-    <Compile Remove="Limited Jobs\*.cs" />
-    <Compile Remove="Ranged\BRD_Default.cs" />
-    <Compile Remove="Ranged\DNC_Default.cs" />
-    <Compile Remove="Ranged\MCH_Default.cs" />
-    <Compile Remove="Ranged\DNC_DefaultLelia.cs" />
-    <Compile Remove="Ranged\MCH_Default.PvP.cs" />
-    <Compile Remove="Ranged\zMCH_Beta.cs" />
-    <Compile Remove="Ranged\zMCH_Beta_2.cs" />
-    <Compile Remove="Ranged\Queen Timings" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Dalamud">
-      <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ImGui.NET">
-      <HintPath>$(DalamudLibPath)ImGui.NET.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ImGuiScene">
-      <HintPath>$(DalamudLibPath)ImGuiScene.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Lumina">
-      <HintPath>$(DalamudLibPath)Lumina.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Lumina.Excel">
-      <HintPath>$(DalamudLibPath)Lumina.Excel.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="FFXIVClientStructs">
-      <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>$(DalamudLibPath)Newtonsoft.Json.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Using Include="Dalamud.Game.ClientState.JobGauge.Enums" />
-    <Using Include="Dalamud.Game.ClientState.Objects.Types" />
-    <Using Include="Dalamud.Interface" />
-    <Using Include="ImGuiNET" />
-    <Using Include="Newtonsoft.Json" />
-    <Using Include="RotationSolver.Basic" />
-    <Using Include="RotationSolver.Basic.Actions" />
-    <Using Include="RotationSolver.Basic.Attributes" />
-    <Using Include="RotationSolver.Basic.Configuration.RotationConfig" />
-    <Using Include="RotationSolver.Basic.Data" />
-    <Using Include="RotationSolver.Basic.Helpers" />
-    <Using Include="RotationSolver.Basic.Rotations" />
-    <Using Include="RotationSolver.Basic.Rotations.Basic" />
-    <Using Include="System.Numerics" />
-    <Using Include="System.Reflection" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="ArgentiRotations.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Remove="Melee\" />
-    <Folder Remove="Healer\" />
-    <Folder Remove="Tank\" />
-    <Folder Remove="Magical\" />
-  </ItemGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AssemblyVersion>1.0.0.9</AssemblyVersion>
+        <PlatformTarget>x64</PlatformTarget>
+        <Platforms>x64</Platforms>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+
+        <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+        <AssemblyName>ArgentiRotations</AssemblyName>
+
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Remove="**\*.archive" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="RotationSolverReborn.Basic" Version="7.1.0.7" />
+        <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="ArgentiRotations\Ranged\" />
+    </ItemGroup>
 </Project>
