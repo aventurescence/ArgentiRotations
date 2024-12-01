@@ -1,10 +1,11 @@
-namespace DefaultRotations.Ranged;
 
-[Rotation("369 BRDv1", CombatType.PvE, GameVersion = "7.05",
-    Description = "Please make sure that the three song times add up to 120 seconds, Wanderers default first song for now. Only intended to be used in level 100 content. :3")]
-[SourceCode(Path = "main/BasicRotations/Ranged/BRD_Default.cs")]
+namespace ArgentiRotations.Ranged;
+
+[Rotation("BRD369v2", CombatType.PvE, GameVersion = "7.1",
+    Description = "Don't touch the config options! Only intended to be used in level 100 savage content. :3")]
+[SourceCode(Path = "ArgentiRotations/Ranged/369BRDv2.cs")]
 [Api(4)]
-public sealed class BRDv1_369 : BardRotation
+public sealed class BRD369v2 : BardRotation
 {
     #region Config Options
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
@@ -31,6 +32,7 @@ public sealed class BRDv1_369 : BardRotation
 
     [RotationConfig(CombatType.PvE, Name = "Potion Timings")]
     public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
+
     public enum PotionTimingOption
     {
         None,
@@ -38,8 +40,6 @@ public sealed class BRDv1_369 : BardRotation
         TwoAndEightMins,
         ZeroFiveAndTenMins
     }
-
-    private static bool InBurstStatus => Player.HasStatus(true, StatusID.RagingStrikes) && Player.HasStatus(true, StatusID.BattleVoice) && Player.HasStatus(true, StatusID.RadiantFinale);
 
     #endregion
 
@@ -53,33 +53,6 @@ public sealed class BRDv1_369 : BardRotation
     #endregion
 
     #region oGCD Logic
-
-    private static int InBurstStatusCount = 0;
-    private static DateTime lastIncrementTime = DateTime.MinValue;
-
-    private static void UpdateBurstStatus()
-    {
-        if (CombatTime < 5 || DutyWiped)
-        {
-            InBurstStatusCount = 0;
-            lastIncrementTime = DateTime.Now; // Update the timestamp
-        }
-        if (InBurstStatus && Song == Song.WANDERER)
-        {
-            if (InBurstStatusCount < 1)
-            {
-                InBurstStatusCount++;
-                lastIncrementTime = DateTime.Now;
-            }
-            if (InBurstStatusCount >= 1 && (DateTime.Now - lastIncrementTime).TotalSeconds >= 120)
-            {
-                InBurstStatusCount++;
-                lastIncrementTime = DateTime.Now;
-            }
-        }
-    }
-
-
     protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
     {
 
@@ -87,7 +60,7 @@ public sealed class BRDv1_369 : BardRotation
         {
             return base.EmergencyAbility(nextGCD, out act);
         }
-        else if (!RagingStrikesPvE.EnoughLevel || Player.HasStatus(true, StatusID.RagingStrikes))
+        else if (Player.HasStatus(true, StatusID.RagingStrikes))
         {
             if ((EmpyrealArrowPvE.Cooldown.IsCoolingDown && !EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(1) || !EmpyrealArrowPvE.EnoughLevel) && Repertoire != 3)
             {
@@ -387,37 +360,55 @@ public sealed class BRDv1_369 : BardRotation
     private bool BetterBloodletterLogic(out IAction? act)
     {
 
-        bool isRagingStrikesLevel = RagingStrikesPvE.EnoughLevel;
-        bool isBattleVoiceLevel = BattleVoicePvE.EnoughLevel;
-        bool isRadiantFinaleLevel = RadiantFinalePvE.EnoughLevel;
         bool isMedicated = Player.HasStatus(true, StatusID.Medicated);
 
         if (HeartbreakShotPvE.CanUse(out act, usedUp: true))
         {
-            if ((!isRagingStrikesLevel)
-                || Player.HasStatus(true, StatusID.RagingStrikes)
+            if ( Player.HasStatus(true, StatusID.RagingStrikes)
                 || Player.HasStatus(true, StatusID.BattleVoice) && Player.HasStatus(true, StatusID.RadiantFinale)
                 || isMedicated) return true;
         }
 
         if (RainOfDeathPvE.CanUse(out act, usedUp: true))
         {
-            if ((!isRagingStrikesLevel)
-                || Player.HasStatus(true, StatusID.RagingStrikes)
+            if ( Player.HasStatus(true, StatusID.RagingStrikes)
                 || Player.HasStatus(true, StatusID.BattleVoice) && Player.HasStatus(true, StatusID.RadiantFinale)
                 || isMedicated) return true;
         }
 
         if (BloodletterPvE.CanUse(out act, usedUp: true))
         {
-            if ((!isRagingStrikesLevel)
-                || Player.HasStatus(true, StatusID.RagingStrikes)
+            if ( Player.HasStatus(true, StatusID.RagingStrikes)
                 || Player.HasStatus(true, StatusID.BattleVoice) && Player.HasStatus(true, StatusID.RadiantFinale)
                 || isMedicated) return true;
         }
         return false;
     }
+    private static bool InBurstStatus => Player.HasStatus(true, StatusID.RagingStrikes) && Player.HasStatus(true, StatusID.BattleVoice) && Player.HasStatus(true, StatusID.RadiantFinale);
+    private static int InBurstStatusCount = 0;
+    private static DateTime lastIncrementTime = DateTime.MinValue;
+    private static void UpdateBurstStatus()
+    {
+        if (CombatTime < 5)
+        {
+            InBurstStatusCount = 0;
+            lastIncrementTime = DateTime.Now; // Update the timestamp
+        }
+        if (InBurstStatus && Song == Song.WANDERER)
+        {
+            if (InBurstStatusCount < 1)
+            {
+                InBurstStatusCount++;
+                lastIncrementTime = DateTime.Now;
+            }
+            if (InBurstStatusCount >= 1 && (DateTime.Now - lastIncrementTime).TotalSeconds >= 120)
+            {
+                InBurstStatusCount++;
+                lastIncrementTime = DateTime.Now;
 
+            }
+        }
+    }
 
     #endregion
 

@@ -5,7 +5,7 @@
     "Description": "This plugin helps optimize rotations for various classes in FFXIV.",
     "RepoUrl": "https://github.com/aventurescence/ArgentiRotations",
     "Tags": ["FFXIV", "Dalamud", "Rotations"],
-    "AssemblyVersion": "7.0.5.1",
+    "AssemblyVersion": "7.1.0.1",
     "DalamudApiLevel": 6,
     "LoadPriority": 0
   }
