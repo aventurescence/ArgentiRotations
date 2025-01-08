@@ -1,18 +1,18 @@
+using System.Drawing.Text;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
+using Lumina.Excel.Sheets;
+using RotationSolver.Basic.Rotations.Duties;
+
 namespace ArgentiRotations.Ranged;
 
-[Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.15", Description = "")]
+[Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.15", Description = "Only for level 100 content, ok?")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
 public sealed class ChurinDNC : DancerRotation
 {
     #region Config Options
 
-    public enum RotationModule : byte
-    {
-        [Description = ("FRU Module")] FRU,
-        [Description = ("Churin Default")] Churin,
-
-    }
     [RotationConfig(CombatType.PvE, Name = "Holds Tech Step if no targets in range (Warning, will drift)")]
     public bool HoldTechForTargets { get; set; } = true;
 
@@ -21,12 +21,13 @@ public sealed class ChurinDNC : DancerRotation
 
     [RotationConfig(CombatType.PvE, Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
     public string DancePartnerName { get; set; } = "";
+    [RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
+    public bool LoadFRU { get; set; } = false;
 
-    [RotationConfig(CombatType.PvE, Name = "Select module")]
-    public RotationModule SelectedModule {get;set;} = SelectedModule.Churin;
     
     #endregion
     bool shouldUseLastDance = true;
+
 
     #region Countdown Logic
     // Override the method for actions to be taken during countdown phase of combat
@@ -46,6 +47,8 @@ public sealed class ChurinDNC : DancerRotation
     #endregion
 
     #region oGCD Logic
+    private bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
+    private bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
     // Override the method for handling emergency abilities
     protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
     {
@@ -55,48 +58,17 @@ public sealed class ChurinDNC : DancerRotation
         }
 
         // Special handling if the last action was Quadruple Technical Finish and level requirement is met
-        if (IsLastGCD(ActionID.QuadrupleTechnicalFinishPvE) && TechnicalStepPvE.EnoughLevel)
+        if (IsLastGCD(ActionID.QuadrupleTechnicalFinishPvE))
         {
             // Attempt to use Devilment ignoring clipping checks
             if (DevilmentPvE.CanUse(out act)) return true;
         }
-        // Similar handling for Double Standard Finish when level requirement is not met
-        else if (IsLastGCD(ActionID.DoubleStandardFinishPvE) && !TechnicalStepPvE.EnoughLevel)
-        {
-            if (DevilmentPvE.CanUse(out act)) return true;
-        }
-
-        // Use burst medicine if cooldown for Technical Step has elapsed sufficiently
-        if (TechnicalStepPvE.Cooldown.ElapsedAfter(115)
-            && UseBurstMedicine(out act)) return true;
 
         //If dancing or about to dance avoid using abilities to avoid animation lock delaying the dance, except for Devilment
-        if (!IsDancing && !(StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118)))
+        if (!IsDancing && !AboutToDance)
             return base.EmergencyAbility(nextGCD, out act); // Fallback to base class method if none of the above conditions are met
 
         act = null;
-        return false;
-    }
-
-    [RotationDesc(ActionID.CuringWaltzPvE, ActionID.ImprovisationPvE)]
-    protected override bool HealAreaAbility(IAction nextGCD, out IAction act)
-    {
-        if (CuringWaltzPvE.CanUse(out act, usedUp: true)) return true;
-        if (ImprovisationPvE.CanUse(out act, usedUp: true)) return true;
-        return false;
-    }
-
-    [RotationDesc(ActionID.ShieldSambaPvE)]
-    protected override bool DefenseAreaAbility(IAction nextGCD, out IAction act)
-    {
-        if (ShieldSambaPvE.CanUse(out act, usedUp: true)) return true;
-        return false;
-    }
-
-    [RotationDesc(ActionID.EnAvantPvE)]
-    protected override bool MoveForwardAbility(IAction nextGCD, out IAction act)
-    {
-        if (EnAvantPvE.CanUse(out act, usedUp: true)) return true;
         return false;
     }
 
@@ -106,7 +78,7 @@ public sealed class ChurinDNC : DancerRotation
         act = null;
 
         //If dancing or about to dance avoid using abilities to avoid animation lock delaying the dance
-        if (IsDancing || StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118)) return false;
+        if (IsDancing || AboutToDance) return false;
 
         // Prevent triple weaving by checking if an action was just used
         if (nextGCD.AnimationLockTime > 0.75f) return false;
@@ -115,7 +87,7 @@ public sealed class ChurinDNC : DancerRotation
         if (!TechnicalStepPvE.Cooldown.ElapsedAfter(116) || TillanaPvE.CanUse(out act))
         {
             // Check for conditions to use Flourish
-            if (((Player.HasStatus(true, StatusID.Devilment)) && (Player.HasStatus(true, StatusID.TechnicalFinish))) || ((!Player.HasStatus(true, StatusID.Devilment)) && (!Player.HasStatus(true, StatusID.TechnicalFinish))))
+            if (DanceDance || !DanceDance)
             {
                 if (!Player.HasStatus(true, StatusID.ThreefoldFanDance) && FlourishPvE.CanUse(out act))
                 {
@@ -157,6 +129,10 @@ public sealed class ChurinDNC : DancerRotation
                     if (player.Name.ToString() == DancePartnerName)
                         ClosedPositionPvE.Target = new TargetResult(player, [player], player.Position);
 
+            return true;
+        }
+        if (FRULogic(out act)) 
+        {
             return true;
         }
 
@@ -330,5 +306,63 @@ public sealed class ChurinDNC : DancerRotation
         act = null;
         return false;
     }
+    private DateTime DowntimeStartTime;
+    private bool isUtopianSkyActive;
+
+    //Helper method for FRU module
+    private bool FRULogic (out IAction? act)
+    {
+            act = null;
+
+            bool standardFinishReady = Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2;
+            bool standardReady = StandardStepPvE.Cooldown.ElapsedAfter(28);
+            bool technicalReady = TechnicalStepPvE.Cooldown.ElapsedAfter(118);
+            bool flourishReady = FlourishPvE.Cooldown.ElapsedAfter(60);
+
+            // Check if the boss named Fatebreaker starts casting Utopian Sky
+            bool UtopianSky = HostileTarget != null && HostileTarget.Name.ToString() == "FateBreaker" && (HostileTarget.CastActionId == 40154 || HostileTarget.CastActionId == 40155);
+
+            // Mark the beginning of the Utopian Sky phase
+            if (LoadFRU && UtopianSky)
+            {
+                DowntimeStartTime = DateTime.Now;
+                isUtopianSkyActive = true;
+            }
+
+            // Check if Utopian Sky is active before using the following abilities
+            while (isUtopianSkyActive)
+            {
+                // Check if 35 seconds have passed since Utopian Sky started
+                if ((DateTime.Now - DowntimeStartTime).TotalSeconds > 45)
+                {
+                    isUtopianSkyActive = false;
+                    break;
+                }
+
+                // Check if Standard Step is ready
+                if (standardReady && StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
+
+                // Check if Standard Finish is ready
+                if (standardFinishReady && DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
+
+                // Check if Flourish is ready
+                if (flourishReady && FlourishPvE.CanUse(out act)) return true;
+
+                // Check if Finishing Move is ready
+                if (Player.HasStatus(true, StatusID.FinishingMoveReady))
+                {
+                    StatusHelper.StatusOff(StatusID.FinishingMoveReady);
+                    if (StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
+                    if (FinishTheDance(out act)) return true;
+                }
+
+                // Optionally, add a small delay to avoid busy-waiting
+                Thread.Sleep(100);
+            }
+
+            act = null;
+            return false;
+        }
+
     #endregion
 }
