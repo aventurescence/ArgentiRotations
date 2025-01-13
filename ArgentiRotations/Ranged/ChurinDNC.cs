@@ -1,8 +1,4 @@
-using System.Drawing.Text;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using Lumina.Excel.Sheets;
-using RotationSolver.Basic.Rotations.Duties;
+using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
 
@@ -26,8 +22,100 @@ public sealed class ChurinDNC : DancerRotation
 
     
     #endregion
+    
     bool shouldUseLastDance = true;
+    bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
+    bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
+    bool StandardReady => StandardStepPvE.Cooldown.ElapsedAfter(28);
+    bool TechnicalReady => TechnicalStepPvE.Cooldown.ElapsedAfter(118);
+    bool StepFinishReady => Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2 || Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4;
+    bool areDanceTargetsInRange = AllHostileTargets.Any(hostile => hostile.DistanceToPlayer() < 14);
 
+    public enum FRUPhase
+    {
+        None,
+        Fatebreaker,
+        Usurper,
+        Adds,
+        Gaia,
+        Lesbians,
+        Pandora
+    }
+    
+    private static FRUPhase currentFRUPhase = FRUPhase.None;
+
+    public static FRUPhase CheckFRUPhase()
+    {
+        // Targets for phase detection
+        string FRUPhase1Name = "Fatebreaker";
+        string FRUPhase2Name = "Usurper of Frost";
+        string FRUAddPhaseName = "Crystal of Light";
+        string FRUPhase3Name = "Oracle of Darkness";
+        string FRUPhase4Name = "Usurper of Frost";
+        string FRUPhase5Name = "Pandora";
+
+        if (IsInFRU && InCombat)
+        {
+            foreach (var obj in AllHostileTargets)
+            {
+                if (obj.Name.ToString() == FRUPhase1Name)
+                {
+                    currentFRUPhase = FRUPhase.Fatebreaker;
+                    return currentFRUPhase;
+                }
+                if (obj.Name.ToString() == FRUPhase2Name && currentFRUPhase == FRUPhase.Fatebreaker)
+                {
+                    currentFRUPhase = FRUPhase.Usurper;
+                    return currentFRUPhase;
+                }
+                if (obj.Name.ToString() == FRUAddPhaseName && currentFRUPhase == FRUPhase.Usurper)
+                {
+                    currentFRUPhase = FRUPhase.Adds;
+                    return currentFRUPhase;
+                }
+                if (obj.Name.ToString() == FRUPhase3Name && currentFRUPhase == FRUPhase.Adds)
+                {
+                    currentFRUPhase = FRUPhase.Gaia;
+                    return currentFRUPhase;
+                }
+                if (obj.Name.ToString() == FRUPhase4Name && currentFRUPhase == FRUPhase.Gaia)
+                {
+                    currentFRUPhase = FRUPhase.Lesbians;
+                    return currentFRUPhase;
+                }
+                if (obj.Name.ToString() == FRUPhase5Name && currentFRUPhase == FRUPhase.Lesbians)
+                {
+                    currentFRUPhase = FRUPhase.Pandora;
+                    return currentFRUPhase;
+                }
+            }
+        }
+
+        return currentFRUPhase;
+    }
+
+    /// <summary>
+    /// Displays extra status information.
+    /// </summary>
+    public override void DisplayStatus()
+    {
+        DisplayStatusHelper.BeginPaddedChild("The CustomRotation's status window", true, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
+        string text = "Rotation: " + Name;
+        float textSize = ImGui.CalcTextSize(text).X;
+        DisplayStatusHelper.DrawItemMiddle(() =>
+        {
+            ImGui.TextColored(ImGuiColors.HealerGreen, text);
+            DisplayStatusHelper.HoveredTooltip(Description);
+        }, ImGui.GetWindowWidth(), textSize);
+        ImGui.BeginGroup();
+        ImGui.Text("FRU Phase:" + CheckFRUPhase());
+        ImGui.Text("Time To Kill:" + AverageTimeToKill);
+        ImGui.Text("Combat Time:" + CombatTime);
+        ImGui.EndGroup();
+        ImGui.Separator();
+        DisplayStatusHelper.EndPaddedChild();
+    }
+    
 
     #region Countdown Logic
     // Override the method for actions to be taken during countdown phase of combat
@@ -47,8 +135,7 @@ public sealed class ChurinDNC : DancerRotation
     #endregion
 
     #region oGCD Logic
-    private bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-    private bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
+
     // Override the method for handling emergency abilities
     protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
     {
@@ -65,7 +152,7 @@ public sealed class ChurinDNC : DancerRotation
         }
 
         //If dancing or about to dance avoid using abilities to avoid animation lock delaying the dance, except for Devilment
-        if (!IsDancing && !AboutToDance)
+        if (!IsDancing && !(StandardReady || TechnicalReady))
             return base.EmergencyAbility(nextGCD, out act); // Fallback to base class method if none of the above conditions are met
 
         act = null;
@@ -75,44 +162,40 @@ public sealed class ChurinDNC : DancerRotation
     // Override the method for handling attack abilities
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
-        act = null;
-
-        //If dancing or about to dance avoid using abilities to avoid animation lock delaying the dance
-        if (IsDancing || AboutToDance) return false;
-
-        // Prevent triple weaving by checking if an action was just used
-        if (nextGCD.AnimationLockTime > 0.75f) return false;
-
-        // Skip using Flourish if Technical Step is about to come off cooldown
-        if (!TechnicalStepPvE.Cooldown.ElapsedAfter(116) || TillanaPvE.CanUse(out act))
         {
-            // Check for conditions to use Flourish
-            if (DanceDance || !DanceDance)
+            act = null; 
+            //Check for FRU Phase and execute logic
+            FRUPhase currentPhase = CheckFRUPhase();
+            if (IsInFRU && FRULogic(currentPhase, out act))
             {
-                if (!Player.HasStatus(true, StatusID.ThreefoldFanDance) && FlourishPvE.CanUse(out act))
-                {
-                    return true;
-                }
+            return true;
             }
+            //If dancing or about to dance avoid using abilities to avoid animation lock delaying the dance
+            if (IsDancing || AboutToDance) return false;
+    
+            // Prevent triple weaving by checking if an action was just used
+            if (nextGCD.AnimationLockTime > 0.75f) return false;
+    
+            // Skip using Flourish if Technical Step is about to come off cooldown
+            if (!TechnicalReady || TillanaPvE.CanUse(out act))
+            {
+                if (ShouldUseFlourish(out act)) return true;
+            }
+    
+            // Attempt to use Fan Dance III if available
+            if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
+    
+            IAction[] FeathersGCDs = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
+    
+            //Use all feathers on burst or if about to overcap
+            if (ShouldUseFeathers(nextGCD, out act)) return true;
+    
+            // Other attacks
+            if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (UseClosedPosition(out act)) return true;
+    
+            return base.AttackAbility(nextGCD, out act);
         }
-
-        // Attempt to use Fan Dance III if available
-        if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-        IAction[] FeathersGCDs = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
-
-        //Use all feathers on burst or if about to overcap
-        if ((!DevilmentPvE.EnoughLevel || Player.HasStatus(true, StatusID.Devilment) || (Feathers > 3 && FeathersGCDs.Contains(nextGCD))) && !Player.HasStatus(true, StatusID.ThreefoldFanDance))
-        {
-            if (FanDanceIiPvE.CanUse(out act)) return true;
-            if (FanDancePvE.CanUse(out act)) return true;
-        }
-
-        // Other attacks
-        if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
-        if (UseClosedPosition(out act)) return true;
-
-        return base.AttackAbility(nextGCD, out act);
     }
     #endregion
 
@@ -120,6 +203,7 @@ public sealed class ChurinDNC : DancerRotation
     // Override the method for handling general Global Cooldown (GCD) actions
     protected override bool GeneralGCD(out IAction? act)
     {
+        FRUPhase currentPhase = CheckFRUPhase();
         // Attempt to use Closed Position if applicable
         if (!InCombat && !Player.HasStatus(true, StatusID.ClosedPosition) && ClosedPositionPvE.CanUse(out act))
         {
@@ -131,11 +215,10 @@ public sealed class ChurinDNC : DancerRotation
 
             return true;
         }
-        if (FRULogic(out act)) 
+        if (IsInFRU && FRULogic(currentPhase, out act))
         {
             return true;
         }
-
         // Try to finish the dance if applicable
         if (FinishTheDance(out act))
         {
@@ -146,6 +229,12 @@ public sealed class ChurinDNC : DancerRotation
         if (ExecuteStepGCD(out act))
         {
             return true;
+        }
+        // Attempt to not bring procs into burst
+        if (TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(2) && (Player.HasStatus(true, StatusID.SilkenFlow)|| Player.HasStatus(true, StatusID.SilkenSymmetry)))
+        {
+            if (ReverseCascadePvE.CanUse(out act) || FountainfallPvE.CanUse(out act)) return true;
+            if (Esprit >= 50 && SaberDancePvE.CanUse(out act)) return true;
         }
 
         // Use Technical Step in burst mode if applicable
@@ -164,6 +253,7 @@ public sealed class ChurinDNC : DancerRotation
                 return true;
             }
         }
+
 
         // Attempt to use a general attack GCD if none of the above conditions are met
         if (AttackGCD(out act, Player.HasStatus(true, StatusID.Devilment)))
@@ -184,7 +274,9 @@ public sealed class ChurinDNC : DancerRotation
 
         if (IsDancing) return false;
 
-        if (!DevilmentPvE.CanUse(out _, skipComboCheck: true))
+        if (FinishTheDance(out act)) return true;
+        // Prevent Espirit overcapping
+        if (!DevilmentPvE.CanUse(out _, skipComboCheck: true) && Esprit <=50)
         {
             if (TillanaPvE.CanUse(out act, skipAoeCheck: true)) return true;
         }
@@ -193,26 +285,26 @@ public sealed class ChurinDNC : DancerRotation
         {
             shouldUseLastDance = false;
         }
-
-        if (TechnicalStepPvE.Cooldown.ElapsedAfter(1) && !TechnicalStepPvE.Cooldown.ElapsedAfter(103))
+        // Last Dance to be used before Standard Step or Finishing Move is about to come off cooldown when in burst
+        if (DanceDance && (StandardStepPvE.Cooldown.WillHaveOneCharge(3) || FinishingMovePvE.Cooldown.WillHaveOneCharge(3) || Esprit <= 50))
         {
             shouldUseLastDance = true;
         }
 
         if (burst)
         {
+            if (DanceOfTheDawnPvE.CanUse(out act, skipAoeCheck: true)) return true;
             // Make sure Starfall gets used before end of burst
-            if (DevilmentPvE.Cooldown.ElapsedAfter(15) && StarfallDancePvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (DevilmentPvE.Cooldown.ElapsedAfter(10) && StarfallDancePvE.CanUse(out act, skipAoeCheck: true)) return true;
 
             // Make sure to FM with enough time left in burst window to LD and SFD while leaving a GCD for a Sabre if needed
-            if (DevilmentPvE.Cooldown.ElapsedAfter(10) && FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (DevilmentPvE.Cooldown.ElapsedAfter(15) && FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
         }
 
         if (shouldUseLastDance)
         {
             if (LastDancePvE.CanUse(out act, skipAoeCheck: true)) return true;
         }
-
         if (HoldStepForTargets)
         {
             if (HasHostilesInMaxRange && UseStandardStep(out act)) return true;
@@ -223,16 +315,13 @@ public sealed class ChurinDNC : DancerRotation
         }
 
         if (FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
-
+        
         // Further prioritized GCD abilities
-        if ((burst || (Esprit >= 85 && !TechnicalStepPvE.Cooldown.ElapsedAfter(115))) && SaberDancePvE.CanUse(out act, skipAoeCheck: true)) return true;
+        if (burst || (Esprit >= 80 && SaberDancePvE.CanUse(out act, skipAoeCheck: true))) return true;
 
         if (StarfallDancePvE.CanUse(out act, skipAoeCheck: true)) return true;
 
-        bool standardReady = StandardStepPvE.Cooldown.ElapsedAfter(28);
-        bool technicalReady = TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-
-        if (!(standardReady || technicalReady) &&
+        if ((!StandardReady || !TechnicalReady) &&
             (!shouldUseLastDance || !LastDancePvE.CanUse(out act, skipAoeCheck: true)))
         {
             if (BloodshowerPvE.CanUse(out act)) return true;
@@ -285,10 +374,9 @@ public sealed class ChurinDNC : DancerRotation
     // Rewrite of method to hold dance finish until target is in range 14 yalms
     private bool FinishTheDance(out IAction? act)
     {
-        bool areDanceTargetsInRange = AllHostileTargets.Any(hostile => hostile.DistanceToPlayer() < 14);
 
         // Check for Standard Step if targets are in range or status is about to end.
-        if (Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2 &&
+        if (StepFinishReady &&
             (areDanceTargetsInRange || Player.WillStatusEnd(1f, true, StatusID.StandardStep)) &&
             DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true))
         {
@@ -296,7 +384,7 @@ public sealed class ChurinDNC : DancerRotation
         }
 
         // Check for Technical Step if targets are in range or status is about to end.
-        if (Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4 &&
+        if (StepFinishReady &&
             (areDanceTargetsInRange || Player.WillStatusEnd(1f, true, StatusID.TechnicalStep)) &&
             QuadrupleTechnicalFinishPvE.CanUse(out act, skipAoeCheck: true))
         {
@@ -306,63 +394,69 @@ public sealed class ChurinDNC : DancerRotation
         act = null;
         return false;
     }
-    private DateTime DowntimeStartTime;
-    private bool isUtopianSkyActive;
-
-    //Helper method for FRU module
-    private bool FRULogic (out IAction? act)
+    private bool ShouldUseFlourish(out IAction? act)
     {
-            act = null;
-
-            bool standardFinishReady = Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2;
-            bool standardReady = StandardStepPvE.Cooldown.ElapsedAfter(28);
-            bool technicalReady = TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-            bool flourishReady = FlourishPvE.Cooldown.ElapsedAfter(60);
-
-            // Check if the boss named Fatebreaker starts casting Utopian Sky
-            bool UtopianSky = HostileTarget != null && HostileTarget.Name.ToString() == "FateBreaker" && (HostileTarget.CastActionId == 40154 || HostileTarget.CastActionId == 40155);
-
-            // Mark the beginning of the Utopian Sky phase
-            if (LoadFRU && UtopianSky)
+        act = null;
+        if (DanceDance || (!DanceDance && TechnicalStepPvE.Cooldown.ElapsedAfter(69)))
+        {
+            if (!Player.HasStatus(true, StatusID.ThreefoldFanDance) && FlourishPvE.CanUse(out act))
             {
-                DowntimeStartTime = DateTime.Now;
-                isUtopianSkyActive = true;
+                return true;
             }
-
-            // Check if Utopian Sky is active before using the following abilities
-            while (isUtopianSkyActive)
-            {
-                // Check if 35 seconds have passed since Utopian Sky started
-                if ((DateTime.Now - DowntimeStartTime).TotalSeconds > 45)
-                {
-                    isUtopianSkyActive = false;
-                    break;
-                }
-
-                // Check if Standard Step is ready
-                if (standardReady && StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-                // Check if Standard Finish is ready
-                if (standardFinishReady && DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-                // Check if Flourish is ready
-                if (flourishReady && FlourishPvE.CanUse(out act)) return true;
-
-                // Check if Finishing Move is ready
-                if (Player.HasStatus(true, StatusID.FinishingMoveReady))
-                {
-                    StatusHelper.StatusOff(StatusID.FinishingMoveReady);
-                    if (StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
-                    if (FinishTheDance(out act)) return true;
-                }
-
-                // Optionally, add a small delay to avoid busy-waiting
-                Thread.Sleep(100);
-            }
-
-            act = null;
-            return false;
         }
+        return false;
+    }
+    private bool ShouldUseFeathers(IAction nextGCD, out IAction? act)
+    {
+        act = null;
+        IAction[] FeathersGCDs = { ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE };
+        if ((!DevilmentPvE.EnoughLevel || Player.HasStatus(true, StatusID.Devilment) || (Feathers > 3 && FeathersGCDs.Contains(nextGCD))) && !Player.HasStatus(true, StatusID.ThreefoldFanDance))
+        {
+            if (FanDanceIiPvE.CanUse(out act)) return true;
+            if (FanDancePvE.CanUse(out act)) return true;
+        }
+    return false;
+    }
 
+    private bool FRULogic (FRUPhase currentPhase, out IAction? act )
+    {
+        act = null;
+        switch (currentPhase)
+        {
+            case FRUPhase.Fatebreaker:
+                // Handle Utopian Sky Downtime
+                if (!HasHostilesInMaxRange)
+                {
+                    if (StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
+                    if (FlourishPvE.CanUse(out act)) return true;
+                    if (Player.HasStatus(true, StatusID.FinishingMoveReady))
+                    {
+                        StatusHelper.StatusOff(StatusID.FinishingMoveReady);
+                        StandardStepPvE.CanUse(out act, skipAoeCheck: true);
+                    }
+                }
+                if (HasHostilesInRange && HostileTarget != null && HostileTarget.IsDying())
+                {
+                    if (StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return false;
+                }
+                break;
+            case FRUPhase.Usurper:
+            //Handle Diamond Dust && Light Rampant Downrtime
+            break;
+            case FRUPhase.Adds:
+            //Handle Adds Downtime
+            break;
+            case FRUPhase.Gaia:
+            //Handle Ultimate Relativity
+            break;
+            case FRUPhase.Lesbians:
+            //Handle Burst Logic and Crystallize Time
+            break;
+            case FRUPhase.Pandora:
+            //NAH, I'D WIN. FULL SEND EVERYTHING.
+            break;
+        }
+        return false;
+    }
     #endregion
 }

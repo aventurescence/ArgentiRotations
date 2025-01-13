@@ -1,5 +1,8 @@
 {
     "cSpell.words": [
         "prepull"
-    ]
+    ],
+    "resharpervscode.inspectcode": {
+        "DotnetCoreSdk": "9.0.100"
+    }
 }
