@@ -1,5 +1,7 @@
+using ArgentiRotations.Ranged;
 using static FFXIVClientStructs.FFXIV.Client.Game.ActionManager;
 using Action = Lumina.Excel.Sheets.Action;
+
 
 namespace ArgentiRotations.Common;
 
@@ -144,5 +146,4 @@ internal unsafe class CustomRotationAg
     /// <param name="message"></param>
     internal static void Warning(string message) => Serilog.Log.Warning("{ArgentiLog} {Message}", ArgentiLog, message);
     #endregion
-
 }
