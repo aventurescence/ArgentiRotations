@@ -5,7 +5,7 @@ namespace ArgentiRotations.Ranged;
 [Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.15", Description = "Only for level 100 content, ok?")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
-public sealed class ChurinDNC : DancerRotation
+public sealed partial class ChurinDNC : DancerRotation
 {
     #region Config Options
 
@@ -24,61 +24,17 @@ public sealed class ChurinDNC : DancerRotation
     #endregion
 
     #region  Properties
-    public enum FRUBoss
-    {
-        None,
-        Fatebreaker,
-        Usurper,
-        Adds,
-        Gaia,
-        Lesbians,
-        Pandora
-    }
-    public enum Downtime
-    {
-        None,
-        UtopianSky,
-        DiamondDust,
-        LightRampant,
-        UltimateRelativity,
-        CrystalizeTime,
-    }
-    private static Downtime currentDowntime = Downtime.None;
-    private static FRUBoss currentBoss = FRUBoss.None;
-    public static float UtopianSkyStart = 35f;
-    public static float UtopianSkyEnd = 80f;
-    public static float DiamondDustStart = UsurperStartTime + 35.1f;
-    public static float DiamondDustEnd = DiamondDustStart + 36.9f;
-    public static float LightRampantStart = DiamondDustEnd + 60f;
-    public static float LightRampantEnd = LightRampantStart + 29f;
-    public static float GaiaTransitionStart = AddsStartTime + 52.5f;
-    public static float UltimateRelativityStart = GaiaStartTime + 18.3f;
-    public static float UltimateRelativityEnd = UltimateRelativityStart + 53.9f;
-    public static float CrystalizeTimeStart = LesbiansStartTime + 98.5f;
-    public static float CrystalizeTimeEnd = CrystalizeTimeStart + 49.7f;
-
-    public static float FatebreakerKillTime = UsurperStartTime - 3f;
-    public static float UsurperKillTime = AddsStartTime - 25.8f;
-    public static float AddsKillTime = GaiaTransitionStart - 25.6f;
-    public static float GaiaKillTime = LesbiansStartTime - 8.8f;
-    public static float LesbiansKillTime = PandoraStartTime - 76.1f;
-    public static float PandoraKillTime;
-    public static float UsurperStartTime;
-    public static float AddsStartTime;
-    public static float GaiaStartTime;
-    public static float LesbiansStartTime;
-    public static float PandoraStartTime;
 
     bool shouldUseLastDance = true;
+    bool shouldUseTechStep = true;
+    bool shouldUseStandardStep = true;
+    bool shouldUseFlourish = true;
     bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
     bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
     bool StandardReady => StandardStepPvE.Cooldown.ElapsedAfter(28);
     bool TechnicalReady => TechnicalStepPvE.Cooldown.ElapsedAfter(118);
     bool StepFinishReady => Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2 || Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4;
-    bool areDanceTargetsInRange => HostileTarget != null && HostileTarget.DistanceToPlayer() <= 14;
-    bool hasSpellinWaitingReturn = Player.HasStatus(false, (StatusID)4208);
-    bool hasReturn = Player.HasStatus(false, StatusID.Return);
-    bool returnEnding = Player.WillStatusEnd(5, false, StatusID.SpellinWaitingReturn_4208);
+    bool areDanceTargetsInRange => AllHostileTargets.Any(AllHostileTargets => AllHostileTargets.DistanceToPlayer() <= 15);
 
     #endregion
     public override void DisplayStatus()
@@ -96,12 +52,12 @@ public sealed class ChurinDNC : DancerRotation
         ImGui.Text("Time To Kill:" + AverageTimeToKill);
         ImGui.Text("Combat Time:" + CombatTime);
         ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + CheckPhaseEnding());
-        ImGui.Text("Finish the Dance?:" + FinishTheDance(out _));
-        ImGui.Text("Can Use Flourish:" + ShouldUseFlourish(out _));
-        ImGui.Text("Can Standard Step:" + UseStandardStep(out _));
+        ImGui.Text("Should Use Tech Step?:" + shouldUseTechStep);
+        ImGui.Text("Should Use Flourish?:" + shouldUseFlourish);
+        ImGui.Text("Should Use Last Dance?:" + shouldUseLastDance);
+        ImGui.Text("Should Use Standard Step?:" + shouldUseStandardStep);
         ImGui.Text("has Return:" + hasReturn);
-        ImGui.Text("has Spell in Waiting Return:" + Player.HasStatus(false, (StatusID)4208));
-        ImGui.Text("Remove Finishing Move?:" + RemoveFinishingMove());
+        ImGui.Text("has Spell in Waiting Return:" + Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208));
         ImGui.Text("Has Hostiles in Range" + HasHostilesInRange);
         ImGui.EndGroup();
         ImGui.BeginGroup();
@@ -229,6 +185,7 @@ public sealed class ChurinDNC : DancerRotation
 
             return true;
         }
+        
         if (CheckFRULogic(currentBoss, out act)) return true;
 
         // Try to finish the dance if applicable
@@ -258,9 +215,14 @@ public sealed class ChurinDNC : DancerRotation
             return false;
         }
 
-        if (Esprit >= 70 && SaberDancePvE.CanUse(out act) && TechnicalFinishPvE.Cooldown.WillHaveOneChargeGCD(0))
+        if (Esprit >= 70 && SaberDancePvE.CanUse(out act) && TechnicalFinishPvE.Cooldown.WillHaveOneChargeGCD(1))
         {
             return true;
+        }
+
+        if (shouldUseTechStep)
+        {
+            if (TechnicalStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
         }
 
         // Use Technical Step in burst mode if applicable
@@ -342,7 +304,16 @@ public sealed class ChurinDNC : DancerRotation
             if (LastDancePvE.CanUse(out act, skipAoeCheck: true)) return true;
         }
 
-        if (RemoveFinishingMove()) return true;
+        if (shouldUseFlourish)
+        {
+            if (FlourishPvE.CanUse(out act)) return true;
+        }
+
+        if (shouldUseStandardStep)
+        {
+            if (StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
+        }
+
         if (HoldStepForTargets)
         {
             if (HasHostilesInMaxRange && UseStandardStep(out act)|| FinishingMovePvE.CanUse(out act)) return true;
@@ -428,18 +399,7 @@ public sealed class ChurinDNC : DancerRotation
         act = null;
         return false;
     }
-    private bool ShouldUseFlourish(out IAction? act)
-    {
-        if (DanceDance || (!DanceDance && TechnicalStepPvE.Cooldown.ElapsedAfter(69)))
-        {
-            if (!Player.HasStatus(true, StatusID.ThreefoldFanDance) && FlourishPvE.CanUse(out act))
-            {
-                return true;
-            }
-        }
-        act = null;
-        return false;
-    }
+
     private bool ShouldUseFeathers(IAction nextGCD, out IAction? act)
     {
         IAction[] FeathersGCDs = { ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE };
@@ -451,257 +411,5 @@ public sealed class ChurinDNC : DancerRotation
         act = null;
         return false;
     }
-    private bool RemoveFinishingMove()
-    {
-        if (!areDanceTargetsInRange && InCombat && Player.HasStatus(true, StatusID.FinishingMoveReady))
-            {
-                StatusHelper.StatusOff(StatusID.FinishingMoveReady);
-                {
-                    return true;
-                }
-            }
-        return false;
-    }
-    public static Downtime CheckPhaseEnding()
-    {
-        if ((IsInFRU || TestingFRUModule) && InCombat)
-        {
-            if (currentBoss == FRUBoss.Fatebreaker && CombatElapsedLess(UtopianSkyEnd) && !CombatElapsedLess(UtopianSkyStart))
-            {
-                currentDowntime = Downtime.UtopianSky; 
-                return currentDowntime;
-            }
-            if (currentBoss == FRUBoss.Usurper && CombatElapsedLess(DiamondDustEnd) && !CombatElapsedLess(DiamondDustStart))
-            {
-                currentDowntime = Downtime.DiamondDust;
-                return currentDowntime;
-            }
-            if (currentBoss == FRUBoss.Usurper && CombatElapsedLess(LightRampantEnd) && !CombatElapsedLess(LightRampantStart))
-            {
-                currentDowntime = Downtime.LightRampant;
-                return currentDowntime;
-            }
-            if (currentBoss == FRUBoss.Gaia && CombatElapsedLess(UltimateRelativityEnd) && !CombatElapsedLess(UltimateRelativityStart))
-            {
-                currentDowntime = Downtime.UltimateRelativity;
-                return currentDowntime;
-            }
-            if (currentBoss == FRUBoss.Lesbians && CombatElapsedLess(CrystalizeTimeEnd) && !CombatElapsedLess(CrystalizeTimeStart))
-            {
-                currentDowntime = Downtime.CrystalizeTime;
-                return currentDowntime;
-            }
-        }
-        currentDowntime = Downtime.None;
-        return currentDowntime;
-    }
-    
-    public static FRUBoss CheckFRUPhase()
-    {
-        // Targets for phase detection
-        string FRUPhase1Name = "Fatebreaker";
-        string FRUPhase2Name = "Usurper of Frost";
-        string FRUAddPhaseName = "Crystal of Light";
-        string FRUPhase3Name = "Oracle of Darkness";
-        string FRUPhase4Name = "Usurper of Frost";
-        string FRUPhase5Name = "Pandora";
-
-        if (IsInFRU && InCombat)
-        {
-            foreach (var obj in AllHostileTargets)
-            {
-                if (obj.Name.ToString() == FRUPhase1Name)
-                {
-                    currentBoss = FRUBoss.Fatebreaker;
-                    return currentBoss;
-                }
-                if ((obj.Name.ToString() == FRUPhase1Name && currentBoss == FRUBoss.Fatebreaker && obj.IsDead) || (obj.Name.ToString() == FRUPhase2Name && currentBoss == FRUBoss.Fatebreaker))
-                {
-                    UsurperStartTime = CombatTime;
-                    currentBoss = FRUBoss.Usurper;
-                    return currentBoss;
-                }
-                if (obj.Name.ToString() == FRUAddPhaseName && currentBoss == FRUBoss.Usurper)
-                {
-                    AddsStartTime = CombatTime;
-                    currentBoss = FRUBoss.Adds;
-                    return currentBoss;
-                }
-                if (obj.Name.ToString() == FRUPhase3Name && currentBoss == FRUBoss.Adds)
-                {
-                    GaiaStartTime = CombatTime;
-                    currentBoss = FRUBoss.Gaia;
-                    return currentBoss;
-                }
-                if (obj.Name.ToString() == FRUPhase4Name && currentBoss == FRUBoss.Gaia)
-                {
-                    LesbiansStartTime = CombatTime;
-                    currentBoss = FRUBoss.Lesbians;
-                    return currentBoss;
-                }
-                if (obj.Name.ToString() == FRUPhase5Name && currentBoss == FRUBoss.Lesbians)
-                {
-                    PandoraStartTime = CombatTime;
-                    currentBoss = FRUBoss.Pandora;
-                    return currentBoss;
-                }
-            }
-            return currentBoss;
-        }
-        else
-        {
-            if (TestingFRUModule && InCombat)
-            {
-                if (CombatElapsedLess(UtopianSkyStart) || (currentDowntime == Downtime.UtopianSky && CombatElapsedLess(153f) && !CombatElapsedLess(80f)))
-                {
-                    currentBoss = FRUBoss.Fatebreaker;
-                    return currentBoss;
-                }
-                if ((currentBoss == FRUBoss.Fatebreaker && CombatElapsedLess(198f) && !CombatElapsedLess(80f)) || (currentDowntime == Downtime.DiamondDust && CombatElapsedLess(295f) && !CombatElapsedLess(198f)) || (currentDowntime == Downtime.LightRampant && CombatElapsedLess(349f) && !CombatElapsedLess(324f)))
-                {
-                    currentBoss = FRUBoss.Usurper;
-                    return currentBoss;
-                }
-                if (currentBoss == FRUBoss.Usurper && CombatElapsedLess(374f) && !CombatElapsedLess(349f))
-                {
-                    currentBoss = FRUBoss.Adds;
-                    return currentBoss;
-                }
-                if (currentBoss == FRUBoss.Adds && CombatElapsedLess(UltimateRelativityStart) && !CombatElapsedLess(GaiaStartTime))
-                {
-                    currentBoss = FRUBoss.Gaia;
-                    return currentBoss;
-                }
-            }
-        }
-
-        return currentBoss;
-    }
-    #endregion
-
-    #region Testing
-    // Override the method for handling testing actions
-    private static bool TestingFRUModule {get; set;} = false;
-    private bool CheckFRULogic(FRUBoss currentBoss, out IAction? act)
-    {
-        if (LoadFRU && InCombat)
-        {
-            switch (currentBoss)
-            {
-                case FRUBoss.Fatebreaker:
-                {
-                    if (currentDowntime == Downtime.UtopianSky)
-                    {
-                        if (!HasHostilesInRange && InCombat)
-                        {
-                            if (StandardReady && StandardStepPvE.CanUse(out act, skipAoeCheck: true))
-                            {
-                                if (StepFinishReady && DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
-                            }
-                            else
-                            {
-                                act = null;
-                                return true;
-                            }
-                            if (FlourishPvE.CanUse(out act))
-                            {
-                                if (RemoveFinishingMove()) return true;
-                            }
-                            else
-                            {
-                                act = null;
-                                return true;
-                            }
-                        }
-                    }
-                    //if Fatebreaker is Dying...
-                    if (DanceDance && HostileTarget != null && (HostileTarget.IsDying()|| HostileTarget.GetHealthRatio() < 0.3f))
-                    {
-                        if (FlourishPvE.CanUse(out act)) return false;
-                        if (StandardStepPvE.CanUse(out act) || FinishingMovePvE.CanUse(out act)) return false;
-                    }
-                }
-                break;
-                case FRUBoss.Usurper:
-                {
-                    // Before Diamond Dust starts
-                    if (CombatElapsedLess(DiamondDustStart - 5))
-                    {
-                        if (StandardStepPvE.CanUse(out act))
-                        {
-                            return true;
-                        }
-                        if (FlourishPvE.CanUse(out act))
-                        {
-                            return true;
-                        }
-                    }
-
-                    //before Light Rampant starts
-                    if (StandardStepPvE.CanUse(out act) && CombatElapsedLess(LightRampantStart - 5))
-                    {
-                        return true;
-                    }
-                    if (FlourishPvE.CanUse(out act) && CombatElapsedLess(LightRampantStart - 5))
-                    {
-                        return true;
-                    }
-
-                    if (currentDowntime == Downtime.DiamondDust)
-                    {
-                        if (StandardStepPvE.CanUse(out act) && (CombatElapsedLess(DiamondDustEnd - 15) || TechnicalFinishPvE.Cooldown.WillHaveOneCharge(15)))
-                        {
-                            return true;
-                        }
-                        if (FlourishPvE.CanUse(out act))
-                        {
-                            return false;
-                        }
-                        if (RemoveFinishingMove())
-                        {
-                            return true;
-                        }
-                    }
-                    if (currentDowntime == Downtime.LightRampant)
-                    {
-                        if (StandardStepPvE.CanUse(out act) && CombatElapsedLess(LightRampantEnd - 15))
-                        {
-                            return true;
-                        }
-                        if (FlourishPvE.CanUse(out act))
-                        {
-                            return true;
-                        }
-                        if (RemoveFinishingMove())
-                        {
-                            return true;
-                        }
-                    }
-                }
-                break;
-
-                case FRUBoss.Adds:
-                // Handle Adds phase logic
-                break;
-
-                case FRUBoss.Gaia:
-                // Handle Gaia phase logic
-                break;
-
-                case FRUBoss.Lesbians:
-                // Handle Lesbians phase logic
-                break;
-
-                case FRUBoss.Pandora:
-                // Handle Pandora phase logic
-                break;
-            }
-        }
- 
-        act = null;
-        return false;
-    }
     #endregion
 }
-
-    
