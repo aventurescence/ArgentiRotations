@@ -50,50 +50,48 @@ public sealed partial class ChurinDNC : DancerRotation
     public static float GaiaStartTime;
     public static float LesbiansStartTime;
     public static float PandoraStartTime;
+    public static float downtimeEnd;
 
     bool hasSpellinWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
     bool hasReturn = Player.HasStatus(false, StatusID.Return);
     bool returnEnding = Player.WillStatusEnd(5, false, StatusID.Return);
+    bool RemoveFinishingMove = false;
+    bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
+    bool weBall = true;
     #endregion
 
     #region FRU Methods
-    private bool RemoveFinishingMove()
-    {
-        if (!areDanceTargetsInRange && InCombat && Player.HasStatus(true, StatusID.FinishingMoveReady))
-            {
-                StatusHelper.StatusOff(StatusID.FinishingMoveReady);
-                {
-                    return true;
-                }
-            }
-        return false;
-    }
     public static Downtime CheckPhaseEnding()
     {
         if ((IsInFRU || TestingFRUModule) && InCombat)
         {
             if (currentBoss == FRUBoss.Fatebreaker && CombatElapsedLess(UtopianSkyEnd) && !CombatElapsedLess(UtopianSkyStart))
             {
+                downtimeEnd = UtopianSkyEnd;
                 currentDowntime = Downtime.UtopianSky; 
                 return currentDowntime;
             }
             if (currentBoss == FRUBoss.Usurper && CombatElapsedLess(DiamondDustEnd) && !CombatElapsedLess(DiamondDustStart))
             {
+                downtimeEnd = DiamondDustEnd;
                 currentDowntime = Downtime.DiamondDust;
                 return currentDowntime;
             }
             if (currentBoss == FRUBoss.Usurper && CombatElapsedLess(LightRampantEnd) && !CombatElapsedLess(LightRampantStart))
             {
+                downtimeEnd = LightRampantEnd;
                 currentDowntime = Downtime.LightRampant;
                 return currentDowntime;
             }
             if (currentBoss == FRUBoss.Gaia && CombatElapsedLess(UltimateRelativityEnd) && !CombatElapsedLess(UltimateRelativityStart))
             {
+                downtimeEnd = UltimateRelativityEnd;
                 currentDowntime = Downtime.UltimateRelativity;
                 return currentDowntime;
             }
             if (currentBoss == FRUBoss.Lesbians && CombatElapsedLess(CrystalizeTimeEnd) && !CombatElapsedLess(CrystalizeTimeStart))
             {
+                downtimeEnd = CrystalizeTimeEnd;
                 currentDowntime = Downtime.CrystalizeTime;
                 return currentDowntime;
             }
@@ -182,143 +180,162 @@ public sealed partial class ChurinDNC : DancerRotation
 
         return currentBoss;
     }
-    private bool CheckFRULogic(FRUBoss currentBoss, out IAction? act)
+    private bool CheckFRULogic()
     {
-        act = null;
-
         if (LoadFRU && InCombat)
         {
             switch (currentBoss)
             {
                 case FRUBoss.Fatebreaker:
-                    return HandleFatebreakerLogic(out act);
+                    return HandleFatebreakerLogic();
 
                 case FRUBoss.Usurper:
-                    return HandleUsurperLogic(out act);
+                    return HandleUsurperLogic();
 
                 case FRUBoss.Adds:
-                    return HandleAddsLogic(out act);
+                    return HandleAddsLogic();
 
                 case FRUBoss.Gaia:
-                    return HandleGaiaLogic(out act);
+                    return HandleGaiaLogic();
 
                 case FRUBoss.Lesbians:
-                    return HandleLesbiansLogic(out act);
+                    return HandleLesbiansLogic();
 
                 case FRUBoss.Pandora:
-                    return HandlePandoraLogic(out act);
+                    return HandlePandoraLogic();
 
                 case FRUBoss.None:
-                    act = null;
                     return false;
             }
         }
-
         return false;
     }
-       private bool HandleFatebreakerLogic(out IAction? act)
+    private bool HandleFatebreakerLogic()
     {
-        act = null;
-        Downtime currentDowntime = CheckPhaseEnding();
-
-        if (currentDowntime == Downtime.UtopianSky)
+        if (!areDanceTargetsInRange)
         {
-            if (!HasHostilesInRange && InCombat)
+            switch(currentDowntime)
             {
-                if (HoldStepForTargets)
+                case Downtime.UtopianSky:
+                     {
+                        shouldUseStandardStep = true;
+                        shouldUseFlourish = true;
+                        shouldFinishingMove = false;
+                    
+                        if (FlourishPvE.Cooldown.IsCoolingDown && hasFinishingMove)
+                        {
+                            RemoveFinishingMove = true;
+                        }
+                     }
+                break;
+                case Downtime.None:
                 {
-                    if (StepFinishReady && DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
+                    shouldUseStandardStep = true;
+                    shouldUseFlourish = true;
                 }
-                else
-                {
-                    act = null;
-                    return true;
-                }
-                if (FlourishPvE.CanUse(out act))
-                {
-                    if (RemoveFinishingMove()) return true;
-                }
-                else
-                {
-                    act = null;
-                    return true;
-                }
+                break;
             }
         }
 
         // If Fatebreaker is dying
-        if (DanceDance && HostileTarget != null && (HostileTarget.IsDying() || HostileTarget.GetHealthRatio() < 0.3f))
+        if (DanceDance && HostileTarget != null && (HostileTarget.IsDying() || HostileTarget.GetHealthRatio() < 0.35f))
         {
-            if (FlourishPvE.CanUse(out act)) return false;
-            if (StandardStepPvE.CanUse(out act) || FinishingMovePvE.CanUse(out act)) return false;
+            shouldUseFlourish = false;
+            shouldUseStandardStep = false;
+            shouldFinishingMove = false;
         }
 
         return false;
     }
 
-    private bool HandleUsurperLogic(out IAction? act)
+    private bool HandleUsurperLogic()
     {
-        act = null;
+        shouldUseStandardStep = true;
+        shouldUseFlourish = true;
         Downtime currentDowntime = CheckPhaseEnding();
+
+        if (!areDanceTargetsInRange)
+        {
+            switch(currentDowntime)
+            {
+                case Downtime.DiamondDust:
+                     {
+                        shouldFinishingMove = false;
+                        if (FlourishPvE.Cooldown.IsCoolingDown && hasFinishingMove)
+                        {
+                            RemoveFinishingMove = true;
+                        }
+                        if (DiamondDustEnd - CombatTime <= 15)
+                        {
+                            shouldUseStandardStep = true;
+                        }
+                     }
+                break;
+                case Downtime.LightRampant:
+                    {
+                        shouldUseFlourish = true;
+                        shouldFinishingMove = false;
+                        if (downtimeEnd - CombatTime <= 15)
+                        {
+                            if (FlourishPvE.Cooldown.IsCoolingDown && Player.HasStatus(true,StatusID.FinishingMoveReady))
+                            {
+                            RemoveFinishingMove = true;
+                            shouldUseStandardStep = true;
+                            }
+                        }
+                     }
+                break;
+                case Downtime.None:
+                {
+                    if ((StepFinishReady && CombatTime - LightRampantEnd > 5) || Player.HasStatus(true,StatusID.StandardStep) && CompletedSteps == 1 && CombatTime - LightRampantEnd > 3)
+                    {
+                        return weBall = true;
+                    }
+                }
+                break;
+            }
+        }
 
         // Before Diamond Dust starts
         if (CombatElapsedLess(DiamondDustStart - 5))
         {
-            if (StandardStepPvE.CanUse(out act)) return true;
-            if (FlourishPvE.CanUse(out act)) return true;
+            shouldUseStandardStep = true;
+            shouldUseFlourish = true;
         }
 
         // Before Light Rampant starts
         if (CombatElapsedLess(LightRampantStart - 5))
         {
-            if (StandardStepPvE.CanUse(out act)) return true;
-            if (FlourishPvE.CanUse(out act)) return true;
-        }
-
-        if (currentDowntime == Downtime.DiamondDust)
-        {
-            if (StandardStepPvE.CanUse(out act) && (CombatElapsedLess(DiamondDustEnd - 15) || TechnicalFinishPvE.Cooldown.WillHaveOneCharge(15))) return true;
-            if (FlourishPvE.CanUse(out act)) return false;
-            if (RemoveFinishingMove()) return true;
-        }
-
-        if (currentDowntime == Downtime.LightRampant)
-        {
-            if (StandardStepPvE.CanUse(out act) && CombatElapsedLess(LightRampantEnd - 15)) return true;
-            if (FlourishPvE.CanUse(out act)) return false;
-            if (RemoveFinishingMove()) return true;
+            shouldUseStandardStep = true;
+            shouldUseFlourish = true;
         }
 
         return false;
     }
 
-    private bool HandleAddsLogic(out IAction? act)
+    private bool HandleAddsLogic()
     {
-        act = null;
         Downtime currentDowntime = CheckPhaseEnding();
         // Implement Adds phase logic here
         return false;
     }
 
-    private bool HandleGaiaLogic(out IAction? act)
+    private bool HandleGaiaLogic()
     {
-        act = null;
         Downtime currentDowntime = CheckPhaseEnding();
         // Implement Gaia phase logic here
         return false;
     }
 
-    private bool HandleLesbiansLogic(out IAction? act)
+    private bool HandleLesbiansLogic()
     {
-        act = null;
         Downtime currentDowntime = CheckPhaseEnding();
         // Implement Lesbians phase logic here
         return false;
     }
 
-    private bool HandlePandoraLogic(out IAction? act)
+    private bool HandlePandoraLogic()
     {
-        act = null;
         Downtime currentDowntime = CheckPhaseEnding();
         // Implement Pandora phase logic here
         return false;
