@@ -7,3 +7,5 @@ Download the latest version of ArgentiRotations:
 ```
 https://github.com/aventurescence/ArgentiRotations/releases/latest/download/ArgentiRotations.dll
 ```
+
+Dancer rotation to be released soon after final round of testing!
