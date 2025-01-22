@@ -28,7 +28,7 @@ public sealed partial class ChurinDNC : DancerRotation
     bool shouldUseLastDance = true;
     bool shouldUseTechStep = true;
     bool shouldUseStandardStep = true;
-    bool shouldUseFlourish = true;
+    bool shouldUseFlourish = false;
     bool shouldFinishingMove = true;
     bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
     bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
@@ -55,7 +55,7 @@ public sealed partial class ChurinDNC : DancerRotation
         ImGui.Text("Combat Time:" + CombatTime);
         ImGui.SameLine();
         ImGui.TextColored(ImGuiColors.DalamudRed, "Usurper Kill Time:" + UsurperKillTime);
-        ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + CheckPhaseEnding());
+        ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + CheckCurrentDowntime());
         ImGui.SameLine();
         ImGui.TextColored(ImGuiColors.DalamudRed, "Adds Kill Time:" + AddsKillTime);
         ImGui.Text("Should Use Tech Step?:" + shouldUseTechStep);
@@ -139,7 +139,7 @@ public sealed partial class ChurinDNC : DancerRotation
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
         FRUBoss currentBoss = CheckFRUPhase();
-        Downtime currentDowntime = CheckPhaseEnding();
+        Downtime currentDowntime = CheckCurrentDowntime();
         act = null;
         CheckFRULogic();
 
@@ -167,14 +167,20 @@ public sealed partial class ChurinDNC : DancerRotation
         
         if (RemoveFinishingMove)
         {
-            StatusHelper.StatusOff(StatusID.FinishingMoveReady);
-            RemoveFinishingMove = false;
+            if (Player.HasStatus(true, StatusID.FinishingMoveReady))
+            {
+                StatusHelper.StatusOff(StatusID.FinishingMoveReady);
+                RemoveFinishingMove = false;
+
+                if (StandardStepPvE.CanUse(out act))
+                {
+                    return true;
+                }
+            }
         }
 
         // Attempt to use Fan Dance III if available
         if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-        IAction[] FeathersGCDs = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
 
         // Use all feathers on burst or if about to overcap
         if (ShouldUseFeathers(nextGCD, out act)) return true;
@@ -190,9 +196,9 @@ public sealed partial class ChurinDNC : DancerRotation
     #region GCD Logic
     // Override the method for handling general Global Cooldown (GCD) actions
     protected override bool GeneralGCD(out IAction? act)
-    {   
-        FRUBoss currentBoss = CheckFRUPhase();
-        Downtime currentDowntime = CheckPhaseEnding();    
+    {     
+        CheckFRULogic();
+
         // Attempt to use Closed Position if applicable
         if (!InCombat && !Player.HasStatus(true, StatusID.ClosedPosition) && ClosedPositionPvE.CanUse(out act))
         {
@@ -204,8 +210,6 @@ public sealed partial class ChurinDNC : DancerRotation
 
             return true;
         }
-        
-        CheckFRULogic();
 
         // Try to finish the dance if applicable
         if (FinishTheDance(out act))
@@ -222,20 +226,20 @@ public sealed partial class ChurinDNC : DancerRotation
         if (shouldUseStandardStep)
         {
             if (StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
-            if (!areDanceTargetsInRange && StepFinishReady && currentDowntime != Downtime.None && downtimeEnd - CombatTime >= 15)
+            if (!areDanceTargetsInRange && StepFinishReady && currentDowntime != Downtime.None && currentDowntimeEnd - CombatTime >= 15)
             {
                 if (DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
             }
             else
             {
-                if(!areDanceTargetsInRange && StepFinishReady && currentDowntime != Downtime.None && downtimeEnd - CombatTime <= 3)
+                if(!areDanceTargetsInRange && StepFinishReady && currentDowntime != Downtime.None && currentDowntimeEnd - CombatTime <= 3)
                 {
                     if (FinishTheDance(out act)) return true;  
                 }
             }
         }
 
-        if (Esprit >= 70 && SaberDancePvE.CanUse(out act) && TechnicalFinishPvE.Cooldown.WillHaveOneChargeGCD(1))
+        if (Esprit >= 70 && SaberDancePvE.CanUse(out act) && !TechnicalFinishPvE.Cooldown.WillHaveOneChargeGCD(1))
         {
             return true;
         }
@@ -254,6 +258,7 @@ public sealed partial class ChurinDNC : DancerRotation
             else
             {
                 if (SingleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
+
             }
             
         }
@@ -292,7 +297,7 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool AttackGCD(out IAction? act, bool DanceDance)
     {
         FRUBoss currentBoss = CheckFRUPhase();
-        Downtime currentDowntime = CheckPhaseEnding();
+        Downtime currentDowntime = CheckCurrentDowntime();
         act = null;
 
         CheckFRULogic();
@@ -417,7 +422,7 @@ public sealed partial class ChurinDNC : DancerRotation
 
     private bool ShouldUseFeathers(IAction nextGCD, out IAction? act)
     {
-        IAction[] FeathersGCDs = { ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE };
+        IAction[] FeathersGCDs = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
         if ((!DevilmentPvE.EnoughLevel || Player.HasStatus(true, StatusID.Devilment) || (Feathers > 3 && FeathersGCDs.Contains(nextGCD))) && !Player.HasStatus(true, StatusID.ThreefoldFanDance))
         {
             if (FanDanceIiPvE.CanUse(out act)) return true;

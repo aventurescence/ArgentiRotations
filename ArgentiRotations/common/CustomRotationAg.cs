@@ -1,8 +1,3 @@
-using ArgentiRotations.Ranged;
-using static FFXIVClientStructs.FFXIV.Client.Game.ActionManager;
-using Action = Lumina.Excel.Sheets.Action;
-
-
 namespace ArgentiRotations.Common;
 
 internal unsafe class CustomRotationAg
