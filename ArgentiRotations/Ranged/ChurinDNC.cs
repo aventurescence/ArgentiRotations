@@ -12,9 +12,6 @@ public sealed partial class ChurinDNC : DancerRotation
     [RotationConfig(CombatType.PvE, Name = "Holds Tech Step if no targets in range (Warning, will drift)")]
     public bool HoldTechForTargets { get; set; } = true;
 
-    [RotationConfig(CombatType.PvE, Name = "Holds Standard Step if no targets in range (Warning, will drift & Buff may fall off)")]
-    public bool HoldStepForTargets { get; set; } = false;
-
     [RotationConfig(CombatType.PvE, Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
     public string DancePartnerName { get; set; } = "";
     
@@ -31,11 +28,11 @@ public sealed partial class ChurinDNC : DancerRotation
     bool shouldUseFlourish = false;
     bool shouldFinishingMove = true;
     bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-    bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
+    static bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
     bool StandardReady => StandardStepPvE.Cooldown.ElapsedAfter(28);
     bool TechnicalReady => TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-    bool StepFinishReady => Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2 || Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4;
-    bool areDanceTargetsInRange => AllHostileTargets.Any(AllHostileTargets => AllHostileTargets.DistanceToPlayer() <= 15);
+    static bool StepFinishReady => Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2 || Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4;
+    static bool AreDanceTargetsInRange => AllHostileTargets.Any(AllHostileTargets => AllHostileTargets.DistanceToPlayer() <= 15);
 
     #endregion
     public override void DisplayStatus()
@@ -51,39 +48,17 @@ public sealed partial class ChurinDNC : DancerRotation
         ImGui.BeginGroup();
         ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss:" + CheckFRUPhase());
         ImGui.SameLine();
-        ImGui.TextColored(ImGuiColors.DalamudRed, "Fatebreaker Kill Time:" + FatebreakerKillTime);
         ImGui.Text("Combat Time:" + CombatTime);
         ImGui.SameLine();
-        ImGui.TextColored(ImGuiColors.DalamudRed, "Usurper Kill Time:" + UsurperKillTime);
         ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + CheckCurrentDowntime());
-        ImGui.SameLine();
-        ImGui.TextColored(ImGuiColors.DalamudRed, "Adds Kill Time:" + AddsKillTime);
         ImGui.Text("Should Use Tech Step?:" + shouldUseTechStep);
-        ImGui.SameLine();
-        ImGui.TextColored(ImGuiColors.DalamudRed, "Gaia Kill Time:" + GaiaKillTime);
         ImGui.Text("Should Use Flourish?:" + shouldUseFlourish);
-        ImGui.SameLine();
-        ImGui.TextColored(ImGuiColors.DalamudRed, "Lesbians Kill TimeL" + LesbiansKillTime);
         ImGui.Text("Should Use Last Dance?:" + shouldUseLastDance);
-        ImGui.SameLine();
         ImGui.Text("Should Use Standard Step?:" + shouldUseStandardStep);
         ImGui.Text("has Return:" + hasReturn);
         ImGui.Text("Return ending?" + returnEnding);
         ImGui.Text("has Spell in Waiting Return:" + hasSpellinWaitingReturn);
-        ImGui.Text("has Dance Targets in Range" + areDanceTargetsInRange);
-        ImGui.EndGroup();
-        ImGui.BeginGroup();
-        ImGui.Text("FRU Test:" + TestingFRUModule);
-        if (ImGui.Button("Toggle FRU Test"))
-        {
-            TestingFRUModule = !TestingFRUModule;
-        }
-        ImGui.SameLine();
-        if (ImGui.Button("Reset Phase"))
-        {
-            currentBoss = FRUBoss.None;
-            currentDowntime = Downtime.None;
-        }
+        ImGui.Text("has Dance Targets in Range" + AreDanceTargetsInRange);
         ImGui.EndGroup();
         ImGui.Separator();
         DisplayStatusHelper.EndPaddedChild();
@@ -103,7 +78,10 @@ public sealed partial class ChurinDNC : DancerRotation
         }
         if (remainTime <= 0.54f)
         {
-            if (DoubleStandardFinishPvE.CanUse(out var act, skipAoeCheck: true)) return act;
+            if (DoubleStandardFinishPvE.CanUse(out var act, skipAoeCheck: true))
+            { 
+            return act;
+            }
         }
         // If none of the above conditions are met, fallback to the base class method
         return base.CountDownAction(remainTime);
@@ -138,46 +116,33 @@ public sealed partial class ChurinDNC : DancerRotation
     // Override the method for handling attack abilities
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
-        FRUBoss currentBoss = CheckFRUPhase();
-        Downtime currentDowntime = CheckCurrentDowntime();
-        act = null;
+        CheckFRUPhase();
+        CheckCurrentDowntime();
         CheckFRULogic();
+        act = null;
 
         // If dancing or about to dance avoid using abilities to avoid animation lock delaying the dance
         if (IsDancing || AboutToDance) return false;
 
         // Prevent triple weaving by checking if an action was just used
         if (nextGCD.AnimationLockTime > 0.75f) return false;
+        
+        if (shouldUseFlourish && FlourishPvE.CanUse(out act))
+        {
+            return true;
+        }
 
         // Check for conditions to use Flourish
-        if (DanceDance || TechnicalFinishPvE.Cooldown.ElapsedAfter(69))
+        if (DanceDance)
         {
-            {
-                if (!Player.HasStatus(true, StatusID.ThreefoldFanDance))
-                {
-                    shouldUseFlourish = true;
-                }
-            }
+            shouldUseFlourish = true;
         }
 
-        if (shouldUseFlourish)
-        {
-            if (FlourishPvE.CanUse(out act)) return true;
-        }
-        
-        if (RemoveFinishingMove)
-        {
-            if (Player.HasStatus(true, StatusID.FinishingMoveReady))
+        if (RemoveFinishingMove && Player.HasStatus(true, StatusID.FinishingMoveReady))
             {
                 StatusHelper.StatusOff(StatusID.FinishingMoveReady);
                 RemoveFinishingMove = false;
-
-                if (StandardStepPvE.CanUse(out act))
-                {
-                    return true;
-                }
             }
-        }
 
         // Attempt to use Fan Dance III if available
         if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
@@ -212,10 +177,7 @@ public sealed partial class ChurinDNC : DancerRotation
         }
 
         // Try to finish the dance if applicable
-        if (FinishTheDance(out act))
-        {
-            return true;
-        }
+        if (FinishTheDance(out act)) return true;
 
         // Execute a Step GCD if available
         if (ExecuteStepGCD(out act))
@@ -226,27 +188,30 @@ public sealed partial class ChurinDNC : DancerRotation
         if (shouldUseStandardStep)
         {
             if (StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
-            if (!areDanceTargetsInRange && StepFinishReady && currentDowntime != Downtime.None && currentDowntimeEnd - CombatTime >= 15)
+            if (!AreDanceTargetsInRange && StepFinishReady)
             {
                 if (DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
             }
             else
             {
-                if(!areDanceTargetsInRange && StepFinishReady && currentDowntime != Downtime.None && currentDowntimeEnd - CombatTime <= 3)
+                if(!AreDanceTargetsInRange && StepFinishReady && currentDowntime != Downtime.None && CurrentDowntimeEnd - CombatTime <= 3)
                 {
-                    if (FinishTheDance(out act)) return true;  
+                    FinishTheDance(out act);
+                    {
+                    return true;
+                    }  
                 }
             }
         }
 
-        if (Esprit >= 70 && SaberDancePvE.CanUse(out act) && !TechnicalFinishPvE.Cooldown.WillHaveOneChargeGCD(1))
+        if (Esprit >= 70 && SaberDancePvE.CanUse(out act) && !TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(1) || !StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1))
         {
             return true;
         }
 
-        if (shouldFinishingMove)
+        if (shouldFinishingMove && AreDanceTargetsInRange && FinishingMovePvE.CanUse(out act, skipAoeCheck: true))
         {
-            if (FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
+            return true;
         }
 
         if (weBall)
@@ -296,8 +261,8 @@ public sealed partial class ChurinDNC : DancerRotation
     // Helper method to handle attack actions during GCD based on certain conditions
     private bool AttackGCD(out IAction? act, bool DanceDance)
     {
-        FRUBoss currentBoss = CheckFRUPhase();
-        Downtime currentDowntime = CheckCurrentDowntime();
+        CheckFRUPhase();
+        CheckCurrentDowntime();
         act = null;
 
         CheckFRULogic();
@@ -361,19 +326,6 @@ public sealed partial class ChurinDNC : DancerRotation
 
         return false;
     }
-    // Method for Standard Step Logic
-    private bool UseStandardStep(out IAction act)
-    {
-        // Attempt to use Standard Step if available and certain conditions are met
-        if (!StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return false;
-        if (Player.WillStatusEnd(5f, true, StatusID.StandardFinish)) return true;
-
-        // Check for hostiles in range and technical step conditions
-        if (!HasHostilesInRange) return false;
-        if (Player.HasStatus(true, StatusID.TechnicalFinish) && Player.WillStatusEndGCD(2, 0, true, StatusID.TechnicalFinish) || (TechnicalStepPvE.Cooldown.IsCoolingDown && TechnicalStepPvE.Cooldown.WillHaveOneCharge(5))) return false;
-
-        return true;
-    }
 
     // Helper method to decide usage of Closed Position based on specific conditions
     private bool UseClosedPosition(out IAction? act)
@@ -402,7 +354,7 @@ public sealed partial class ChurinDNC : DancerRotation
 
         // Check for Standard Step if targets are in range or status is about to end.
         if (StepFinishReady &&
-            (areDanceTargetsInRange || Player.WillStatusEnd(1f, true, StatusID.StandardStep)) &&
+            (AreDanceTargetsInRange || Player.WillStatusEnd(1f, true, StatusID.StandardStep)) &&
             DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true))
         {
             return true;
@@ -410,7 +362,7 @@ public sealed partial class ChurinDNC : DancerRotation
 
         // Check for Technical Step if targets are in range or status is about to end.
         if (StepFinishReady &&
-            (areDanceTargetsInRange || Player.WillStatusEnd(1f, true, StatusID.TechnicalStep)) &&
+            (AreDanceTargetsInRange || Player.WillStatusEnd(1f, true, StatusID.TechnicalStep)) &&
             QuadrupleTechnicalFinishPvE.CanUse(out act, skipAoeCheck: true))
         {
             return true;
