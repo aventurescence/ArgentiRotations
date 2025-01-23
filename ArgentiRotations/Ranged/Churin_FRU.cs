@@ -27,31 +27,54 @@ public sealed partial class ChurinDNC : DancerRotation
     private static bool TestingFRUModule { get; set; } = false;
 
     // Downtime Timers
-    public static readonly float UtopianSkyStart = 35f;
-    public static readonly float UtopianSkyEnd = 80f;
-    private static float _diamondDustStart;
-    public static float DiamondDustStart
-    {
-        get => _diamondDustStart;
-        set
-        {
-            _diamondDustStart = value;
-            DiamondDustEnd = _diamondDustStart + 36.9f;
-            LightRampantStart = DiamondDustEnd + 60f;
-        }
-    }
+    public static float UtopianSkyStart { get; private set; }
+    public static float UtopianSkyEnd { get; private set; }
+    public static float DiamondDustStart { get; private set; }
     public static float DiamondDustEnd { get; private set; }
-    private static float _lightRampantStart;
-    public static float LightRampantStart
+    public static float LightRampantStart { get; private set; }
+    public static float LightRampantEnd { get; private set; }
+    public static float GaiaTransitionStart { get; private set; }
+    public static float GaiaTransitionEnd { get; private set; }
+    public static float UltimateRelativityStart { get; private set; }
+    public static float UltimateRelativityEnd { get; private set; }
+    public static float OracleTargetable { get; private set; }
+    public static float CrystalizeTimeStart { get; private set; }
+    public static float CrystalizeTimeEnd { get; private set; }
+
+    //Phase Start Times
+    private static float _fatebreakerStartTime;
+    public static float FatebreakerStartTime
     {
-        get => _lightRampantStart;
+        get => _fatebreakerStartTime;
         set
         {
-            _lightRampantStart = value;
-            LightRampantEnd = _lightRampantStart + 29f;
+            _fatebreakerStartTime = value;
+            UpdateFatebreakerTimings(value);
         }
     }
-    public static float LightRampantEnd { get; private set; }
+
+    private static float _usurperStartTime;
+    public static float UsurperStartTime
+    {
+        get => _usurperStartTime;
+        set
+        {
+            _usurperStartTime = value;
+            UpdateUsurperTimings(value);
+        }
+    }
+
+    private static float _addsStartTime;
+    public static float AddsStartTime
+    {
+        get => _addsStartTime;
+        set
+        {
+            _addsStartTime = value;
+            UpdateAddsTimings(value);
+        }
+    }
+
     private static float _gaiaStartTime;
     public static float GaiaStartTime
     {
@@ -59,12 +82,10 @@ public sealed partial class ChurinDNC : DancerRotation
         set
         {
             _gaiaStartTime = value;
-            UltimateRelativityStart = _gaiaStartTime + 18.3f;
-            UltimateRelativityEnd = UltimateRelativityStart + 43.9f;
+            UpdateGaiaTimings(value);
         }
     }
-    public static float UltimateRelativityStart { get; private set; }
-    public static float UltimateRelativityEnd { get; private set; }
+
     private static float _lesbiansStartTime;
     public static float LesbiansStartTime
     {
@@ -72,20 +93,12 @@ public sealed partial class ChurinDNC : DancerRotation
         set
         {
             _lesbiansStartTime = value;
-            OracleTargetable = _lesbiansStartTime + 25.4f;
-            CrystalizeTimeStart = _lesbiansStartTime + 98.5f;
-            CrystalizeTimeEnd = CrystalizeTimeStart + 49.7f;
+            UpdateLesbiansTimings(value);
         }
     }
-    public static float OracleTargetable { get; private set; }
-    public static float CrystalizeTimeStart { get; private set; }
-    public static float CrystalizeTimeEnd { get; private set; }
 
-    //Phase Start Times
-    public static float FatebreakerStartTime { get; set; }
-    public static float UsurperStartTime { get; set; }
-    public static float AddsStartTime { get; set; }
     public static float PandoraStartTime { get; set; }
+
     //Timer Getter/Setters
     public static float CurrentDowntimeStart { get; set; }
     public static float CurrentDowntimeEnd { get; set; }
@@ -103,7 +116,7 @@ public sealed partial class ChurinDNC : DancerRotation
     //FRU Specific Conditions
     public static readonly bool hasSpellinWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
     public static readonly bool hasReturn = Player.HasStatus(false, StatusID.Return);
-    public static readonly bool returnEnding = Player.WillStatusEnd(5, false, StatusID.Return);
+    public static readonly bool returnEnding = Player.WillStatusEnd(7, false, StatusID.Return);
     public static readonly bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
     bool RemoveFinishingMove = false;
     bool weBall = true;
@@ -144,17 +157,34 @@ public sealed partial class ChurinDNC : DancerRotation
             currentDowntime = downtime;
             return true;
         }
-        return false;
+        return true;
+    }
+
+    private static bool AreBothBossesDead(string bossName1, string bossName2)
+    {
+        return GetBossHealthRatio(bossName1) <= 1 && GetBossHealthRatio(bossName2) <= 0;
+    }
+
+    private static float GetBossHealthRatio(string bossName)
+    {
+        var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+        return target != null ? target.GetHealthRatio() : 1.0f; // Return 1.0f if the boss is not found (considered alive)
+    }
+
+    private static bool IsBossDead(string bossName)
+    {
+        var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+        return target != null && target.GetHealthRatio() <= 1;
     }
 
     public static FRUBoss CheckFRUPhase()
     {
         if (IsInFRU && InCombat)
         {
-            var hostileTargetNames = AllHostileTargets.Select(obj => obj.Name.ToString());
+            var hostileTargetNames = AllHostileTargets.Select(obj => obj.Name.ToString()).ToList();
             if (CheckPhase(FRUBoss.Fatebreaker, hostileTargetNames, "Fatebreaker", 160.1f)) return currentBoss;
             if (CheckPhase(FRUBoss.Usurper, hostileTargetNames, "Usurper of Frost", 185f, FRUBoss.Fatebreaker)) return currentBoss;
-            if (CheckPhase(FRUBoss.Adds, hostileTargetNames, "Crystal of Light", 41.2f, FRUBoss.Usurper)) return currentBoss;
+            if (CheckPhase(FRUBoss.Adds, hostileTargetNames, "Ice Veil", 41.2f, FRUBoss.Usurper)) return currentBoss;
             if (CheckPhase(FRUBoss.Gaia, hostileTargetNames, "Oracle of Darkness", 157.9f, FRUBoss.Adds)) return currentBoss;
             if (CheckPhase(FRUBoss.Lesbians, hostileTargetNames, "Usurper of Frost", 175.9f, FRUBoss.Gaia)) return currentBoss;
             if (CheckPhase(FRUBoss.Pandora, hostileTargetNames, "Pandora", 271.9f, FRUBoss.Lesbians)) return currentBoss;
@@ -166,8 +196,25 @@ public sealed partial class ChurinDNC : DancerRotation
     {
         if (hostileTargetNames.Contains(phaseName) && (requiredPreviousBoss == null || currentBoss == requiredPreviousBoss))
         {
-            SetPhase(boss, duration);
-            return true;
+            // End the current phase early if the next boss becomes targetable or if the current boss is dead
+            if (currentBoss == FRUBoss.Lesbians)
+            {
+                if (AreBothBossesDead("Oracle of Darkness", "Usurper of Frost"))
+                {
+                    CurrentPhaseEnd = CombatTime;
+                }
+            }
+            else if (IsBossDead(currentBoss.ToString()))
+            {
+                CurrentPhaseEnd = CombatTime;
+            }
+
+            // Fallback to advance to the next phase if duration is exceeded
+            if (CombatTime >= CurrentPhaseEnd)
+            {
+                SetPhase(boss, duration);
+                return true;
+            }
         }
         return false;
     }
@@ -177,8 +224,73 @@ public sealed partial class ChurinDNC : DancerRotation
         CurrentPhaseStart = CombatTime;
         CurrentPhaseEnd = CombatTime + duration;
         currentBoss = boss;
+
+        UpdateBossStartTime(boss, CombatTime);
     }
 
+    private static void UpdateBossStartTime(FRUBoss boss, float startTime)
+    {
+        switch (boss)
+        {
+            case FRUBoss.Fatebreaker:
+                FatebreakerStartTime = startTime;
+                break;
+            case FRUBoss.Usurper:
+                UsurperStartTime = startTime;
+                UpdateUsurperTimings(startTime);
+                break;
+            case FRUBoss.Adds:
+                AddsStartTime = startTime;
+                UpdateAddsTimings(startTime);
+                break;
+            case FRUBoss.Gaia:
+                GaiaStartTime = startTime;
+                UpdateGaiaTimings(startTime);
+                break;
+            case FRUBoss.Lesbians:
+                LesbiansStartTime = startTime;
+                UpdateLesbiansTimings(startTime);
+                break;
+            case FRUBoss.Pandora:
+                PandoraStartTime = startTime;
+                break;
+        }
+    }
+
+    private static void UpdateFatebreakerTimings(float startTime)
+    {
+        UtopianSkyStart = startTime + 34.8f;
+        UtopianSkyEnd = UtopianSkyStart + 45.2f;
+    }
+
+    private static void UpdateUsurperTimings(float startTime)
+    {
+        DiamondDustStart = startTime + 35.1f;
+        DiamondDustEnd = DiamondDustStart + 36.9f;
+        LightRampantStart = DiamondDustEnd + 59.7f;
+        LightRampantEnd = LightRampantStart + 29f;
+    }
+
+    private static void UpdateAddsTimings(float startTime)
+    {
+        GaiaTransitionStart = startTime + 41.2f;
+        GaiaTransitionEnd = GaiaTransitionStart + 25.6f;
+    }
+
+    private static void UpdateGaiaTimings(float startTime)
+    {
+        UltimateRelativityStart = startTime + 18.3f;
+        UltimateRelativityEnd = UltimateRelativityStart + 43.9f;
+    }
+
+    private static void UpdateLesbiansTimings(float startTime)
+    {
+        OracleTargetable = startTime + 25.4f;
+        CrystalizeTimeStart = startTime + 98.5f;
+        CrystalizeTimeEnd = CrystalizeTimeStart + 49.7f;
+    }
+    
+    //Handling logic for each boss
     private void CheckFRULogic()
     {
         if (LoadFRU && InCombat)
@@ -206,6 +318,7 @@ public sealed partial class ChurinDNC : DancerRotation
             }
         }
     }
+
     private void HandleFatebreakerLogic()
     {
         switch(currentDowntime)
@@ -229,6 +342,7 @@ public sealed partial class ChurinDNC : DancerRotation
             break;
         }
     }
+
     private void HandleUsurperLogic()
     {
         shouldUseStandardStep = true;
@@ -247,6 +361,7 @@ public sealed partial class ChurinDNC : DancerRotation
                 break;
         }
     }
+
     private void HandleDiamondDustDowntime()
     {
         shouldFinishingMove = false;
@@ -259,6 +374,7 @@ public sealed partial class ChurinDNC : DancerRotation
             shouldUseStandardStep = true;
         }
     }
+
     private void HandleLightRampantDowntime()
     {
         shouldUseFlourish = true;
@@ -269,6 +385,7 @@ public sealed partial class ChurinDNC : DancerRotation
             shouldUseStandardStep = true;
         }
     }
+
     private void HandleNoDowntime()
     {
         shouldUseTechStep = true;
@@ -295,6 +412,7 @@ public sealed partial class ChurinDNC : DancerRotation
             break;
         }
     }
+
     private void HandleNoDowntimeForFatebreaker()
     {
         shouldUseStandardStep = true;
@@ -308,6 +426,7 @@ public sealed partial class ChurinDNC : DancerRotation
             shouldFinishingMove = false;
         }
     }
+
     private void HandleNoDowntimeForUsurper()
     {
         if (CombatElapsedLess(DiamondDustStart - 5))
@@ -325,6 +444,7 @@ public sealed partial class ChurinDNC : DancerRotation
                 weBall = true;
             }
     }
+
     private void HandleNoDowntimeForAdds()
     {
         shouldUseTechStep = true;
@@ -332,12 +452,14 @@ public sealed partial class ChurinDNC : DancerRotation
         shouldUseStandardStep = true;
         shouldFinishingMove = true;
     }
+
     private void HandleNoDowntimeForGaia()
     {
         shouldUseStandardStep = true;
         shouldUseFlourish = true;
         shouldFinishingMove = true;
     }
+
     private void HandleNoDowntimeForLesbians()
     {
         shouldUseStandardStep = true;
@@ -346,13 +468,15 @@ public sealed partial class ChurinDNC : DancerRotation
         shouldUseTechStep = false;
         CheckOracleTargetable();
     }
+
     private void CheckOracleTargetable()
     {
-        if (OracleTargetable - CombatTime < 7)
+        if (OracleTargetable - CombatTime <= 7)
         {
             shouldUseTechStep = true;
         }
     }
+
     private void HandleNoDowntimeForPandora()
     {
         shouldUseTechStep = true;
@@ -360,10 +484,12 @@ public sealed partial class ChurinDNC : DancerRotation
         shouldFinishingMove = true;
         shouldUseStandardStep = true;
     }
+
     private void HandleAddsLogic()
     {
         HandleNoDowntime();
     }
+
     private void HandleGaiaLogic()
     {
         switch (currentDowntime)
@@ -393,6 +519,7 @@ public sealed partial class ChurinDNC : DancerRotation
                 break;
         }
     }
+
     private void HandleLesbiansLogic()
     {
         switch (currentDowntime)
@@ -417,6 +544,7 @@ public sealed partial class ChurinDNC : DancerRotation
                 break;
             }
     }
+
     private void HandlePandoraLogic()
     {
         HandleNoDowntime();
