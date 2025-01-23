@@ -116,7 +116,7 @@ public sealed partial class ChurinDNC : DancerRotation
     //FRU Specific Conditions
     public static readonly bool hasSpellinWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
     public static readonly bool hasReturn = Player.HasStatus(false, StatusID.Return);
-    public static readonly bool returnEnding = Player.WillStatusEnd(7, false, StatusID.Return);
+    public static readonly bool returnEnding = hasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
     public static readonly bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
     bool RemoveFinishingMove = false;
     bool weBall = true;
