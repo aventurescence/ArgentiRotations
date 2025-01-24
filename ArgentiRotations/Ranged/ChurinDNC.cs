@@ -264,7 +264,10 @@ public sealed partial class ChurinDNC : DancerRotation
         if (shouldUseFlourish)
         {
             // Check if the player does not have the Threefold Fan Dance status and if Flourish can be used
-            if (!Player.HasStatus(true, StatusID.ThreefoldFanDance) && FlourishPvE.CanUse(out act))
+            if (!Player.HasStatus(true, StatusID.ThreefoldFanDance) && FlourishPvE.CanUse(out act, isFirstAbility: true))
+            {
+                return true;
+            }
             {
                 return true;
             }
@@ -367,6 +370,11 @@ public sealed partial class ChurinDNC : DancerRotation
 
     private bool TryExecuteGCD(out IAction? act)
     {
+        if (ShouldHoldForTechnicalStep())
+        {
+            act = null;
+            return false;
+        }
         return TryUseClosedPosition(out act) ||
                FinishTheDance(out act) ||
                ExecuteStepGCD(out act) ||
@@ -385,6 +393,16 @@ public sealed partial class ChurinDNC : DancerRotation
     {
         // Attempt to execute an attack GCD action, considering the Devilment status
         return AttackGCD(out act, Player.HasStatus(true, StatusID.Devilment));
+    }
+
+    /// <summary>
+    /// Determines whether GCD attacks should be held because Technical Step is about to become available.
+    /// </summary>
+    /// <returns>True if GCD attacks should be held; otherwise, false.</returns>
+    private bool ShouldHoldForTechnicalStep()
+    {
+        // Check if Technical Step will be available in 0.5 seconds or less
+        return TechnicalStepPvE.Cooldown.WillHaveOneCharge(0.5f);
     }
     #endregion
 
@@ -478,7 +496,11 @@ public sealed partial class ChurinDNC : DancerRotation
         }
     
         // Check if buffs are active and Standard Step cooldown will not have one charge in 2.5 seconds
-        if (DanceDance && !StandardStepPvE.Cooldown.WillHaveOneCharge(2.5f))
+        bool standardStepWillHaveCharge = StandardStepPvE.Cooldown.WillHaveOneCharge(2.5f);
+        bool finishingMoveWillHaveCharge = FinishingMovePvE.Cooldown.WillHaveOneCharge(2.5f);
+        bool noStandardOrFinishingCharge = !(standardStepWillHaveCharge || finishingMoveWillHaveCharge);
+
+        if (DanceDance && noStandardOrFinishingCharge)
         {
             shouldUseLastDance = true;
         }
@@ -823,10 +845,10 @@ public sealed partial class ChurinDNC : DancerRotation
         bool hasEnoughEsprit = Esprit >= 70;
     
         // Check if Technical Step is not ready
-        bool techStepNotReady = !TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(1);
+        bool techStepNotReady = !TechnicalStepPvE.Cooldown.WillHaveOneCharge(0.5f);
     
         // Check if Standard Step is not ready
-        bool standardStepNotReady = !StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1);
+        bool standardStepNotReady = !StandardStepPvE.Cooldown.WillHaveOneCharge(0.5f);
     
         // Check if Saber Dance can be used
         bool canUseSaberDance = SaberDancePvE.CanUse(out act);
