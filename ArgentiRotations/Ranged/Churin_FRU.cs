@@ -118,8 +118,9 @@ public sealed partial class ChurinDNC : DancerRotation
     public static readonly bool hasReturn = Player.HasStatus(false, StatusID.Return);
     public static readonly bool returnEnding = hasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
     public static readonly bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
-    bool RemoveFinishingMove = false;
+    bool ShouldRemoveFinishingMove = false;
     bool weBall = true;
+
     #endregion
 
     #region FRU Methods
@@ -299,22 +300,22 @@ public sealed partial class ChurinDNC : DancerRotation
             {
                 case FRUBoss.Fatebreaker:
                     HandleFatebreakerLogic();
-                break;
+                    break;
                 case FRUBoss.Usurper:
                     HandleUsurperLogic();
-                break;
+                    break;
                 case FRUBoss.Adds:
                     HandleAddsLogic();
-                break;
+                    break;
                 case FRUBoss.Gaia:
                     HandleGaiaLogic();
-                break;
+                    break;
                 case FRUBoss.Lesbians:
                     HandleLesbiansLogic();
-                break;
+                    break;
                 case FRUBoss.Pandora:
                     HandlePandoraLogic();
-                break;
+                    break;
             }
         }
     }
@@ -331,7 +332,7 @@ public sealed partial class ChurinDNC : DancerRotation
                     
                 if (hasFinishingMove)
                     {
-                        RemoveFinishingMove = true;
+                        ShouldRemoveFinishingMove = true;
                     }
             }
             break;
@@ -367,7 +368,7 @@ public sealed partial class ChurinDNC : DancerRotation
         shouldFinishingMove = false;
         if (FlourishPvE.Cooldown.IsCoolingDown && hasFinishingMove)
         {
-            RemoveFinishingMove = true;
+            ShouldRemoveFinishingMove = true;
         }
         if (CurrentDowntimeEnd - CombatTime <= 15)
         {
@@ -381,7 +382,7 @@ public sealed partial class ChurinDNC : DancerRotation
         shouldFinishingMove = false;
         if (CurrentDowntimeEnd - CombatTime <= 15 && FlourishPvE.Cooldown.IsCoolingDown && Player.HasStatus(true, StatusID.FinishingMoveReady))
         {
-            RemoveFinishingMove = true;
+            ShouldRemoveFinishingMove = true;
             shouldUseStandardStep = true;
         }
     }
@@ -439,10 +440,20 @@ public sealed partial class ChurinDNC : DancerRotation
                 shouldUseStandardStep = true;
                 shouldUseFlourish = true;
             }
-        if ((StepFinishReady && CombatTime - CurrentPhaseEnd > 5) || Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 1 && CombatTime - LightRampantEnd > 3)
+        if (StandardStepPvE.CanUse(out _))
+        {
+            if (CombatTime - CurrentPhaseEnd >= 5.54f || CombatTime - CurrentDowntimeStart >= 5.54f)
             {
                 weBall = true;
             }
+            else
+            {
+                if (CombatTime - CurrentPhaseEnd <= 5.54f || CombatTime - CurrentDowntimeStart <= 5.54f)
+                {
+                    weBall = false;
+                }
+            }
+        }
     }
 
     private void HandleNoDowntimeForAdds()
