@@ -268,9 +268,6 @@ public sealed partial class ChurinDNC : DancerRotation
             {
                 return true;
             }
-            {
-                return true;
-            }
         }
     
         // No Flourish action was performed
@@ -364,45 +361,57 @@ public sealed partial class ChurinDNC : DancerRotation
     /// <returns>True if a GCD action was performed; otherwise, false.</returns>
     protected override bool GeneralGCD(out IAction? act)
     {
-        // Attempt to execute a GCD action specific to this class
-        return TryExecuteGCD(out act) || base.GeneralGCD(out act);
+        if (TryExecuteGCD(out act))
+        {
+            return true;
+        }
+
+        return base.GeneralGCD(out act);
     }
 
+    /// <summary>
+    /// Attempts to execute a general global cooldown (GCD) action.
+    /// </summary>
+    /// <param name="act">The action to be performed, if any.</param>
+    /// <returns>True if a GCD action was performed; otherwise, false.</returns>
     private bool TryExecuteGCD(out IAction? act)
     {
+        // Check if GCD attacks should be held for Technical Step
         if (ShouldHoldForTechnicalStep())
         {
-            act = null;
-            return false;
+            // Allow ExecuteStepGCD, FinishTheDance, and TryUseTechnicalStep to proceed
+            if (TryUseTechnicalStep(out act))
+            {
+                return true;
+            }
+            if (ExecuteStepGCD(out act))
+            {
+                return true;
+            }
+            if (FinishTheDance(out _))
+            {
+                return HandleGCDActions(out act);
+            }
         }
+    
+        // Handle other GCD actions
+        return HandleGCDActions(out act);
+    }
+
+    /// <summary>
+    /// Handles the logic for executing general global cooldown (GCD) actions.
+    /// </summary>
+    /// <param name="act">The action to be performed, if any.</param>
+    /// <returns>True if a GCD action was performed; otherwise, false.</returns>
+    private bool HandleGCDActions(out IAction? act)
+    {
         return TryUseClosedPosition(out act) ||
                FinishTheDance(out act) ||
                ExecuteStepGCD(out act) ||
                TryUseTechnicalStep(out act) ||
                TryUseStandardStep(out act) ||
                TryUseSaberDance(out act) ||
-               TryAttackGCD(out act);
-    }
-
-    /// <summary>
-    /// Attempts to execute an attack global cooldown (GCD) action.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if an attack GCD action was performed; otherwise, false.</returns>
-    private bool TryAttackGCD(out IAction? act)
-    {
-        // Attempt to execute an attack GCD action, considering the Devilment status
-        return AttackGCD(out act, Player.HasStatus(true, StatusID.Devilment));
-    }
-
-    /// <summary>
-    /// Determines whether GCD attacks should be held because Technical Step is about to become available.
-    /// </summary>
-    /// <returns>True if GCD attacks should be held; otherwise, false.</returns>
-    private bool ShouldHoldForTechnicalStep()
-    {
-        // Check if Technical Step will be available in 0.5 seconds or less
-        return TechnicalStepPvE.Cooldown.WillHaveOneCharge(0.5f);
+               AttackGCD(out act, Player.HasStatus(true, StatusID.Devilment));
     }
     #endregion
 
@@ -496,11 +505,11 @@ public sealed partial class ChurinDNC : DancerRotation
         }
     
         // Check if buffs are active and Standard Step cooldown will not have one charge in 2.5 seconds
-        bool standardStepWillHaveCharge = StandardStepPvE.Cooldown.WillHaveOneCharge(2.5f);
-        bool finishingMoveWillHaveCharge = FinishingMovePvE.Cooldown.WillHaveOneCharge(2.5f);
-        bool noStandardOrFinishingCharge = !(standardStepWillHaveCharge || finishingMoveWillHaveCharge);
+        bool standardStepWillHaveCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2);
+        bool finishingMoveWillHaveCharge = FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2);
+        bool StandardOrFinishingCharge = standardStepWillHaveCharge || finishingMoveWillHaveCharge;
 
-        if (DanceDance && noStandardOrFinishingCharge)
+        if (DanceDance && StandardOrFinishingCharge)
         {
             shouldUseLastDance = true;
         }
@@ -887,7 +896,19 @@ public sealed partial class ChurinDNC : DancerRotation
         act = null;
         return false;
     }
-
+    /// <summary>
+    /// Determines whether GCD attacks should be held because Technical Step is about to become available.
+    /// </summary>
+    /// <returns>True if GCD attacks should be held; otherwise, false.</returns>
+    private bool ShouldHoldForTechnicalStep()
+    {
+        // Check if Technical Step will be available in 1 second or less
+        if (TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(1) && !Player.HasStatus(true, StatusID.TechnicalStep))
+        {
+            return true;
+        }
+        return false;
+    }
     private bool TryUseTechnicalStep(out IAction? act)
     {
         bool shouldHoldTechStep = InCombat && HoldTechForTargets && AreDanceTargetsInRange;

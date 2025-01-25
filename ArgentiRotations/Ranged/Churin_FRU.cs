@@ -119,7 +119,6 @@ public sealed partial class ChurinDNC : DancerRotation
     public static readonly bool returnEnding = hasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
     public static readonly bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
     bool ShouldRemoveFinishingMove = false;
-    bool weBall = true;
 
     #endregion
 
@@ -440,20 +439,6 @@ public sealed partial class ChurinDNC : DancerRotation
                 shouldUseStandardStep = true;
                 shouldUseFlourish = true;
             }
-        if (StandardStepPvE.CanUse(out _))
-        {
-            if (CombatTime - CurrentPhaseEnd >= 5.54f || CombatTime - CurrentDowntimeStart >= 5.54f)
-            {
-                weBall = true;
-            }
-            else
-            {
-                if (CombatTime - CurrentPhaseEnd <= 5.54f || CombatTime - CurrentDowntimeStart <= 5.54f)
-                {
-                    weBall = false;
-                }
-            }
-        }
     }
 
     private void HandleNoDowntimeForAdds()
