@@ -18,28 +18,31 @@ jobs:
         run: |
           $tag = "${{ github.ref }}" -replace 'refs/tags/', ''
           "tag=$tag" | Out-File -Append -FilePath $Env:GITHUB_ENV
-          
+
       - name: Set up .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
       - name: Download Dalamud Latest
         run: |
           Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
-          Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+          if ($?) {
+            Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+          } else {
+            Write-Error "Failed to download Dalamud Latest"
+            exit 1
+          }
 
       - name: Restore Nuget Packages
-        run: dotnet restore BasicRotations/ArgentiRotations.csproj
-
+        run: dotnet restore ArgentiRotations/ArgentiRotations.csproj
       - name: Build Rotations
-        run: dotnet build --no-restore -c Release BasicRotations/ArgentiRotations.csproj -p:AssemblyVersion=${{ env.tag }} -p:FileVersion=${{ env.tag }} -p:InformationalVersion=${{ env.tag }} --output .\build
+        run: dotnet build --no-restore -c Release ArgentiRotations/ArgentiRotations.csproj -p:AssemblyVersion=${{ env.tag }} -p:FileVersion=${{ env.tag }} -p:InformationalVersion=${{ env.tag }} --output .\build
 
       - name: Publish Rotations
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ./build/*.dll
-            ./build/*.pdb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            ./build/ArgentiRotations.dll
+            ./build/ArgentiRotations.pdb
+          token: ${{ secrets.GITHUB_TOKEN }}
