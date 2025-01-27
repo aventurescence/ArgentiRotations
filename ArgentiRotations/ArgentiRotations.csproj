@@ -4,25 +4,8 @@
     <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.13" />
-    <PackageReference Include="RotationSolverReborn.Basic" Version="7.0.5.153" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Melee\*.cs" />
-    <Compile Remove="Tank\**" />
-    <Compile Remove="Healer\*.cs" />
-    <Compile Remove="Magical\**" />
-    <Compile Remove="Duty\**" />
-    <Compile Remove="PVPRotations\*\*.cs" />
-    <Compile Remove="Limited Jobs\*.cs" />
-    <Compile Remove="Ranged\BRD_Default.cs" />
-    <Compile Remove="Ranged\DNC_Default.cs" />
-    <Compile Remove="Ranged\MCH_Default.cs" />
-    <Compile Remove="Ranged\DNC_DefaultLelia.cs" />
-    <Compile Remove="Ranged\MCH_Default.PvP.cs" />
-    <Compile Remove="Ranged\zMCH_Beta.cs" />
-    <Compile Remove="Ranged\zMCH_Beta_2.cs" />
-    <Compile Remove="Ranged\Queen Timings" />
+    <PackageReference Include="DalamudPackager" Version="11.0.0" />
+    <PackageReference Include="RotationSolverReborn.Basic" Version="7.1.6" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Dalamud">
@@ -70,14 +53,12 @@
     <Using Include="System.Reflection" />
   </ItemGroup>
   <ItemGroup>
+      <Folder Include="ArgentiRotations\Common" />
+      <Folder Include="ArgentiRoations\Ranged"  />
+  </ItemGroup>
+  <ItemGroup>
     <None Update="ArgentiRotations.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Remove="Melee\" />
-    <Folder Remove="Healer\" />
-    <Folder Remove="Tank\" />
-    <Folder Remove="Magical\" />
   </ItemGroup>
 </Project>
