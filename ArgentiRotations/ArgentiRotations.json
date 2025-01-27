@@ -1,0 +1,11 @@
+{
+    "Author": "Churin",
+    "Name": "ArgentiRotations",
+    "Punchline": "A plugin for optimizing rotations.",
+    "Description": "This plugin helps optimize rotations for various classes in FFXIV.",
+    "RepoUrl": "https://github.com/aventurescence/ArgentiRotations",
+    "Tags": ["FFXIV", "Dalamud", "Rotations"],
+    "AssemblyVersion": "7.1.0.1",
+    "DalamudApiLevel": 6,
+    "LoadPriority": 0
+  }
