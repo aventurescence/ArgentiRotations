@@ -891,22 +891,26 @@ public sealed partial class ChurinDNC : DancerRotation
     /// <returns>True if GCD attacks should be held; otherwise, false.</returns>
     private bool ShouldHoldForTechnicalStep()
     {
-        if (TillanaPvE.CanUse(out _) || !TechnicalStepPvE.Cooldown.WillHaveOneCharge(1))
-        {           
-            return false;
-        }
-        // Check if Technical Step will be available in 1 second or less
-        bool isCoolingDown = !Player.HasStatus(true, StatusID.TechnicalStep);
-        bool willHaveOneCharge = TechnicalStepPvE.Cooldown.WillHaveOneCharge(1);
-        bool cannotUse = !TechnicalStepPvE.CanUse(out _) || TillanaPvE.CanUse(out _);
-
-        bool shouldHold = isCoolingDown && willHaveOneCharge && cannotUse;
-        if (shouldHold)
-        {
-            return true;
-        }
-
+        if (JustUsedTech()) return false;
+        if (ShouldHold()) return true;
         return false;
+    }
+
+    private bool JustUsedTech()
+    {
+        bool canUseTillana = TillanaPvE.CanUse(out _);
+        bool technicalStepNotReady = Player.HasStatus(true, StatusID.TechnicalStep);
+        bool isDanceDance = DanceDance;
+        return canUseTillana || technicalStepNotReady || isDanceDance;
+    }
+
+    private bool ShouldHold()
+    {
+        bool isCoolingDown = !Player.HasStatus(true, StatusID.TechnicalStep) || !Player.HasStatus(true, StatusID.TechnicalFinish);
+        bool willHaveOneCharge = TechnicalStepPvE.Cooldown.WillHaveOneCharge(1);
+        bool cannotUse = !TechnicalStepPvE.CanUse(out _) && !TillanaPvE.CanUse(out _);
+
+        return isCoolingDown && willHaveOneCharge && cannotUse;
     }
     private static bool TryUseTechnicalStep(out IAction? act)
     {
