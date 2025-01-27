@@ -406,7 +406,13 @@ namespace ArgentiRotations.Ranged
             {
                 ShouldUseStandardStep = false;
                 ShouldUseTechStep = true;
-                ShouldFinishingMove = DanceDance;
+                ShouldFinishingMove = true;
+
+                if (TryUseTechnicalStep(out _))
+                {
+                    ShouldUseStandardStep = true;
+                }
+                
                 HandleNoDowntime();
             }
         }
@@ -456,7 +462,12 @@ namespace ArgentiRotations.Ranged
         {
             ShouldUseStandardStep = false;
             ShouldUseTechStep = true;
-            ShouldFinishingMove = DanceDance;
+            ShouldFinishingMove = true;
+
+            if (TryUseTechnicalStep(out _))
+            {
+                ShouldUseStandardStep = true;
+            }
             HandleNoDowntime();
         }
 
