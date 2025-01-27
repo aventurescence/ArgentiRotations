@@ -16,8 +16,7 @@ jobs:
 
       - name: Get Environment Variables
         run: |
-          $tag = "${{ github.ref }}" -replace 'refs/tags/', ''
-          "tag=$tag" | Out-File -Append -FilePath $Env:GITHUB_ENV
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -37,7 +36,7 @@ jobs:
       - name: Restore Nuget Packages
         run: dotnet restore ArgentiRotations/ArgentiRotations.csproj
       - name: Build Rotations
-        run: dotnet build --no-restore -c Release ArgentiRotations/ArgentiRotations.csproj -p:AssemblyVersion=${{ env.tag }} -p:FileVersion=${{ env.tag }} -p:InformationalVersion=${{ env.tag }} --output .\build
+        run: dotnet build --no-restore -c Release ArgentiRotations/ArgentiRotations.csproj -p:AssemblyVersion=$env:tag -p:FileVersion=$env:tag -p:InformationalVersion=$env:tag --output .\build
 
       - name: Publish Rotations
         uses: softprops/action-gh-release@v2
