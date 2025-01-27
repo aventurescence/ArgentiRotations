@@ -1,1 +1,0 @@
-﻿[assembly: AssemblyLink(Donate = "", UserName = "aventurescence", Repository = "ArgentiRotations")]
