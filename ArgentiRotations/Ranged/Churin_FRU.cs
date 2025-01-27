@@ -1,8 +1,17 @@
+using System.Reflection.Metadata;
+
 namespace ArgentiRotations.Ranged
 {
     public sealed partial class ChurinDNC : ICustomRotation
     {
         #region FRU Properties
+
+        private const string Fatebreaker = "Fatebreaker";
+        private const string UsurperOfFrost = "Usurper of Frost";
+        private const string Gaia = "Oracle of Darkness";
+        private const string Pandora = "Pandora";
+        private const string Adds = "Ice Veil";
+        private static readonly string[] Lesbians = [UsurperOfFrost, Gaia];
         /// <summary>
         /// Enum representing the different bosses in the FRU.
         /// </summary>
@@ -55,10 +64,7 @@ namespace ArgentiRotations.Ranged
                 Start = start;
                 End = end;
             }
-            /// <summary>
-            /// Initializes the downtime timers for the specified boss.
-            /// </summary>
-            /// <param name="boss">The boss for which to initialize the downtime timers.</param>
+
             public static void InitializeDowntimeTimers(FRUBoss boss)
             {
                 if (PhaseTimings.phaseTimers.TryGetValue(boss, out PhaseTimings phaseTimings))
@@ -72,25 +78,27 @@ namespace ArgentiRotations.Ranged
                     downtimeTimers[Downtime.OracleTargetable] = new DowntimeTimings(phaseStartTime + 25.4f, phaseStartTime + 25.5f);
                     downtimeTimers[Downtime.CrystalizeTime] = new DowntimeTimings(phaseStartTime + 98.5f, phaseStartTime + 148.2f);
                 }
+                // Add a default entry for Downtime.None
+                downtimeTimers[Downtime.None] = new DowntimeTimings(0f, 0f);
             }
+
             private static readonly Dictionary<Downtime, DowntimeTimings> downtimeTimers = new Dictionary<Downtime, DowntimeTimings>();
-            /// <summary>
-            /// Gets the downtime timings for the specified downtime.
-            /// </summary>
-            /// <param name="downtime">The downtime to get the timings for.</param>
-            /// <returns>The downtime timings if found; otherwise, a new DowntimeTimings instance.</returns>
+
             public static DowntimeTimings GetDowntimeTimings(Downtime downtime)
             {
-                return downtimeTimers.TryGetValue(downtime, out DowntimeTimings value) ? value : new DowntimeTimings();
+                return downtimeTimers.TryGetValue(downtime, out DowntimeTimings value) ? value : downtimeTimers[Downtime.None];
             }
-            /// <summary>
-            /// Checks if the current phase is within the specified downtime range.
-            /// </summary>
-            /// <param name="boss">The current boss.</param>
-            /// <param name="downtime">The downtime to check.</param>
-            /// <returns>True if the current phase is within the downtime range; otherwise, false.</returns>
+
             public static bool IsDowntime(FRUBoss boss, Downtime downtime)
             {
+                if (downtime == Downtime.None)
+                {
+                    currentDowntime = Downtime.None;
+                    CurrentDowntimeStart = 0f;
+                    CurrentDowntimeEnd = 0f;
+                    return false;
+                }
+
                 if (currentBoss == boss)
                 {
                     DowntimeTimings timings = GetDowntimeTimings(downtime);
@@ -124,16 +132,16 @@ namespace ArgentiRotations.Ranged
             /// Initializes the phase timers and returns the phase durations for each phase.
             /// </summary>
             /// <returns>A dictionary containing the phase durations for each boss.</returns>
-            public static Dictionary<FRUBoss, (string phaseName, float duration, FRUBoss? requiredPreviousBoss)> InitializeAndGetPhaseDurations()
+            public static Dictionary<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)> InitializeAndGetPhaseDurations()
             {
-                var phaseDurations = new Dictionary<FRUBoss, (string phaseName, float duration, FRUBoss? requiredPreviousBoss)>
+                var phaseDurations = new Dictionary<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)>
                 {
-                    { FRUBoss.Fatebreaker, ("Fatebreaker", 160.1f, null) },
-                    { FRUBoss.Usurper, ("Usurper of Frost", 185f, FRUBoss.Fatebreaker) },
-                    { FRUBoss.Adds, ("Ice Veil", 41.2f, FRUBoss.Usurper) },
-                    { FRUBoss.Gaia, ("Oracle of Darkness", 157.9f, FRUBoss.Adds) },
-                    { FRUBoss.Lesbians, ("Usurper of Frost", 175.9f, FRUBoss.Gaia) },
-                    { FRUBoss.Pandora, ("Pandora", 271.9f, FRUBoss.Lesbians) }
+                    { FRUBoss.Fatebreaker, (new[] { Fatebreaker }, 160.1f, null, 30) },
+                    { FRUBoss.Usurper, (new[] { UsurperOfFrost }, 185f, FRUBoss.Fatebreaker, 20) },
+                    { FRUBoss.Adds, (new[] {Adds}, 41.2f, FRUBoss.Usurper, 1) },
+                    { FRUBoss.Gaia, (new[] {Gaia}, 157.9f, FRUBoss.Adds, 20) },
+                    { FRUBoss.Lesbians, (Lesbians, 175.9f, FRUBoss.Gaia, 25) },
+                    { FRUBoss.Pandora, (new[] {Pandora}, 271.9f, FRUBoss.Lesbians,1) }
                 };
 
                 foreach (var phase in phaseDurations)
@@ -148,7 +156,7 @@ namespace ArgentiRotations.Ranged
             /// Handles the phase transition logic for the specified phase.
             /// </summary>
             /// <param name="phase">The phase to handle the transition for.</param>
-            public static void HandlePhaseTransition(KeyValuePair<FRUBoss, (string phaseName, float duration, FRUBoss? requiredPreviousBoss)> phase)
+            public static void HandlePhaseTransition(KeyValuePair<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)> phase)
             {
                 if (ShouldEndCurrentPhaseEarly())
                 {
@@ -168,9 +176,11 @@ namespace ArgentiRotations.Ranged
             /// <param name="phase">The phase to check the transition for.</param>
             /// <param name="hostileTargetNames">The list of hostile target names.</param>
             /// <returns>True if the phase transition is valid; otherwise, false.</returns>
-            public static bool IsPhaseTransitionValid(KeyValuePair<FRUBoss, (string phaseName, float duration, FRUBoss? requiredPreviousBoss)> phase, List<string> hostileTargetNames)
+            public static bool IsPhaseTransitionValid(KeyValuePair<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)> phase, List<string> hostileTargetNames)
             {
-                bool doesPhaseNameContain = hostileTargetNames.Contains(phase.Value.phaseName);
+                bool doesPhaseNameContain = phase.Key == FRUBoss.Lesbians
+                    ? hostileTargetNames.Contains(UsurperOfFrost) // Check if Usurper of Frost is present
+                    : phase.Value.phaseName.All(hostileTargetNames.Contains);
                 bool isPreviousBossRequired = phase.Value.requiredPreviousBoss == null || currentBoss == phase.Value.requiredPreviousBoss;
                 return doesPhaseNameContain && isPreviousBossRequired;
             }
@@ -203,7 +213,7 @@ namespace ArgentiRotations.Ranged
             /// <returns>The health ratio of the boss.</returns>
             public static float GetBossHealthRatio(string bossName)
             {
-                var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+                var target = AllHostileTargets.FirstOrDefault(currentBoss => currentBoss.Name.ToString() == bossName);
                 return target != null ? target.GetHealthRatio() : 999f; // Return 999f if the boss is not found (considered alive)
             }
             /// <summary>
@@ -213,7 +223,7 @@ namespace ArgentiRotations.Ranged
             /// <returns>True if the boss is dead; otherwise, false.</returns>
             public static bool IsBossDead(string bossName)
             {
-                var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+                var target = AllHostileTargets.FirstOrDefault(currentBoss => currentBoss.Name.ToString() == bossName);
                 return target != null && target.GetHealthRatio() <= 1;
             }
         }
@@ -260,10 +270,10 @@ namespace ArgentiRotations.Ranged
 
         #region FRU Conditions
 
-        public static readonly bool hasSpellinWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
-        public static readonly bool hasReturn = Player.HasStatus(false, StatusID.Return);
-        public static readonly bool returnEnding = hasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
-        public static readonly bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
+        public static bool HasSpellinWaitingReturn => Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
+        public static bool HasReturn => Player.HasStatus(false, StatusID.Return);
+        public static bool ReturnEnding => HasReturn && Player.WillStatusEnd(6, false, StatusID.Return);
+        public static bool HasFinishingMove => Player.HasStatus(true, StatusID.FinishingMoveReady);
         public static bool ShouldRemoveFinishingMove { get; set; } = false;
 
         #endregion
@@ -297,7 +307,10 @@ namespace ArgentiRotations.Ranged
             }
         }
 
-
+        /// <summary>
+        /// Handles the logic for the Fatebreaker boss.
+        /// Sets various flags based on the current downtime.
+        /// </summary>
         private static void HandleFatebreaker()
         {
             if (DowntimeTimings.IsDowntime(FRUBoss.Fatebreaker, Downtime.UtopianSky))
@@ -305,64 +318,200 @@ namespace ArgentiRotations.Ranged
                 ShouldUseStandardStep = true;
                 ShouldUseFlourish = true;
                 ShouldFinishingMove = false;
-
-                if (hasFinishingMove)
-                {
-                    ShouldRemoveFinishingMove = true;
-                }
+                ShouldRemoveFinishingMove = HasFinishingMove;
             }
-            if (currentDowntime == Downtime.None)
+            else
             {
-                if (ShouldRemoveFinishingMove)
-                {
-                    ShouldFinishingMove = true;
-                    ShouldRemoveFinishingMove = false;
-                }
+                HandleNoDowntime();
             }
         }
 
+        /// <summary>
+        /// Handles the logic for the Usurper boss.
+        /// Calls specific downtime handlers based on the current downtime.
+        /// </summary>
         private static void HandleUsurper()
         {
             if (DowntimeTimings.IsDowntime(FRUBoss.Usurper, Downtime.DiamondDust))
             {
-                // Do something
+                HandleDiamondDustDowntime();
             }
-            if (DowntimeTimings.IsDowntime(FRUBoss.Usurper, Downtime.LightRampant))
+            else if (DowntimeTimings.IsDowntime(FRUBoss.Usurper, Downtime.LightRampant))
             {
-                // Do something
+                HandleLightRampantDowntime();
+            }
+            else
+            {
+                HandleNoDowntime();
             }
         }
 
+        /// <summary>
+        /// Handles the logic for the Diamond Dust downtime.
+        /// Sets various flags based on the remaining downtime.
+        /// </summary>
+        private static void HandleDiamondDustDowntime()
+        {
+            ShouldUseStandardStep = false;
+            ShouldUseFlourish = false;
+            ShouldFinishingMove = false;
+            ShouldRemoveFinishingMove = HasFinishingMove;
+            if (CurrentDowntimeEnd - CombatTime <= 15)
+            {
+                ShouldUseStandardStep = true;
+            }
+        }
+
+        /// <summary>
+        /// Handles the logic for the Light Rampant downtime.
+        /// Sets various flags based on the remaining downtime and checks if Flourish can be used.
+        /// </summary>
+        private static void HandleLightRampantDowntime()
+        {
+            ShouldUseStandardStep = false;
+            ShouldUseFlourish = false;
+            ShouldFinishingMove = false;
+            ShouldRemoveFinishingMove = false;
+
+            var instance = new ChurinDNC();
+            // Check if the current downtime is ending in 15 seconds and if Flourish can be used
+            if (CurrentDowntimeEnd - CombatTime <= 15 && instance.FlourishPvE.CanUse(out _))
+            {
+                ShouldUseFlourish = true;
+            }
+
+            // Additional check if the current downtime is ending in more than 5 seconds
+            if (CurrentDowntimeEnd - CombatTime > 5)
+            {
+                ShouldRemoveFinishingMove = true;
+                ShouldUseStandardStep = true;
+            }
+            else
+            {
+                ShouldRemoveFinishingMove = false;
+            }
+        }
+
+        /// <summary>
+        /// Handles the logic for the Adds phase.
+        /// Sets various flags based on the current downtime.
+        /// </summary>
         private static void HandleAdds()
         {
             if (DowntimeTimings.IsDowntime(FRUBoss.Adds, Downtime.GaiaTransition))
             {
-                // Do something
+                ShouldUseStandardStep = CurrentDowntimeEnd - CombatTime <= 14;
+            }
+            else
+            {
+                ShouldUseStandardStep = false;
+                ShouldUseTechStep = true;
+                ShouldFinishingMove = DanceDance;
+                HandleNoDowntime();
             }
         }
 
+        /// <summary>
+        /// Handles the logic for the Gaia boss.
+        /// Sets various flags based on the current downtime.
+        /// </summary>
         private static void HandleGaia()
         {
             if (DowntimeTimings.IsDowntime(FRUBoss.Gaia, Downtime.UltimateRelativity))
             {
-                // Do something
+                ShouldUseTechStep = ReturnEnding && !(HasSpellinWaitingReturn || HasReturn);
+            }
+            else
+            {
+                HandleNoDowntime();
             }
         }
 
+        /// <summary>
+        /// Handles the logic for the Lesbians phase.
+        /// Sets various flags based on the current downtime.
+        /// </summary>
         private static void HandleLesbians()
         {
-            if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.OracleTargetable))
+            ShouldUseTechStep = false;
+
+            if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.OracleTargetable) && CurrentDowntimeStart - CombatTime <= 7)
             {
-                // Do something
+                ShouldUseTechStep = true;
             }
-            if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.CrystalizeTime))
+            else if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.CrystalizeTime) && CurrentDowntimeEnd - CombatTime <= 15)
             {
-                // Do something
+                ShouldUseStandardStep = true;
+            }
+            else
+            {
+                HandleNoDowntime();
             }
         }
+        /// <summary>
+        /// Handles the logic for the Pandora boss.
+        /// Sets various flags and calls HandleNoDowntime.
+        /// </summary>
         private static void HandlePandora()
         {
-            // Do something
+            ShouldUseStandardStep = false;
+            ShouldUseTechStep = true;
+            ShouldFinishingMove = DanceDance;
+            HandleNoDowntime();
+        }
+
+        /// <summary>
+        /// Handles the logic when there is no downtime.
+        /// Sets various flags based on the remaining downtime and calls BossDying.
+        /// </summary>
+        private static void HandleNoDowntime()
+        {
+            if (CurrentDowntimeStart - CombatTime <= 4)
+            {
+                ShouldUseStandardStep = false;
+                ShouldFinishingMove = true;
+                ShouldRemoveFinishingMove = false;
+            }
+            else
+            {
+                ShouldUseStandardStep = true;
+            }
+
+            string[] bossNames = new[] { Fatebreaker, UsurperOfFrost, Gaia }.Concat(Lesbians).ToArray();
+            BossDying(bossNames);
+        }
+
+        /// <summary>
+        /// Handles the logic for determining if a boss is dying based on health thresholds.
+        /// Sets various flags based on the boss health ratios.
+        /// </summary>
+        /// <param name="bossNames">An array of boss names to check.</param>
+        private static void BossDying(string[] bossNames)
+        {
+            var bossActions = new Dictionary<string, Action>
+            {
+                { Fatebreaker, () => { if (PhaseTimings.GetBossHealthRatio(Fatebreaker) <= 30f) { ShouldFinishingMove = false; ShouldUseFlourish = false; } } },
+                { UsurperOfFrost, () => { if (PhaseTimings.GetBossHealthRatio(UsurperOfFrost) <= 25f) { ShouldUseStandardStep = true; } } },
+                { Gaia, () => { if (PhaseTimings.GetBossHealthRatio(Gaia) <= 20f) { ShouldUseStandardStep = false; } } },
+                { "Lesbians", () =>
+                    {
+                        if (Lesbians.Any(boss => PhaseTimings.GetBossHealthRatio(boss) <= 20f))
+                        {
+                            ShouldUseStandardStep = true;
+                            ShouldUseTechStep = false;
+                            ShouldUseFlourish = true;
+                        }
+                    }
+                }
+            };
+
+            foreach (var bossName in bossNames)
+            {
+                if (bossActions.TryGetValue(bossName, out Action? value))
+                {
+                    value.Invoke();
+                }
+            }
         }
         #endregion
     }

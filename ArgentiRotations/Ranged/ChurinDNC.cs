@@ -15,7 +15,7 @@ public sealed partial class ChurinDNC : DancerRotation
     [RotationConfig(CombatType.PvE, Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
     public string DancePartnerName { get; set; } = "";
 
-    //[RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
+    [RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
     public bool LoadFRU { get; set; } = false;
 
     #endregion
@@ -64,20 +64,23 @@ public sealed partial class ChurinDNC : DancerRotation
 
     private static void DrawCombatStatusText()
     {
-        ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss:" + currentBoss);
-        ImGui.SameLine();
-        ImGui.Text("Combat Time:" + CombatTime);
-        ImGui.SameLine();
-        ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + currentDowntime);
+        DisplayStatusHelper.DrawItemMiddle(() =>
+        {
+            ImGui.Text("Combat Status");
+            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss:" + currentBoss);
+            ImGui.SameLine();
+            ImGui.Text("Combat Time:" + CombatTime);
+            ImGui.SameLine();
+            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + currentDowntime);
+        }, ImGui.GetWindowWidth(), ImGui.CalcTextSize("Combat Status").X);
         ImGui.Text("Should Use Tech Step?:" + ShouldUseTechStep);
         ImGui.Text("Should Use Flourish?:" + ShouldUseFlourish);
-        ImGui.Text("Should Use Last Dance?:" + ShouldUseLastDance);
         ImGui.Text("Should Use Standard Step?:" + ShouldUseStandardStep);
         ChurinDNC instance = new();
         ImGui.Text("Should Hold for Tech Step?:" + instance.ShouldHoldForTechnicalStep());
-        ImGui.Text("has Return:" + hasReturn);
-        ImGui.Text("Return ending?" + returnEnding);
-        ImGui.Text("has Spell in Waiting Return:" + hasSpellinWaitingReturn);
+        ImGui.Text("has Return:" + HasReturn);
+        ImGui.Text("Return ending?" + ReturnEnding);
+        ImGui.Text("has Spell in Waiting Return:" + HasSpellinWaitingReturn);
         ImGui.Text("has Dance Targets in Range" + AreDanceTargetsInRange);
     }
 
@@ -194,7 +197,10 @@ public sealed partial class ChurinDNC : DancerRotation
     {
         if (HandleFlourish(out act)) return true;
 
-        if (RemoveFinishingMove(out act)) return true;
+        if (ShouldRemoveFinishingMove)
+        {
+            RemoveFinishingMove();
+        }
 
         if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
 
@@ -213,27 +219,17 @@ public sealed partial class ChurinDNC : DancerRotation
     /// </summary>
     /// <param name="act">The action to be performed, if any.</param>
     /// <returns>True if removing Finishing Move was performed; otherwise, false.</returns>
-    private static bool RemoveFinishingMove(out IAction? act)
+    private static void RemoveFinishingMove()
     {
         // Check if the finishing move should be removed and if the player has the Finishing Move Ready status
-        if (ShouldRemoveFinishingMove && Player.HasStatus(true, StatusID.FinishingMoveReady))
+        if (Player.HasStatus(true, StatusID.FinishingMoveReady))
         {
             // Remove the Finishing Move Ready status
             StatusHelper.StatusOff(StatusID.FinishingMoveReady);
 
             // Reset the RemoveFinishingMove flag
             ShouldRemoveFinishingMove = false;
-
-            // No specific action to perform
-            act = null;
-
-            // Indicate that Remove Finishing Move was performed
-            return true;
         }
-
-        // No removal was performed
-        act = null;
-        return false;
     }
 
     /// <summary>
@@ -346,11 +342,6 @@ public sealed partial class ChurinDNC : DancerRotation
 
     #region GCD Logic
     // Override the method for handling general Global Cooldown (GCD) actions
-    /// <summary>
-    /// Executes a general global cooldown (GCD) action.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if a GCD action was performed; otherwise, false.</returns>
     protected override bool GeneralGCD(out IAction? act)
     {
         if (LoadFRU)
@@ -378,7 +369,7 @@ public sealed partial class ChurinDNC : DancerRotation
             act = null;
             return false;
         }
-        if (TechnicalStepPvE.CanUse(out act, skipAoeCheck: true))
+        if (TryUseTechnicalStep(out act))
         {
             return true;
         }
@@ -468,7 +459,7 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool HandleTillana(out IAction? act)
     {
         // Check if Esprit is less than or equal to 50 and Devilment cannot be used
-        if (Esprit <= 50 && !DevilmentPvE.CanUse(out _, skipComboCheck: true))
+        if (Esprit <= 45 && !DevilmentPvE.CanUse(out _, skipComboCheck: true))
         {
             // Attempt to use Tillana, skipping the AoE check
             if (TillanaPvE.CanUse(out act, skipAoeCheck: true)) return true;
@@ -631,8 +622,10 @@ public sealed partial class ChurinDNC : DancerRotation
     /// <returns>True if the Finishing Move action was performed; otherwise, false.</returns>
     private bool TryUseFinishingMove(out IAction? act)
     {
+        bool hasLastDance = Player.HasStatus(true, StatusID.LastDanceReady);
+        bool canUseFinishingMove = ShouldFinishingMove && !hasLastDance;
         // Check if the player does not have the Last Dance Ready status and if Finishing Move can be used
-        if (!Player.HasStatus(true, StatusID.LastDanceReady) && FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
+        if (canUseFinishingMove && FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
 
         // No Finishing Move action was performed
         act = null;
@@ -874,9 +867,11 @@ public sealed partial class ChurinDNC : DancerRotation
     {
         // Determine if Finishing Move should be used and if dance targets are in range
         bool canUseFinishingMove = ShouldFinishingMove && AreDanceTargetsInRange;
+        bool hasLastDance = Player.HasStatus(true, StatusID.LastDanceReady);
+        bool canFinish = !hasLastDance && canUseFinishingMove;
 
         // Attempt to use Finishing Move if conditions are met
-        if (canUseFinishingMove && FinishingMovePvE.CanUse(out act, skipAoeCheck: true))
+        if (canFinish && FinishingMovePvE.CanUse(out act, skipAoeCheck: true))
         {
             return true;
         }
