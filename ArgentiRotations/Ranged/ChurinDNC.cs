@@ -67,11 +67,24 @@ public sealed partial class ChurinDNC : DancerRotation
         DisplayStatusHelper.DrawItemMiddle(() =>
         {
             ImGui.Text("Combat Status");
-            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss:" + currentBoss);
-            ImGui.SameLine();
-            ImGui.Text("Combat Time:" + CombatTime);
-            ImGui.SameLine();
-            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + currentDowntime);
+        
+            // Calculate the width of the window
+            float windowWidth = ImGui.GetWindowWidth();
+        
+            // Calculate the width of the text for current FRU Boss
+            float textWidth = ImGui.CalcTextSize("current FRU Boss: " + currentBoss).X;
+            ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss: " + currentBoss);
+        
+            // Calculate the width of the text for Combat Time
+            textWidth = ImGui.CalcTextSize("Combat Time: " + CombatTime).X;
+            ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            ImGui.Text("Combat Time: " + CombatTime);
+        
+            // Calculate the width of the text for Current Downtime
+            textWidth = ImGui.CalcTextSize("Current Downtime: " + currentDowntime).X;
+            ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime: " + currentDowntime);
         }, ImGui.GetWindowWidth(), ImGui.CalcTextSize("Combat Status").X);
         ImGui.Text("Should Use Tech Step?:" + ShouldUseTechStep);
         ImGui.Text("Should Use Flourish?:" + ShouldUseFlourish);
@@ -589,8 +602,8 @@ public sealed partial class ChurinDNC : DancerRotation
     /// <returns>True if the Starfall Dance action was performed; otherwise, false.</returns>
     private bool TryUseStarfallDance(out IAction? act)
     {
-        // Check if the Devilment cooldown has elapsed more than 10 seconds
-        bool devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(5);
+        // Check if the Devilment cooldown has elapsed more than 7 seconds
+        bool devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7);
 
         // Check if the Standard Step cooldown will not have one charge in 1 GCD
         bool standardStepNotReady = !StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1);
@@ -910,7 +923,7 @@ public sealed partial class ChurinDNC : DancerRotation
     private static bool TryUseTechnicalStep(out IAction? act)
     {
         ChurinDNC instance = new();
-        bool shouldHoldTechFinish = InCombat && HoldTechForTargets && AreDanceTargetsInRange;
+        bool shouldHoldTechFinish = InCombat && HoldTechForTargets && AreDanceTargetsInRange && !IsInFRU;
 
         if (shouldHoldTechFinish)
         {
