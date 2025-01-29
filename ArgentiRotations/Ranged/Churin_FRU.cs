@@ -46,21 +46,37 @@ namespace ArgentiRotations.Ranged
         private static float CurrentDowntimeEnd { get; set; }
         private static float CurrentPhaseEnd { get; set; }
 
+        /// <summary>
+        /// Checks if the specified boss is dead.
+        /// </summary>
+        /// <param name="boss">The boss to check.</param>
+        /// <returns>True if the boss is dead; otherwise, false.</returns>
+        private static bool IsBossDead(FRUBoss boss)
+        {
+            return PhaseTimings.GetBossHealthRatio(boss.ToString()) <= 1;
+        }
+
         #endregion
 
         #region FRU Timers
 
         /// <summary>
-        /// Struct representing the start and end timings of a downtime.
+        /// Class representing the start and end timings of a downtime.
         /// </summary>
-        public struct DowntimeTimings(float start, float end)
+        public class DowntimeTimings
         {
-            public float Start { get; set; } = start;
-            public float End { get; set; } = end;
+            public float Start { get; set; }
+            public float End { get; set; }
+
+            public DowntimeTimings(float start, float end)
+            {
+                Start = start;
+                End = end;
+            }
 
             public static void InitializeDowntimeTimers(FRUBoss boss)
             {
-                if (PhaseTimings.phaseTimers.TryGetValue(boss, out PhaseTimings phaseTimings))
+                if (PhaseTimings.phaseTimers.TryGetValue(boss, out PhaseTimings? phaseTimings))
                 {
                     float phaseStartTime = phaseTimings.Start;
                     downtimeTimers[Downtime.UtopianSky] = new DowntimeTimings(phaseStartTime + 34.8f, phaseStartTime + 80f);
@@ -75,11 +91,11 @@ namespace ArgentiRotations.Ranged
                 downtimeTimers[Downtime.None] = new DowntimeTimings(0f, 0f);
             }
 
-            internal static readonly Dictionary<Downtime, DowntimeTimings> downtimeTimers = new Dictionary<Downtime, DowntimeTimings>();
+            internal static readonly Dictionary<Downtime, DowntimeTimings> downtimeTimers = new();
 
             public static DowntimeTimings GetDowntimeTimings(Downtime downtime)
             {
-                return downtimeTimers.TryGetValue(downtime, out DowntimeTimings value) ? value : downtimeTimers[Downtime.None];
+                return downtimeTimers.TryGetValue(downtime, out DowntimeTimings? value) ? value : downtimeTimers[Downtime.None];
             }
 
             public static bool IsDowntime(FRUBoss boss, Downtime downtime)
@@ -108,14 +124,20 @@ namespace ArgentiRotations.Ranged
         }
 
         /// <summary>
-        /// Struct representing the start and end timings of a phase.
+        /// Class representing the start and end timings of a phase.
         /// </summary>
-        public struct PhaseTimings(float start, float end)
+        public class PhaseTimings
         {
-            public float Start { get; set; } = start;
-            public float End { get; set; } = end;
+            public float Start { get; set; }
+            public float End { get; set; }
 
-            internal static readonly Dictionary<FRUBoss, PhaseTimings> phaseTimers = new Dictionary<FRUBoss, PhaseTimings>();
+            public PhaseTimings(float start, float end)
+            {
+                Start = start;
+                End = end;
+            }
+
+            internal static readonly Dictionary<FRUBoss, PhaseTimings> phaseTimers = new();
 
             /// <summary>
             /// Initializes the phase timers and returns the phase durations for each phase.
@@ -186,7 +208,7 @@ namespace ArgentiRotations.Ranged
                 {
                     return AreBothBossesDead("Oracle of Darkness", "Usurper of Frost");
                 }
-                return IsBossDead(currentBoss.ToString());
+                return IsBossDead(currentBoss);
             }
 
             /// <summary>
@@ -207,19 +229,8 @@ namespace ArgentiRotations.Ranged
             /// <returns>The health ratio of the boss.</returns>
             public static float GetBossHealthRatio(string bossName)
             {
-                var target = AllHostileTargets.FirstOrDefault(currentBoss => currentBoss.Name.ToString() == bossName);
-                return target != null ? target.GetHealthRatio() : 999f; // Return 999f if the boss is not found (considered alive)
-            }
-
-            /// <summary>
-            /// Checks if the specified boss is dead.
-            /// </summary>
-            /// <param name="bossName">The name of the boss.</param>
-            /// <returns>True if the boss is dead; otherwise, false.</returns>
-            public static bool IsBossDead(string bossName)
-            {
-                var target = AllHostileTargets.FirstOrDefault(currentBoss => currentBoss.Name.ToString() == bossName);
-                return target != null && target.GetHealthRatio() <= 1;
+                var boss = AllHostileTargets.FirstOrDefault(target => target.Name.ToString() == bossName);
+                return boss?.GetHealthRatio() ?? 999f;
             }
         }
 
@@ -231,10 +242,14 @@ namespace ArgentiRotations.Ranged
         {
             if (IsInFRU && InCombat)
             {
-                var phaseDurations = PhaseTimings.InitializeAndGetPhaseDurations(currentBoss); // Initialize phase timers and get phase durations
+                // Initialize phase timers and get phase durations
+                var phaseDurations = PhaseTimings.InitializeAndGetPhaseDurations(currentBoss);
                 var hostileTargetNames = AllHostileTargets.Select(obj => obj.Name.ToString()).ToList();
-                UpdateActionFlags(); // Update action flags based on current boss, downtime, and combat state
+                
+                // Update action flags based on current boss, downtime, and combat state
+                UpdateActionFlags();
 
+                // Handle phase transitions
                 foreach (var phase in phaseDurations)
                 {
                     if (PhaseTimings.IsPhaseTransitionValid(phase, hostileTargetNames))
@@ -245,6 +260,7 @@ namespace ArgentiRotations.Ranged
             }
             else
             {
+                // Reset timers if not in combat
                 ResetFRUTimers();
             }
             return currentBoss;
@@ -257,9 +273,9 @@ namespace ArgentiRotations.Ranged
         {
             currentBoss = FRUBoss.None;
             currentDowntime = Downtime.None;
-            CurrentDowntimeStart = 0;
-            CurrentDowntimeEnd = 0;
-            CurrentPhaseEnd = 0;
+            CurrentDowntimeStart = 0f;
+            CurrentDowntimeEnd = 0f;
+            CurrentPhaseEnd = 0f;
 
             // Clear phase timers and downtime timers
             PhaseTimings.phaseTimers.Clear();
@@ -269,32 +285,32 @@ namespace ArgentiRotations.Ranged
         #endregion
 
         #region FRU Conditions
-        
+
         /// <summary>
         /// Checks if the player has the "Spell in Waiting Return" status.
         /// </summary>
         public static bool HasSpellinWaitingReturn => Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
-        
+
         /// <summary>
         /// Checks if the player has the "Return" status.
         /// </summary>
         public static bool HasReturn => Player.HasStatus(false, StatusID.Return);
-        
+
         /// <summary>
         /// Checks if the "Return" status is ending within 6 seconds.
         /// </summary>
         public static bool ReturnEnding => HasReturn && Player.WillStatusEnd(6, false, StatusID.Return);
-        
+
         /// <summary>
         /// Checks if the player has the "Finishing Move Ready" status.
         /// </summary>
         public static bool HasFinishingMove => Player.HasStatus(true, StatusID.FinishingMoveReady);
-        
+
         /// <summary>
         /// Indicates whether the finishing move should be removed.
         /// </summary>
         public static bool ShouldRemoveFinishingMove { get; set; } = false;
-        
+
         #endregion
 
         #region FRU Methods
@@ -338,6 +354,7 @@ namespace ArgentiRotations.Ranged
         {
             if (DowntimeTimings.IsDowntime(FRUBoss.Fatebreaker, Downtime.UtopianSky))
             {
+                CustomRotationAg.Debug("Fatebreaker: UtopianSky");
                 ShouldUseStandardStep = true;
                 ShouldUseFlourish = true;
                 ShouldFinishingMove = false;
@@ -345,6 +362,7 @@ namespace ArgentiRotations.Ranged
             }
             else
             {
+                CustomRotationAg.Debug("Fatebreaker: No downtime");
                 HandleNoDowntime();
             }
         }
@@ -365,6 +383,7 @@ namespace ArgentiRotations.Ranged
             }
             else
             {
+                CustomRotationAg.Debug("Usurper: No downtime");
                 HandleNoDowntime();
             }
         }
@@ -375,6 +394,7 @@ namespace ArgentiRotations.Ranged
         /// </summary>
         private static void HandleDiamondDustDowntime()
         {
+            CustomRotationAg.Debug("Usurper: DiamondDust");
             ShouldUseStandardStep = false;
             ShouldUseFlourish = false;
             ShouldFinishingMove = false;
@@ -391,6 +411,7 @@ namespace ArgentiRotations.Ranged
         /// </summary>
         private static void HandleLightRampantDowntime()
         {
+            CustomRotationAg.Debug("Usurper: LightRampant");
             ShouldUseStandardStep = false;
             ShouldUseFlourish = false;
             ShouldFinishingMove = false;
@@ -423,10 +444,12 @@ namespace ArgentiRotations.Ranged
         {
             if (DowntimeTimings.IsDowntime(FRUBoss.Adds, Downtime.GaiaTransition))
             {
+                CustomRotationAg.Debug("Adds: GaiaTransition");
                 ShouldUseStandardStep = CurrentDowntimeEnd - CombatTime <= 14;
             }
             else
             {
+                CustomRotationAg.Debug("Adds: No downtime");
                 ShouldUseStandardStep = false;
                 ShouldUseTechStep = true;
                 ShouldFinishingMove = true;
@@ -448,10 +471,12 @@ namespace ArgentiRotations.Ranged
         {
             if (DowntimeTimings.IsDowntime(FRUBoss.Gaia, Downtime.UltimateRelativity))
             {
+                CustomRotationAg.Debug("Gaia: UltimateRelativity");
                 ShouldUseTechStep = ReturnEnding && !HasSpellinWaitingReturn;
             }
             else
             {
+                CustomRotationAg.Debug("Gaia: No downtime");
                 HandleNoDowntime();
             }
         }
@@ -466,15 +491,18 @@ namespace ArgentiRotations.Ranged
 
             if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.OracleTargetable) && CurrentDowntimeStart - CombatTime <= 6)
             {
+                CustomRotationAg.Debug("Lesbians: OracleTargetable");
                 ShouldUseTechStep = true;
             }
             else if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.CrystalizeTime) && CurrentDowntimeEnd - CombatTime <= 15)
             {
+                CustomRotationAg.Debug("Lesbians: CrystalizeTime");
                 ShouldUseStandardStep = true;
                 ShouldUseTechStep = false;
             }
             else
             {
+                CustomRotationAg.Debug("Lesbians: No downtime");
                 HandleNoDowntime();
             }
         }
@@ -546,6 +574,10 @@ namespace ArgentiRotations.Ranged
                 if (bossActions.TryGetValue(bossName, out Action? value))
                 {
                     value.Invoke();
+                }
+                else
+                {
+                    CustomRotationAg.Debug($"BossDying: No action found for boss {bossName}");
                 }
             }
         }
