@@ -91,9 +91,9 @@ public sealed partial class ChurinDNC : DancerRotation
         ImGui.Text("Should Use Standard Step?:" + ShouldUseStandardStep);
         ChurinDNC instance = new();
         ImGui.Text("Should Hold for Tech Step?:" + instance.ShouldHoldForTechnicalStep());
-        ImGui.Text("has Return:" + HasReturn);
-        ImGui.Text("Return ending?" + ReturnEnding);
-        ImGui.Text("has Spell in Waiting Return:" + HasSpellinWaitingReturn);
+        ImGui.Text("has Return:" + hasReturn);
+        ImGui.Text("Return ending?" + returnEnding);
+        ImGui.Text("has Spell in Waiting Return:" + hasSpellinWaitingReturn);
         ImGui.Text("has Dance Targets in Range" + AreDanceTargetsInRange);
     }
 
@@ -189,7 +189,9 @@ public sealed partial class ChurinDNC : DancerRotation
         act = null;
         if (LoadFRU)
         {
-            CheckAndSetFRUPhase();
+            CheckFRUPhase();
+            CheckCurrentDowntime();
+            CheckFRULogic();
         }
 
         if (IsDancing || AboutToDance) return false;
@@ -359,7 +361,9 @@ public sealed partial class ChurinDNC : DancerRotation
     {
         if (LoadFRU)
         {
-            CheckAndSetFRUPhase();
+            CheckFRUPhase();
+            CheckCurrentDowntime();
+            CheckFRULogic();
         }
         if (TryExecuteGCD(out act))
         {
