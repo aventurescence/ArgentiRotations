@@ -1,586 +1,1122 @@
-namespace ArgentiRotations.Ranged
+namespace ArgentiRotations.Ranged;
+
+public sealed partial class ChurinDNC : ICustomRotation
 {
-    public sealed partial class ChurinDNC : ICustomRotation
+    #region FRU Properties
+    public enum FRUBoss
     {
-        #region FRU Properties
+        None,
+        Fatebreaker,
+        Usurper,
+        Adds,
+        Gaia,
+        Lesbians,
+        Pandora
+    }
+    public enum Downtime
+    {
+        None,
+        UtopianSky,
+        DiamondDust,
+        LightRampant,
+        GaiaTransition,
+        UltimateRelativity,
+        CrystalizeTime,
+    }
+    private static Downtime currentDowntime = Downtime.None;
+    private static FRUBoss currentBoss = FRUBoss.None;
+    private static bool TestingFRUModule { get; set; } = false;
 
-        private const string Fatebreaker = "Fatebreaker";
-        private const string Usurper = "Usurper of Frost";
-        private const string Gaia = "Oracle of Darkness";
-        private const string Pandora = "Pandora";
-        private const string Adds = "Ice Veil";
-        private static readonly string[] Lesbians = { Usurper, Gaia };
+    // Downtime Timers
+    public static float UtopianSkyStart { get; private set; }
+    public static float UtopianSkyEnd { get; private set; }
+    public static float DiamondDustStart { get; private set; }
+    public static float DiamondDustEnd { get; private set; }
+    public static float LightRampantStart { get; private set; }
+    public static float LightRampantEnd { get; private set; }
+    public static float GaiaTransitionStart { get; private set; }
+    public static float GaiaTransitionEnd { get; private set; }
+    public static float UltimateRelativityStart { get; private set; }
+    public static float UltimateRelativityEnd { get; private set; }
+    public static float OracleTargetable { get; private set; }
+    public static float CrystalizeTimeStart { get; private set; }
+    public static float CrystalizeTimeEnd { get; private set; }
 
-        /// <summary>
-        /// Enum representing the different bosses in the FRU.
-        /// </summary>
-        public enum FRUBoss
+    //Phase Start Times
+    private static float _fatebreakerStartTime;
+    public static float FatebreakerStartTime
+    {
+        get => _fatebreakerStartTime;
+        set
         {
-            None,
-            Fatebreaker,
-            Usurper,
-            Adds,
-            Gaia,
-            Lesbians,
-            Pandora
+            _fatebreakerStartTime = value;
+            UpdateFatebreakerTimings(value);
         }
+    }
 
-        /// <summary>
-        /// Enum representing the different downtimes in the FRU.
-        /// </summary>
-        public enum Downtime
+    private static float _usurperStartTime;
+    public static float UsurperStartTime
+    {
+        get => _usurperStartTime;
+        set
         {
-            None,
-            UtopianSky,
-            DiamondDust,
-            LightRampant,
-            GaiaTransition,
-            UltimateRelativity,
-            OracleTargetable,
-            CrystalizeTime,
+            _usurperStartTime = value;
+            UpdateUsurperTimings(value);
         }
+    }
 
-        private static Downtime currentDowntime = Downtime.None;
-        private static FRUBoss currentBoss = FRUBoss.None;
-        private static float CurrentDowntimeStart { get; set; }
-        private static float CurrentDowntimeEnd { get; set; }
-        private static float CurrentPhaseEnd { get; set; }
-
-        /// <summary>
-        /// Checks if the specified boss is dead.
-        /// </summary>
-        /// <param name="boss">The boss to check.</param>
-        /// <returns>True if the boss is dead; otherwise, false.</returns>
-        private static bool IsBossDead(FRUBoss boss)
+    private static float _addsStartTime;
+    public static float AddsStartTime
+    {
+        get => _addsStartTime;
+        set
         {
-            return PhaseTimings.GetBossHealthRatio(boss.ToString()) <= 1;
+            _addsStartTime = value;
+            UpdateAddsTimings(value);
         }
+    }
 
-        #endregion
-
-        #region FRU Timers
-
-        /// <summary>
-        /// Class representing the start and end timings of a downtime.
-        /// </summary>
-        public class DowntimeTimings
+    private static float _gaiaStartTime;
+    public static float GaiaStartTime
+    {
+        get => _gaiaStartTime;
+        set
         {
-            public float Start { get; set; }
-            public float End { get; set; }
-
-            public DowntimeTimings(float start, float end)
-            {
-                Start = start;
-                End = end;
-            }
-
-            public static void InitializeDowntimeTimers(FRUBoss boss)
-            {
-                if (PhaseTimings.phaseTimers.TryGetValue(boss, out PhaseTimings? phaseTimings))
-                {
-                    float phaseStartTime = phaseTimings.Start;
-                    downtimeTimers[Downtime.UtopianSky] = new DowntimeTimings(phaseStartTime + 34.8f, phaseStartTime + 80f);
-                    downtimeTimers[Downtime.DiamondDust] = new DowntimeTimings(phaseStartTime + 35.1f, phaseStartTime + 72f);
-                    downtimeTimers[Downtime.LightRampant] = new DowntimeTimings(phaseStartTime + 131.7f, phaseStartTime + 160.7f);
-                    downtimeTimers[Downtime.GaiaTransition] = new DowntimeTimings(phaseStartTime + 41.2f, phaseStartTime + 66.8f);
-                    downtimeTimers[Downtime.UltimateRelativity] = new DowntimeTimings(phaseStartTime + 18.3f, phaseStartTime + 62.2f);
-                    downtimeTimers[Downtime.OracleTargetable] = new DowntimeTimings(phaseStartTime + 25.4f, phaseStartTime + 25.5f);
-                    downtimeTimers[Downtime.CrystalizeTime] = new DowntimeTimings(phaseStartTime + 98.5f, phaseStartTime + 148.2f);
-                }
-                // Add a default entry for Downtime.None
-                downtimeTimers[Downtime.None] = new DowntimeTimings(0f, 0f);
-            }
-
-            internal static readonly Dictionary<Downtime, DowntimeTimings> downtimeTimers = new();
-
-            public static DowntimeTimings GetDowntimeTimings(Downtime downtime)
-            {
-                return downtimeTimers.TryGetValue(downtime, out DowntimeTimings? value) ? value : downtimeTimers[Downtime.None];
-            }
-
-            public static bool IsDowntime(FRUBoss boss, Downtime downtime)
-            {
-                if (downtime == Downtime.None)
-                {
-                    currentDowntime = Downtime.None;
-                    CurrentDowntimeStart = 0f;
-                    CurrentDowntimeEnd = 0f;
-                    return false;
-                }
-
-                if (currentBoss == boss)
-                {
-                    DowntimeTimings timings = GetDowntimeTimings(downtime);
-                    if (CombatElapsedLess(timings.End) && !CombatElapsedLess(timings.Start))
-                    {
-                        currentDowntime = downtime;
-                        CurrentDowntimeStart = timings.Start;
-                        CurrentDowntimeEnd = timings.End;
-                        return true;
-                    }
-                }
-                return false;
-            }
+            _gaiaStartTime = value;
+            UpdateGaiaTimings(value);
         }
+    }
 
-        /// <summary>
-        /// Class representing the start and end timings of a phase.
-        /// </summary>
-        public class PhaseTimings
+    private static float _lesbiansStartTime;
+    public static float LesbiansStartTime
+    {
+        get => _lesbiansStartTime;
+        set
         {
-            public float Start { get; set; }
-            public float End { get; set; }
+            _lesbiansStartTime = value;
+            UpdateLesbiansTimings(value);
+        }
+    }
+    public static float PandoraStartTime { get; set; }
 
-            public PhaseTimings(float start, float end)
+    //Timer Getter/Setters
+    public static float CurrentDowntimeStart { get; set; }
+    public static float CurrentDowntimeEnd { get; set; }
+    public static float CurrentPhaseStart { get; set; }
+    public static float CurrentPhaseEnd { get; set; }
+
+    // Downtime Timers
+    private static bool IsUtopianSky() => IsDowntime(FRUBoss.Fatebreaker,UtopianSkyStart, UtopianSkyEnd, Downtime.UtopianSky);
+    private static bool IsDiamondDust() => IsDowntime(FRUBoss.Usurper, DiamondDustStart, DiamondDustEnd, Downtime.DiamondDust);
+    private static bool IsLightRampant() => IsDowntime(FRUBoss.Usurper, LightRampantStart, LightRampantEnd, Downtime.LightRampant);
+    private static bool IsUltimateRelativity() => IsDowntime(FRUBoss.Gaia, UltimateRelativityStart, UltimateRelativityEnd, Downtime.UltimateRelativity);
+    private static bool IsCrystalizeTime() => IsDowntime(FRUBoss.Lesbians, CrystalizeTimeStart, CrystalizeTimeEnd,Downtime.CrystalizeTime);
+    private static bool IsNoDowntime() => currentDowntime == Downtime.None;
+
+    //FRU Specific Conditions
+    public static readonly bool hasSpellinWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
+    public static readonly bool hasReturn = Player.HasStatus(false, StatusID.Return);
+    public static readonly bool returnEnding = hasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
+    public static readonly bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
+    bool ShouldRemoveFinishingMove = false;
+
+    #endregion
+
+    #region FRU Methods
+    public static Downtime CheckCurrentDowntime()
+    {
+        if (IsInFRUOrTestingAndInCombat())
+        {
+            return currentDowntime;
+        }
+        currentDowntime = Downtime.None;
+        return currentDowntime;
+    }
+
+    private static bool IsInFRUOrTestingAndInCombat()
+    {
+        return (IsInFRU || TestingFRUModule) && InCombat && CheckDowntimeConditions();
+    }
+
+    private static bool CheckDowntimeConditions()
+    {
+        Func<bool>[] downtimeChecks =
+        [
+            IsUtopianSky,
+            IsDiamondDust,
+            IsLightRampant,
+            IsUltimateRelativity,
+            IsCrystalizeTime,
+            IsNoDowntime
+        ];
+
+        return downtimeChecks.Any(check => check());
+    }
+
+    private static bool IsDowntime(FRUBoss boss, float start, float end, Downtime downtime)
+    {
+        if (currentBoss == boss && CombatElapsedLess(end) && !CombatElapsedLess(start))
+        {
+            CurrentDowntimeStart = start;
+            CurrentDowntimeEnd = end;
+            currentDowntime = downtime;
+            return true;
+        }
+        return true;
+    }
+
+    private static bool AreBothBossesDead(string bossName1, string bossName2)
+    {
+        return GetBossHealthRatio(bossName1) <= 1 && GetBossHealthRatio(bossName2) <= 0;
+    }
+
+    private static float GetBossHealthRatio(string bossName)
+    {
+        var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+        return target != null ? target.GetHealthRatio() : 1.0f; // Return 1.0f if the boss is not found (considered alive)
+    }
+
+    private static bool IsBossDead(string bossName)
+    {
+        var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+        return target != null && target.GetHealthRatio() <= 1;
+    }
+
+    public static FRUBoss CheckFRUPhase()
+    {
+        if (IsInFRU && InCombat)
+        {
+            var hostileTargetNames = AllHostileTargets.Select(obj => obj.Name.ToString()).ToList();
+            if (CheckPhase(FRUBoss.Fatebreaker, hostileTargetNames, "Fatebreaker", 160.1f)) return currentBoss;
+            if (CheckPhase(FRUBoss.Usurper, hostileTargetNames, "Usurper of Frost", 185f, FRUBoss.Fatebreaker)) return currentBoss;
+            if (CheckPhase(FRUBoss.Adds, hostileTargetNames, "Ice Veil", 41.2f, FRUBoss.Usurper)) return currentBoss;
+            if (CheckPhase(FRUBoss.Gaia, hostileTargetNames, "Oracle of Darkness", 157.9f, FRUBoss.Adds)) return currentBoss;
+            if (CheckPhase(FRUBoss.Lesbians, hostileTargetNames, "Usurper of Frost", 175.9f, FRUBoss.Gaia)) return currentBoss;
+            if (CheckPhase(FRUBoss.Pandora, hostileTargetNames, "Pandora", 271.9f, FRUBoss.Lesbians)) return currentBoss;
+        }
+        return currentBoss;
+    }
+
+    private static bool CheckPhase(FRUBoss boss, IEnumerable<string> hostileTargetNames, string phaseName, float duration, FRUBoss? requiredPreviousBoss = null)
+    {
+        if (hostileTargetNames.Contains(phaseName) && (requiredPreviousBoss == null || currentBoss == requiredPreviousBoss))
+        {
+            // End the current phase early if the next boss becomes targetable or if the current boss is dead
+            if (currentBoss == FRUBoss.Lesbians)
             {
-                Start = start;
-                End = end;
-            }
-
-            internal static readonly Dictionary<FRUBoss, PhaseTimings> phaseTimers = new();
-
-            /// <summary>
-            /// Initializes the phase timers and returns the phase durations for each phase.
-            /// </summary>
-            /// <returns>A dictionary containing the phase durations for each boss.</returns>
-            public static Dictionary<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)> InitializeAndGetPhaseDurations(FRUBoss currentBoss)
-            {
-                var phaseDurations = new Dictionary<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)>
-                {
-                    { FRUBoss.Fatebreaker, (new[] { Fatebreaker }, 160.1f, null, 30) },
-                    { FRUBoss.Usurper, (new[] { Usurper }, 185f, FRUBoss.Fatebreaker, 20) },
-                    { FRUBoss.Adds, (new[] { Adds }, 41.2f, FRUBoss.Usurper, 1) },
-                    { FRUBoss.Gaia, (new[] { Gaia }, 157.9f, FRUBoss.Adds, 20) },
-                    { FRUBoss.Lesbians, (Lesbians, 175.9f, FRUBoss.Gaia, 25) },
-                    { FRUBoss.Pandora, (new[] { Pandora }, 271.9f, FRUBoss.Lesbians, 1) }
-                };
-
-                if (phaseDurations.TryGetValue(currentBoss, out var phaseInfo))
-                {
-                    phaseTimers[currentBoss] = new PhaseTimings(CombatTime, CombatTime + phaseInfo.duration);
-                    DowntimeTimings.InitializeDowntimeTimers(currentBoss);
-                }
-
-                return phaseDurations;
-            }
-
-            /// <summary>
-            /// Handles the phase transition logic for the specified phase.
-            /// </summary>
-            /// <param name="phase">The phase to handle the transition for.</param>
-            public static void HandlePhaseTransition(KeyValuePair<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)> phase)
-            {
-                if (ShouldEndCurrentPhaseEarly())
+                if (AreBothBossesDead("Oracle of Darkness", "Usurper of Frost"))
                 {
                     CurrentPhaseEnd = CombatTime;
                 }
-
-                if (CombatTime >= CurrentPhaseEnd)
-                {
-                    currentBoss = phase.Key;
-                    CurrentPhaseEnd = CombatTime + phase.Value.duration;
-                    DowntimeTimings.InitializeDowntimeTimers(currentBoss);
-                }
+            }
+            else if (IsBossDead(currentBoss.ToString()))
+            {
+                CurrentPhaseEnd = CombatTime;
             }
 
-            /// <summary>
-            /// Checks if the phase transition is valid based on the current hostile targets and required previous boss.
-            /// </summary>
-            /// <param name="phase">The phase to check the transition for.</param>
-            /// <param name="hostileTargetNames">The list of hostile target names.</param>
-            /// <returns>True if the phase transition is valid; otherwise, false.</returns>
-            public static bool IsPhaseTransitionValid(KeyValuePair<FRUBoss, (string[] phaseName, float duration, FRUBoss? requiredPreviousBoss, float healthThreshold)> phase, List<string> hostileTargetNames)
+            // Fallback to advance to the next phase if duration is exceeded
+            if (CombatTime >= CurrentPhaseEnd)
             {
-                bool doesPhaseNameContain = phase.Key == FRUBoss.Lesbians
-                    ? hostileTargetNames.Contains(Usurper) // Check if Usurper of Frost is present
-                    : phase.Value.phaseName.All(hostileTargetNames.Contains);
-                bool isPreviousBossRequired = phase.Value.requiredPreviousBoss == null || currentBoss == phase.Value.requiredPreviousBoss;
-                return doesPhaseNameContain && isPreviousBossRequired;
-            }
-
-            /// <summary>
-            /// Checks if the current phase should end early based on the boss health.
-            /// </summary>
-            /// <returns>True if the current phase should end early; otherwise, false.</returns>
-            public static bool ShouldEndCurrentPhaseEarly()
-            {
-                if (currentBoss == FRUBoss.Lesbians)
-                {
-                    return AreBothBossesDead("Oracle of Darkness", "Usurper of Frost");
-                }
-                return IsBossDead(currentBoss);
-            }
-
-            /// <summary>
-            /// Checks if both specified bosses are dead.
-            /// </summary>
-            /// <param name="bossName1">The name of the first boss.</param>
-            /// <param name="bossName2">The name of the second boss.</param>
-            /// <returns>True if both bosses are dead; otherwise, false.</returns>
-            public static bool AreBothBossesDead(string bossName1, string bossName2)
-            {
-                return GetBossHealthRatio(bossName1) <= 1 && GetBossHealthRatio(bossName2) <= 1;
-            }
-
-            /// <summary>
-            /// Gets the health ratio of the specified boss.
-            /// </summary>
-            /// <param name="bossName">The name of the boss.</param>
-            /// <returns>The health ratio of the boss.</returns>
-            public static float GetBossHealthRatio(string bossName)
-            {
-                var boss = AllHostileTargets.FirstOrDefault(target => target.Name.ToString() == bossName);
-                return boss?.GetHealthRatio() ?? 999f;
+                SetPhase(boss, duration);
+                return true;
             }
         }
+        return false;
+    }
 
-        /// <summary>
-        /// Checks and sets the current FRU phase based on the combat state and hostile targets.
-        /// </summary>
-        /// <returns>The current boss phase.</returns>
-        public static FRUBoss CheckAndSetFRUPhase()
+    private static void SetPhase(FRUBoss boss, float duration)
+    {
+        CurrentPhaseStart = CombatTime;
+        CurrentPhaseEnd = CombatTime + duration;
+        currentBoss = boss;
+
+        UpdateBossStartTime(boss, CombatTime);
+    }
+
+    private static void UpdateBossStartTime(FRUBoss boss, float startTime)
+    {
+        switch (boss)
         {
-            if (IsInFRU && InCombat)
-            {
-                // Initialize phase timers and get phase durations
-                var phaseDurations = PhaseTimings.InitializeAndGetPhaseDurations(currentBoss);
-                var hostileTargetNames = AllHostileTargets.Select(obj => obj.Name.ToString()).ToList();
-                
-                // Update action flags based on current boss, downtime, and combat state
-                UpdateActionFlags();
-
-                // Handle phase transitions
-                foreach (var phase in phaseDurations)
-                {
-                    if (PhaseTimings.IsPhaseTransitionValid(phase, hostileTargetNames))
-                    {
-                        PhaseTimings.HandlePhaseTransition(phase);
-                    }
-                }
-            }
-            else
-            {
-                // Reset timers if not in combat
-                ResetFRUTimers();
-            }
-            return currentBoss;
+            case FRUBoss.Fatebreaker:
+                FatebreakerStartTime = startTime;
+                break;
+            case FRUBoss.Usurper:
+                UsurperStartTime = startTime;
+                UpdateUsurperTimings(startTime);
+                break;
+            case FRUBoss.Adds:
+                AddsStartTime = startTime;
+                UpdateAddsTimings(startTime);
+                break;
+            case FRUBoss.Gaia:
+                GaiaStartTime = startTime;
+                UpdateGaiaTimings(startTime);
+                break;
+            case FRUBoss.Lesbians:
+                LesbiansStartTime = startTime;
+                UpdateLesbiansTimings(startTime);
+                break;
+            case FRUBoss.Pandora:
+                PandoraStartTime = startTime;
+                break;
         }
+    }
 
-        /// <summary>
-        /// Resets the FRU phase and downtime timers.
-        /// </summary>
-        private static void ResetFRUTimers()
-        {
-            currentBoss = FRUBoss.None;
-            currentDowntime = Downtime.None;
-            CurrentDowntimeStart = 0f;
-            CurrentDowntimeEnd = 0f;
-            CurrentPhaseEnd = 0f;
+    private static void UpdateFatebreakerTimings(float startTime)
+    {
+        UtopianSkyStart = startTime + 34.8f;
+        UtopianSkyEnd = UtopianSkyStart + 45.2f;
+    }
 
-            // Clear phase timers and downtime timers
-            PhaseTimings.phaseTimers.Clear();
-            DowntimeTimings.downtimeTimers.Clear();
-        }
+    private static void UpdateUsurperTimings(float startTime)
+    {
+        DiamondDustStart = startTime + 35.1f;
+        DiamondDustEnd = DiamondDustStart + 36.9f;
+        LightRampantStart = DiamondDustEnd + 59.7f;
+        LightRampantEnd = LightRampantStart + 29f;
+    }
 
-        #endregion
+    private static void UpdateAddsTimings(float startTime)
+    {
+        GaiaTransitionStart = startTime + 41.2f;
+        GaiaTransitionEnd = GaiaTransitionStart + 25.6f;
+    }
 
-        #region FRU Conditions
+    private static void UpdateGaiaTimings(float startTime)
+    {
+        UltimateRelativityStart = startTime + 18.3f;
+        UltimateRelativityEnd = UltimateRelativityStart + 43.9f;
+    }
 
-        /// <summary>
-        /// Checks if the player has the "Spell in Waiting Return" status.
-        /// </summary>
-        public static bool HasSpellinWaitingReturn => Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
-
-        /// <summary>
-        /// Checks if the player has the "Return" status.
-        /// </summary>
-        public static bool HasReturn => Player.HasStatus(false, StatusID.Return);
-
-        /// <summary>
-        /// Checks if the "Return" status is ending within 6 seconds.
-        /// </summary>
-        public static bool ReturnEnding => HasReturn && Player.WillStatusEnd(6, false, StatusID.Return);
-
-        /// <summary>
-        /// Checks if the player has the "Finishing Move Ready" status.
-        /// </summary>
-        public static bool HasFinishingMove => Player.HasStatus(true, StatusID.FinishingMoveReady);
-
-        /// <summary>
-        /// Indicates whether the finishing move should be removed.
-        /// </summary>
-        public static bool ShouldRemoveFinishingMove { get; set; } = false;
-
-        #endregion
-
-        #region FRU Methods
-
-        /// <summary>
-        /// Updates the action flags based on current boss, downtime, and combat state.
-        /// </summary>
-        private static void UpdateActionFlags()
+    private static void UpdateLesbiansTimings(float startTime)
+    {
+        OracleTargetable = startTime + 25.4f;
+        CrystalizeTimeStart = startTime + 98.5f;
+        CrystalizeTimeEnd = CrystalizeTimeStart + 49.7f;
+    }
+    
+    //Handling logic for each boss
+    private void CheckFRULogic()
+    {
+        if (LoadFRU && InCombat)
         {
             switch (currentBoss)
             {
                 case FRUBoss.Fatebreaker:
-                    HandleFatebreaker();
+                    HandleFatebreakerLogic();
                     break;
                 case FRUBoss.Usurper:
-                    HandleUsurper();
+                    HandleUsurperLogic();
                     break;
                 case FRUBoss.Adds:
-                    HandleAdds();
+                    HandleAddsLogic();
                     break;
                 case FRUBoss.Gaia:
-                    HandleGaia();
+                    HandleGaiaLogic();
                     break;
                 case FRUBoss.Lesbians:
-                    HandleLesbians();
+                    HandleLesbiansLogic();
                     break;
                 case FRUBoss.Pandora:
-                    HandlePandora();
-                    break;
-                default:
-                    HandleNoDowntime();
+                    HandlePandoraLogic();
                     break;
             }
         }
+    }
 
-        /// <summary>
-        /// Handles the logic for the Fatebreaker boss.
-        /// Sets various flags based on the current downtime.
-        /// </summary>
-        private static void HandleFatebreaker()
+    private void HandleFatebreakerLogic()
+    {
+        switch(currentDowntime)
         {
-            if (DowntimeTimings.IsDowntime(FRUBoss.Fatebreaker, Downtime.UtopianSky))
+            case Downtime.UtopianSky:
             {
-                CustomRotationAg.Debug("Fatebreaker: UtopianSky");
-                ShouldUseStandardStep = true;
-                ShouldUseFlourish = true;
-                ShouldFinishingMove = false;
-                ShouldRemoveFinishingMove = HasFinishingMove;
-            }
-            else
-            {
-                CustomRotationAg.Debug("Fatebreaker: No downtime");
-                HandleNoDowntime();
-            }
-        }
-
-        /// <summary>
-        /// Handles the logic for the Usurper boss.
-        /// Calls specific downtime handlers based on the current downtime.
-        /// </summary>
-        private static void HandleUsurper()
-        {
-            if (DowntimeTimings.IsDowntime(FRUBoss.Usurper, Downtime.DiamondDust))
-            {
-                HandleDiamondDustDowntime();
-            }
-            else if (DowntimeTimings.IsDowntime(FRUBoss.Usurper, Downtime.LightRampant))
-            {
-                HandleLightRampantDowntime();
-            }
-            else
-            {
-                CustomRotationAg.Debug("Usurper: No downtime");
-                HandleNoDowntime();
-            }
-        }
-
-        /// <summary>
-        /// Handles the logic for the Diamond Dust downtime.
-        /// Sets various flags based on the remaining downtime.
-        /// </summary>
-        private static void HandleDiamondDustDowntime()
-        {
-            CustomRotationAg.Debug("Usurper: DiamondDust");
-            ShouldUseStandardStep = false;
-            ShouldUseFlourish = false;
-            ShouldFinishingMove = false;
-            ShouldRemoveFinishingMove = HasFinishingMove;
-            if (CurrentDowntimeEnd - CombatTime <= 15)
-            {
-                ShouldUseStandardStep = true;
-            }
-        }
-
-        /// <summary>
-        /// Handles the logic for the Light Rampant downtime.
-        /// Sets various flags based on the remaining downtime and checks if Flourish can be used.
-        /// </summary>
-        private static void HandleLightRampantDowntime()
-        {
-            CustomRotationAg.Debug("Usurper: LightRampant");
-            ShouldUseStandardStep = false;
-            ShouldUseFlourish = false;
-            ShouldFinishingMove = false;
-            ShouldRemoveFinishingMove = false;
-
-            var instance = new ChurinDNC();
-            // Check if the current downtime is ending in 15 seconds and if Flourish can be used
-            if (CurrentDowntimeEnd - CombatTime <= 15 && instance.FlourishPvE.CanUse(out _))
-            {
-                ShouldUseFlourish = true;
-            }
-
-            // Additional check if the current downtime is ending in more than 5 seconds
-            if (CurrentDowntimeEnd - CombatTime > 5)
-            {
-                ShouldRemoveFinishingMove = true;
-                ShouldUseStandardStep = true;
-            }
-            else
-            {
-                ShouldRemoveFinishingMove = false;
-            }
-        }
-
-        /// <summary>
-        /// Handles the logic for the Adds phase.
-        /// Sets various flags based on the current downtime.
-        /// </summary>
-        private static void HandleAdds()
-        {
-            if (DowntimeTimings.IsDowntime(FRUBoss.Adds, Downtime.GaiaTransition))
-            {
-                CustomRotationAg.Debug("Adds: GaiaTransition");
-                ShouldUseStandardStep = CurrentDowntimeEnd - CombatTime <= 14;
-            }
-            else
-            {
-                CustomRotationAg.Debug("Adds: No downtime");
-                ShouldUseStandardStep = false;
-                ShouldUseTechStep = true;
-                ShouldFinishingMove = true;
-
-                if (TryUseTechnicalStep(out _))
-                {
-                    ShouldUseStandardStep = true;
-                }
-
-                HandleNoDowntime();
-            }
-        }
-
-        /// <summary>
-        /// Handles the logic for the Gaia boss.
-        /// Sets various flags based on the current downtime.
-        /// </summary>
-        private static void HandleGaia()
-        {
-            if (DowntimeTimings.IsDowntime(FRUBoss.Gaia, Downtime.UltimateRelativity))
-            {
-                CustomRotationAg.Debug("Gaia: UltimateRelativity");
-                ShouldUseTechStep = ReturnEnding && !HasSpellinWaitingReturn;
-            }
-            else
-            {
-                CustomRotationAg.Debug("Gaia: No downtime");
-                HandleNoDowntime();
-            }
-        }
-
-        /// <summary>
-        /// Handles the logic for the Lesbians phase.
-        /// Sets various flags based on the current downtime.
-        /// </summary>
-        private static void HandleLesbians()
-        {
-            ShouldUseTechStep = false;
-
-            if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.OracleTargetable) && CurrentDowntimeStart - CombatTime <= 6)
-            {
-                CustomRotationAg.Debug("Lesbians: OracleTargetable");
-                ShouldUseTechStep = true;
-            }
-            else if (DowntimeTimings.IsDowntime(FRUBoss.Lesbians, Downtime.CrystalizeTime) && CurrentDowntimeEnd - CombatTime <= 15)
-            {
-                CustomRotationAg.Debug("Lesbians: CrystalizeTime");
-                ShouldUseStandardStep = true;
-                ShouldUseTechStep = false;
-            }
-            else
-            {
-                CustomRotationAg.Debug("Lesbians: No downtime");
-                HandleNoDowntime();
-            }
-        }
-        /// <summary>
-        /// Handles the logic for the Pandora boss.
-        /// Sets various flags and calls HandleNoDowntime.
-        /// </summary>
-        private static void HandlePandora()
-        {
-            ShouldUseStandardStep = false;
-            ShouldUseTechStep = true;
-            ShouldFinishingMove = true;
-
-            if (TryUseTechnicalStep(out _))
-            {
-                ShouldUseStandardStep = true;
-            }
-            HandleNoDowntime();
-        }
-
-        /// <summary>
-        /// Handles the logic when there is no downtime.
-        /// Sets various flags based on the remaining downtime and calls BossDying.
-        /// </summary>
-        private static void HandleNoDowntime()
-        {
-            if (CurrentDowntimeStart - CombatTime <= 4)
-            {
-                ShouldUseStandardStep = false;
-                ShouldFinishingMove = true;
-                ShouldRemoveFinishingMove = false;
-            }
-            else
-            {
-                ShouldUseStandardStep = true;
-            }
-        
-            string[] bossNames = new[] { Fatebreaker, Usurper, Gaia, "Lesbians" };
-            BossDying(bossNames);
-        }
-
-        /// <summary>
-        /// Handles the logic for determining if a boss is dying based on health thresholds.
-        /// Sets various flags based on the boss health ratios.
-        /// </summary>
-        /// <param name="bossNames">An array of boss names to check.</param>
-        private static void BossDying(string[] bossNames)
-        {
-            var bossActions = new Dictionary<string, Action>
-            {
-                { Fatebreaker, () => { if (PhaseTimings.GetBossHealthRatio(Fatebreaker) <= 30f) { ShouldFinishingMove = false; ShouldUseFlourish = false; } } },
-                { Usurper, () => { if (PhaseTimings.GetBossHealthRatio(Usurper) <= 25f) { ShouldUseStandardStep = true; } } },
-                { Gaia, () => { if (PhaseTimings.GetBossHealthRatio(Gaia) <= 20f) { ShouldUseStandardStep = false; } } },
-                { "Lesbians", () =>
+                shouldUseStandardStep = true;
+                shouldUseFlourish = true;
+                shouldFinishingMove = false;
+                    
+                if (hasFinishingMove)
                     {
-                        // Ensure the Lesbians array is not null
-                        if (Lesbians != null && Lesbians.Any(boss => PhaseTimings.GetBossHealthRatio(boss) <= 20f))
-                        {
-                            ShouldUseStandardStep = true;
-                            ShouldUseTechStep = false;
-                            ShouldUseFlourish = true;
-                        }
+                        ShouldRemoveFinishingMove = true;
+                    }
+            }
+            break;
+            case Downtime.None:
+                {
+                    HandleNoDowntime();
+                }
+            break;
+        }
+    }
+
+    private void HandleUsurperLogic()
+    {
+        shouldUseStandardStep = true;
+        shouldUseFlourish = true;
+
+        switch(currentDowntime)
+        {
+            case Downtime.DiamondDust:
+                HandleDiamondDustDowntime();
+                break;
+            case Downtime.LightRampant:
+                HandleLightRampantDowntime();
+                break;
+            case Downtime.None:
+                HandleNoDowntime();
+                break;
+        }
+    }
+
+    private void HandleDiamondDustDowntime()
+    {
+        shouldFinishingMove = false;
+        if (FlourishPvE.Cooldown.IsCoolingDown && hasFinishingMove)
+        {
+            ShouldRemoveFinishingMove = true;
+        }
+        if (CurrentDowntimeEnd - CombatTime <= 15)
+        {
+            shouldUseStandardStep = true;
+        }
+    }
+
+    private void HandleLightRampantDowntime()
+    {
+        shouldUseFlourish = true;
+        shouldFinishingMove = false;
+        bool isDowntimeEndingSoon = CurrentDowntimeEnd - CombatTime <= 15;
+        bool isFlourishCoolingDown = FlourishPvE.Cooldown.IsCoolingDown;
+        bool hasFinishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady);
+        bool shouldRemoveFinishingMove = isDowntimeEndingSoon && isFlourishCoolingDown && hasFinishingMoveReady;
+        
+        if (shouldRemoveFinishingMove)
+        {
+            ShouldRemoveFinishingMove = true;
+            shouldUseStandardStep = true;
+        }
+    }
+
+    private void HandleNoDowntime()
+    {
+        shouldUseTechStep = true;
+
+        switch (currentBoss)
+        {
+            case FRUBoss.Fatebreaker:
+                HandleNoDowntimeForFatebreaker();
+            break;
+            case FRUBoss.Usurper:
+                HandleNoDowntimeForUsurper();
+            break;
+            case FRUBoss.Adds:
+                HandleNoDowntimeForAdds();
+            break;
+            case FRUBoss.Gaia:
+                HandleNoDowntimeForGaia();
+            break;
+            case FRUBoss.Lesbians:
+                HandleNoDowntimeForLesbians();
+            break;
+            case FRUBoss.Pandora:
+                HandleNoDowntimeForPandora();
+            break;
+        }
+    }
+
+    private void HandleNoDowntimeForFatebreaker()
+    {
+        shouldUseStandardStep = true;
+        shouldUseTechStep = true;
+        shouldFinishingMove = true;
+        // If Fatebreaker is dying
+        if (DanceDance && HostileTarget != null && (HostileTarget.IsDying() || HostileTarget.GetHealthRatio() < 0.35f))
+        {
+            shouldUseFlourish = false;
+            shouldUseStandardStep = false;
+            shouldFinishingMove = false;
+        }
+    }
+
+    private void HandleNoDowntimeForUsurper()
+    {
+        if (CombatElapsedLess(DiamondDustStart - 5))
+            {
+                shouldUseStandardStep = true;
+                shouldUseFlourish = true;
+            }
+        if (CombatElapsedLess(LightRampantStart - 5))
+            {
+                shouldUseStandardStep = true;
+                shouldUseFlourish = true;
+            }
+    }
+
+    private void HandleNoDowntimeForAdds()
+    {
+        shouldUseTechStep = true;
+        shouldUseFlourish = true;
+        shouldUseStandardStep = true;
+        shouldFinishingMove = true;
+    }
+
+    private void HandleNoDowntimeForGaia()
+    {
+        shouldUseStandardStep = true;
+        shouldUseFlourish = true;
+        shouldFinishingMove = true;
+    }
+
+    private void HandleNoDowntimeForLesbians()
+    {
+        shouldUseStandardStep = true;
+        shouldUseFlourish = true;
+        shouldFinishingMove = true;
+        shouldUseTechStep = false;
+        CheckOracleTargetable();
+    }
+
+    private void CheckOracleTargetable()
+    {
+        if (OracleTargetable - CombatTime <= 7)
+        {
+            shouldUseTechStep = true;
+        }
+    }
+
+    private void HandleNoDowntimeForPandora()
+    {
+        shouldUseTechStep = true;
+        shouldUseFlourish = true;
+        shouldFinishingMove = true;
+        shouldUseStandardStep = true;
+    }
+
+    private void HandleAddsLogic()
+    {
+        HandleNoDowntime();
+    }
+
+    private void HandleGaiaLogic()
+    {
+        switch (currentDowntime)
+        {
+            case Downtime.UltimateRelativity:
+                {
+                    shouldUseStandardStep = true;
+                    shouldUseFlourish = false;
+                    shouldFinishingMove = true;
+                    bool UltimateRelativityNotEnding = hasReturn && !returnEnding;
+
+                    if (hasSpellinWaitingReturn || UltimateRelativityNotEnding)
+                    {
+                        shouldUseTechStep = false;
+                    }
+                    else
+                    {
+                        if (returnEnding)
+                            {
+                                shouldUseTechStep = true;
+                            }
                     }
                 }
-            };
+                break;
+                case Downtime.None:
+                    {
+                        HandleNoDowntime();
+                    }
+                break;
+        }
+    }  
 
-            foreach (var bossName in bossNames)
-            {
-                if (bossActions.TryGetValue(bossName, out Action? value))
+    private void HandleLesbiansLogic()
+    {
+        switch (currentDowntime)
+        {
+            case Downtime.CrystalizeTime:
                 {
-                    value.Invoke();
+                    shouldUseStandardStep = false;
+                    shouldUseFlourish = false;
+                    shouldFinishingMove = false;
+                    if (CrystalizeTimeEnd - CombatTime <=5 )
+                    {
+                        shouldUseStandardStep = true;
+                        shouldUseFlourish = true;
+                        shouldFinishingMove = true;
+                    }
                 }
-                else
+                break;
+                case Downtime.None:
+                    {
+                        HandleNoDowntime();
+                    }
+                break;
+            }
+    }
+
+    private void HandlePandoraLogic()
+    {
+        HandleNoDowntime();
+    }
+    
+    #endregionnamespace ArgentiRotations.Ranged;
+
+public sealed partial class ChurinDNC : ICustomRotation
+{
+    #region FRU Properties
+    public enum FRUBoss
+    {
+        None,
+        Fatebreaker,
+        Usurper,
+        Adds,
+        Gaia,
+        Lesbians,
+        Pandora
+    }
+    public enum Downtime
+    {
+        None,
+        UtopianSky,
+        DiamondDust,
+        LightRampant,
+        GaiaTransition,
+        UltimateRelativity,
+        CrystalizeTime,
+    }
+    private static Downtime currentDowntime = Downtime.None;
+    private static FRUBoss currentBoss = FRUBoss.None;
+    private static bool TestingFRUModule { get; set; } = false;
+
+    // Downtime Timers
+    public static float UtopianSkyStart { get; private set; }
+    public static float UtopianSkyEnd { get; private set; }
+    public static float DiamondDustStart { get; private set; }
+    public static float DiamondDustEnd { get; private set; }
+    public static float LightRampantStart { get; private set; }
+    public static float LightRampantEnd { get; private set; }
+    public static float GaiaTransitionStart { get; private set; }
+    public static float GaiaTransitionEnd { get; private set; }
+    public static float UltimateRelativityStart { get; private set; }
+    public static float UltimateRelativityEnd { get; private set; }
+    public static float OracleTargetable { get; private set; }
+    public static float CrystalizeTimeStart { get; private set; }
+    public static float CrystalizeTimeEnd { get; private set; }
+
+    //Phase Start Times
+    private static float _fatebreakerStartTime;
+    public static float FatebreakerStartTime
+    {
+        get => _fatebreakerStartTime;
+        set
+        {
+            _fatebreakerStartTime = value;
+            UpdateFatebreakerTimings(value);
+        }
+    }
+
+    private static float _usurperStartTime;
+    public static float UsurperStartTime
+    {
+        get => _usurperStartTime;
+        set
+        {
+            _usurperStartTime = value;
+            UpdateUsurperTimings(value);
+        }
+    }
+
+    private static float _addsStartTime;
+    public static float AddsStartTime
+    {
+        get => _addsStartTime;
+        set
+        {
+            _addsStartTime = value;
+            UpdateAddsTimings(value);
+        }
+    }
+
+    private static float _gaiaStartTime;
+    public static float GaiaStartTime
+    {
+        get => _gaiaStartTime;
+        set
+        {
+            _gaiaStartTime = value;
+            UpdateGaiaTimings(value);
+        }
+    }
+
+    private static float _lesbiansStartTime;
+    public static float LesbiansStartTime
+    {
+        get => _lesbiansStartTime;
+        set
+        {
+            _lesbiansStartTime = value;
+            UpdateLesbiansTimings(value);
+        }
+    }
+    public static float PandoraStartTime { get; set; }
+
+    //Timer Getter/Setters
+    public static float CurrentDowntimeStart { get; set; }
+    public static float CurrentDowntimeEnd { get; set; }
+    public static float CurrentPhaseStart { get; set; }
+    public static float CurrentPhaseEnd { get; set; }
+
+    // Downtime Timers
+    private static bool IsUtopianSky() => IsDowntime(FRUBoss.Fatebreaker,UtopianSkyStart, UtopianSkyEnd, Downtime.UtopianSky);
+    private static bool IsDiamondDust() => IsDowntime(FRUBoss.Usurper, DiamondDustStart, DiamondDustEnd, Downtime.DiamondDust);
+    private static bool IsLightRampant() => IsDowntime(FRUBoss.Usurper, LightRampantStart, LightRampantEnd, Downtime.LightRampant);
+    private static bool IsUltimateRelativity() => IsDowntime(FRUBoss.Gaia, UltimateRelativityStart, UltimateRelativityEnd, Downtime.UltimateRelativity);
+    private static bool IsCrystalizeTime() => IsDowntime(FRUBoss.Lesbians, CrystalizeTimeStart, CrystalizeTimeEnd,Downtime.CrystalizeTime);
+    private static bool IsNoDowntime() => currentDowntime == Downtime.None;
+
+    //FRU Specific Conditions
+    public static readonly bool hasSpellinWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
+    public static readonly bool hasReturn = Player.HasStatus(false, StatusID.Return);
+    public static readonly bool returnEnding = hasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
+    public static readonly bool hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
+    bool ShouldRemoveFinishingMove = false;
+
+    #endregion
+
+    #region FRU Methods
+    public static Downtime CheckCurrentDowntime()
+    {
+        if (IsInFRUOrTestingAndInCombat())
+        {
+            return currentDowntime;
+        }
+        currentDowntime = Downtime.None;
+        return currentDowntime;
+    }
+
+    private static bool IsInFRUOrTestingAndInCombat()
+    {
+        return (IsInFRU || TestingFRUModule) && InCombat && CheckDowntimeConditions();
+    }
+
+    private static bool CheckDowntimeConditions()
+    {
+        Func<bool>[] downtimeChecks =
+        [
+            IsUtopianSky,
+            IsDiamondDust,
+            IsLightRampant,
+            IsUltimateRelativity,
+            IsCrystalizeTime,
+            IsNoDowntime
+        ];
+
+        return downtimeChecks.Any(check => check());
+    }
+
+    private static bool IsDowntime(FRUBoss boss, float start, float end, Downtime downtime)
+    {
+        if (currentBoss == boss && CombatElapsedLess(end) && !CombatElapsedLess(start))
+        {
+            CurrentDowntimeStart = start;
+            CurrentDowntimeEnd = end;
+            currentDowntime = downtime;
+            return true;
+        }
+        return true;
+    }
+
+    private static bool AreBothBossesDead(string bossName1, string bossName2)
+    {
+        return GetBossHealthRatio(bossName1) <= 1 && GetBossHealthRatio(bossName2) <= 0;
+    }
+
+    private static float GetBossHealthRatio(string bossName)
+    {
+        var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+        return target != null ? target.GetHealthRatio() : 1.0f; // Return 1.0f if the boss is not found (considered alive)
+    }
+
+    private static bool IsBossDead(string bossName)
+    {
+        var target = AllHostileTargets.FirstOrDefault(obj => obj.Name.ToString() == bossName);
+        return target != null && target.GetHealthRatio() <= 1;
+    }
+
+    public static FRUBoss CheckFRUPhase()
+    {
+        if (IsInFRU && InCombat)
+        {
+            var hostileTargetNames = AllHostileTargets.Select(obj => obj.Name.ToString()).ToList();
+            if (CheckPhase(FRUBoss.Fatebreaker, hostileTargetNames, "Fatebreaker", 160.1f)) return currentBoss;
+            if (CheckPhase(FRUBoss.Usurper, hostileTargetNames, "Usurper of Frost", 185f, FRUBoss.Fatebreaker)) return currentBoss;
+            if (CheckPhase(FRUBoss.Adds, hostileTargetNames, "Ice Veil", 41.2f, FRUBoss.Usurper)) return currentBoss;
+            if (CheckPhase(FRUBoss.Gaia, hostileTargetNames, "Oracle of Darkness", 157.9f, FRUBoss.Adds)) return currentBoss;
+            if (CheckPhase(FRUBoss.Lesbians, hostileTargetNames, "Usurper of Frost", 175.9f, FRUBoss.Gaia)) return currentBoss;
+            if (CheckPhase(FRUBoss.Pandora, hostileTargetNames, "Pandora", 271.9f, FRUBoss.Lesbians)) return currentBoss;
+        }
+        return currentBoss;
+    }
+
+    private static bool CheckPhase(FRUBoss boss, IEnumerable<string> hostileTargetNames, string phaseName, float duration, FRUBoss? requiredPreviousBoss = null)
+    {
+        if (hostileTargetNames.Contains(phaseName) && (requiredPreviousBoss == null || currentBoss == requiredPreviousBoss))
+        {
+            // End the current phase early if the next boss becomes targetable or if the current boss is dead
+            if (currentBoss == FRUBoss.Lesbians)
+            {
+                if (AreBothBossesDead("Oracle of Darkness", "Usurper of Frost"))
                 {
-                    CustomRotationAg.Debug($"BossDying: No action found for boss {bossName}");
+                    CurrentPhaseEnd = CombatTime;
                 }
             }
+            else if (IsBossDead(currentBoss.ToString()))
+            {
+                CurrentPhaseEnd = CombatTime;
+            }
+
+            // Fallback to advance to the next phase if duration is exceeded
+            if (CombatTime >= CurrentPhaseEnd)
+            {
+                SetPhase(boss, duration);
+                return true;
+            }
         }
-        #endregion
+        return false;
     }
+
+    private static void SetPhase(FRUBoss boss, float duration)
+    {
+        CurrentPhaseStart = CombatTime;
+        CurrentPhaseEnd = CombatTime + duration;
+        currentBoss = boss;
+
+        UpdateBossStartTime(boss, CombatTime);
+    }
+
+    private static void UpdateBossStartTime(FRUBoss boss, float startTime)
+    {
+        switch (boss)
+        {
+            case FRUBoss.Fatebreaker:
+                FatebreakerStartTime = startTime;
+                break;
+            case FRUBoss.Usurper:
+                UsurperStartTime = startTime;
+                UpdateUsurperTimings(startTime);
+                break;
+            case FRUBoss.Adds:
+                AddsStartTime = startTime;
+                UpdateAddsTimings(startTime);
+                break;
+            case FRUBoss.Gaia:
+                GaiaStartTime = startTime;
+                UpdateGaiaTimings(startTime);
+                break;
+            case FRUBoss.Lesbians:
+                LesbiansStartTime = startTime;
+                UpdateLesbiansTimings(startTime);
+                break;
+            case FRUBoss.Pandora:
+                PandoraStartTime = startTime;
+                break;
+        }
+    }
+
+    private static void UpdateFatebreakerTimings(float startTime)
+    {
+        UtopianSkyStart = startTime + 34.8f;
+        UtopianSkyEnd = UtopianSkyStart + 45.2f;
+    }
+
+    private static void UpdateUsurperTimings(float startTime)
+    {
+        DiamondDustStart = startTime + 35.1f;
+        DiamondDustEnd = DiamondDustStart + 36.9f;
+        LightRampantStart = DiamondDustEnd + 59.7f;
+        LightRampantEnd = LightRampantStart + 29f;
+    }
+
+    private static void UpdateAddsTimings(float startTime)
+    {
+        GaiaTransitionStart = startTime + 41.2f;
+        GaiaTransitionEnd = GaiaTransitionStart + 25.6f;
+    }
+
+    private static void UpdateGaiaTimings(float startTime)
+    {
+        UltimateRelativityStart = startTime + 18.3f;
+        UltimateRelativityEnd = UltimateRelativityStart + 43.9f;
+    }
+
+    private static void UpdateLesbiansTimings(float startTime)
+    {
+        OracleTargetable = startTime + 25.4f;
+        CrystalizeTimeStart = startTime + 98.5f;
+        CrystalizeTimeEnd = CrystalizeTimeStart + 49.7f;
+    }
+    
+    //Handling logic for each boss
+    private void CheckFRULogic()
+    {
+        if (LoadFRU && InCombat)
+        {
+            switch (currentBoss)
+            {
+                case FRUBoss.Fatebreaker:
+                    HandleFatebreakerLogic();
+                    break;
+                case FRUBoss.Usurper:
+                    HandleUsurperLogic();
+                    break;
+                case FRUBoss.Adds:
+                    HandleAddsLogic();
+                    break;
+                case FRUBoss.Gaia:
+                    HandleGaiaLogic();
+                    break;
+                case FRUBoss.Lesbians:
+                    HandleLesbiansLogic();
+                    break;
+                case FRUBoss.Pandora:
+                    HandlePandoraLogic();
+                    break;
+            }
+        }
+    }
+
+    private void HandleFatebreakerLogic()
+    {
+        switch(currentDowntime)
+        {
+            case Downtime.UtopianSky:
+            {
+                shouldUseStandardStep = true;
+                shouldUseFlourish = true;
+                shouldFinishingMove = false;
+                    
+                if (hasFinishingMove)
+                    {
+                        ShouldRemoveFinishingMove = true;
+                    }
+            }
+            break;
+            case Downtime.None:
+                {
+                    HandleNoDowntime();
+                }
+            break;
+        }
+    }
+
+    private void HandleUsurperLogic()
+    {
+        shouldUseStandardStep = true;
+        shouldUseFlourish = true;
+
+        switch(currentDowntime)
+        {
+            case Downtime.DiamondDust:
+                HandleDiamondDustDowntime();
+                break;
+            case Downtime.LightRampant:
+                HandleLightRampantDowntime();
+                break;
+            case Downtime.None:
+                HandleNoDowntime();
+                break;
+        }
+    }
+
+    private void HandleDiamondDustDowntime()
+    {
+        shouldFinishingMove = false;
+        if (FlourishPvE.Cooldown.IsCoolingDown && hasFinishingMove)
+        {
+            ShouldRemoveFinishingMove = true;
+        }
+        if (CurrentDowntimeEnd - CombatTime <= 15)
+        {
+            shouldUseStandardStep = true;
+        }
+    }
+
+    private void HandleLightRampantDowntime()
+    {
+        shouldUseFlourish = true;
+        shouldFinishingMove = false;
+        bool isDowntimeEndingSoon = CurrentDowntimeEnd - CombatTime <= 15;
+        bool isFlourishCoolingDown = FlourishPvE.Cooldown.IsCoolingDown;
+        bool hasFinishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady);
+        bool shouldRemoveFinishingMove = isDowntimeEndingSoon && isFlourishCoolingDown && hasFinishingMoveReady;
+        
+        if (shouldRemoveFinishingMove)
+        {
+            ShouldRemoveFinishingMove = true;
+            shouldUseStandardStep = true;
+        }
+    }
+
+    private void HandleNoDowntime()
+    {
+        shouldUseTechStep = true;
+
+        switch (currentBoss)
+        {
+            case FRUBoss.Fatebreaker:
+                HandleNoDowntimeForFatebreaker();
+            break;
+            case FRUBoss.Usurper:
+                HandleNoDowntimeForUsurper();
+            break;
+            case FRUBoss.Adds:
+                HandleNoDowntimeForAdds();
+            break;
+            case FRUBoss.Gaia:
+                HandleNoDowntimeForGaia();
+            break;
+            case FRUBoss.Lesbians:
+                HandleNoDowntimeForLesbians();
+            break;
+            case FRUBoss.Pandora:
+                HandleNoDowntimeForPandora();
+            break;
+        }
+    }
+
+    private void HandleNoDowntimeForFatebreaker()
+    {
+        shouldUseStandardStep = true;
+        shouldUseTechStep = true;
+        shouldFinishingMove = true;
+        // If Fatebreaker is dying
+        if (DanceDance && HostileTarget != null && (HostileTarget.IsDying() || HostileTarget.GetHealthRatio() < 0.35f))
+        {
+            shouldUseFlourish = false;
+            shouldUseStandardStep = false;
+            shouldFinishingMove = false;
+        }
+    }
+
+    private void HandleNoDowntimeForUsurper()
+    {
+        if (CombatElapsedLess(DiamondDustStart - 5))
+            {
+                shouldUseStandardStep = true;
+                shouldUseFlourish = true;
+            }
+        if (CombatElapsedLess(LightRampantStart - 5))
+            {
+                shouldUseStandardStep = true;
+                shouldUseFlourish = true;
+            }
+    }
+
+    private void HandleNoDowntimeForAdds()
+    {
+        shouldUseTechStep = true;
+        shouldUseFlourish = true;
+        shouldUseStandardStep = true;
+        shouldFinishingMove = true;
+    }
+
+    private void HandleNoDowntimeForGaia()
+    {
+        shouldUseStandardStep = true;
+        shouldUseFlourish = true;
+        shouldFinishingMove = true;
+    }
+
+    private void HandleNoDowntimeForLesbians()
+    {
+        shouldUseStandardStep = true;
+        shouldUseFlourish = true;
+        shouldFinishingMove = true;
+        shouldUseTechStep = false;
+        CheckOracleTargetable();
+    }
+
+    private void CheckOracleTargetable()
+    {
+        if (OracleTargetable - CombatTime <= 7)
+        {
+            shouldUseTechStep = true;
+        }
+    }
+
+    private void HandleNoDowntimeForPandora()
+    {
+        shouldUseTechStep = true;
+        shouldUseFlourish = true;
+        shouldFinishingMove = true;
+        shouldUseStandardStep = true;
+    }
+
+    private void HandleAddsLogic()
+    {
+        HandleNoDowntime();
+    }
+
+    private void HandleGaiaLogic()
+    {
+        switch (currentDowntime)
+        {
+            case Downtime.UltimateRelativity:
+                {
+                    shouldUseStandardStep = true;
+                    shouldUseFlourish = false;
+                    shouldFinishingMove = true;
+                    bool UltimateRelativityNotEnding = hasReturn && !returnEnding;
+
+                    if (hasSpellinWaitingReturn || UltimateRelativityNotEnding)
+                    {
+                        shouldUseTechStep = false;
+                    }
+                    else
+                    {
+                        if (returnEnding)
+                            {
+                                shouldUseTechStep = true;
+                            }
+                    }
+                }
+                break;
+                case Downtime.None:
+                    {
+                        HandleNoDowntime();
+                    }
+                break;
+        }
+    }  
+
+    private void HandleLesbiansLogic()
+    {
+        switch (currentDowntime)
+        {
+            case Downtime.CrystalizeTime:
+                {
+                    shouldUseStandardStep = false;
+                    shouldUseFlourish = false;
+                    shouldFinishingMove = false;
+                    if (CrystalizeTimeEnd - CombatTime <=5 )
+                    {
+                        shouldUseStandardStep = true;
+                        shouldUseFlourish = true;
+                        shouldFinishingMove = true;
+                    }
+                }
+                break;
+                case Downtime.None:
+                    {
+                        HandleNoDowntime();
+                    }
+                break;
+            }
+    }
+
+    private void HandlePandoraLogic()
+    {
+        HandleNoDowntime();
+    }
+    
+    #endregion
 }
