@@ -18,7 +18,7 @@
     <Folder Include="ArgentiRotations\encounters\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="RotationSolverReborn.Basic" Version="7.1.6.7" />
-    <PackageReference Include="System.Drawing.Common" Version="9.0.1" />
+    <PackageReference Include="RotationSolverReborn.Basic" Version="7.1.6.8" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.2" />
   </ItemGroup>
 </Project>
