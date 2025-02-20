@@ -1,11 +1,13 @@
 using Dalamud.Interface.Colors;
+using ArgentiRotations.Encounters.FRU.Ranged;
+using ArgentiRotations.Common;
 
 namespace ArgentiRotations.Ranged;
 
 [Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.15", Description = "Only for level 100 content, ok?")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
-public sealed partial class ChurinDNC : DancerRotation
+public sealed partial class ChurinDNC : FRUDancerRotation
 {
     #region Config Options
 
@@ -20,21 +22,6 @@ public sealed partial class ChurinDNC : DancerRotation
 
     #endregion
 
-    #region  Properties
-
-    public static bool ShouldUseLastDance { get; set; } = true;
-    public static bool ShouldUseTechStep { get; set; } = true;
-    public static bool ShouldUseStandardStep { get; set; } = true;
-    public static bool ShouldUseFlourish { get; set; } = false;
-    public static bool ShouldFinishingMove { get; set; } = true;
-    bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-    static bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
-    bool StandardReady => StandardStepPvE.Cooldown.ElapsedAfter(28);
-    bool TechnicalReady => TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-    static bool StepFinishReady => Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2 || Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4;
-    static bool AreDanceTargetsInRange => AllHostileTargets.Any(target => target.DistanceToPlayer() <= 15);
-
-    #endregion
     public override void DisplayStatus()
     {
         DisplayStatusHelper.BeginPaddedChild("The CustomRotation's status window", true, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
@@ -67,11 +54,11 @@ public sealed partial class ChurinDNC : DancerRotation
         DisplayStatusHelper.DrawItemMiddle(() =>
         {
             ImGui.Text("Combat Status");
-            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss:" + currentBoss);
+            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss:" + CurrentBoss);
             ImGui.SameLine();
             ImGui.Text("Combat Time:" + CombatTime);
             ImGui.SameLine();
-            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + currentDowntime);
+            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime:" + CurrentDowntime);
         }, ImGui.GetWindowWidth(), ImGui.CalcTextSize("Combat Status").X);
         ImGui.Text("Should Use Tech Step?:" + ShouldUseTechStep);
         ImGui.Text("Should Use Flourish?:" + ShouldUseFlourish);

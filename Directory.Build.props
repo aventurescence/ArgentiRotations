@@ -72,7 +72,6 @@
 	  <Using Include="RotationSolver.Basic.Traits" />
 	  <Using Include="System.Numerics" />
 	  <Using Include="System.Reflection" />
-	  <Using Include="ArgentiRotations.Common" />
 	  <Using Include="System.Runtime.InteropServices" />
 	  <Using Include="FFXIVClientStructs.FFXIV.Client.Game" />
 	  <Using Include= "FFXIVClientStructs.FFXIV.Client.Game.Character" />

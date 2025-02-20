@@ -57,9 +57,6 @@ internal static class DisplayStatusHelper
         var max = ImGui.GetItemRectMax();
         max.X = min.X + ImGui.GetContentRegionAvail().X;
         ImGui.GetWindowDrawList().AddRect(min - minPadding, max + maxPadding, ImGui.ColorConvertFloat4ToU32(color));
-
-        // this fits just the content, not the full width
-        //ImGui.GetWindowDrawList().AddRect( ImGui.GetItemRectMin() - padding, ImGui.GetItemRectMax() + padding, packedColor );
     }
 
 
