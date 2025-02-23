@@ -1,6 +1,6 @@
 namespace ArgentiRotations.Ranged;
 
-public sealed partial class ChurinDNC : ICustomRotation
+public sealed partial class ChurinDNC : DancerRotation
 {
     #region FRU Properties
     public enum FRUBoss

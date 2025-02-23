@@ -609,8 +609,8 @@ public sealed partial class ChurinDNC : DancerRotation
         // Check if the Devilment cooldown has elapsed more than 7 seconds
         bool devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7);
 
-        // Check if the Standard Step cooldown will not have one charge in 1 GCD
-        bool standardStepNotReady = !StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1);
+        // Check if the Standard Step is in cooldown
+        bool standardStepNotReady = StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown;
 
         // Check if Starfall Dance can be used
         bool canUseStarfallDance = StarfallDancePvE.CanUse(out act, skipAoeCheck: true);
@@ -927,7 +927,7 @@ public sealed partial class ChurinDNC : DancerRotation
     private static bool TryUseTechnicalStep(out IAction? act)
     {
         ChurinDNC instance = new();
-        bool shouldHoldTechFinish = InCombat && HoldTechForTargets && AreDanceTargetsInRange && !IsInFRU;
+        bool shouldHoldTechFinish = InCombat && HoldTechForTargets && AreDanceTargetsInRange;
 
         if (shouldHoldTechFinish)
         {
