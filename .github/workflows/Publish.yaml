@@ -21,7 +21,12 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 9.0.x
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+            node-version: '14'
 
       - name: Download Dalamud Latest
         run: |
@@ -32,6 +37,9 @@ jobs:
             Write-Error "Failed to download Dalamud Latest"
             exit 1
           }
+      - name: Update AssemblyVersion in ArgentiRotations.json
+        run: |
+          jq --arg tag "$tag" '.AssemblyVersion - $tag' ArgentiRotations/ArgentiRotations.json > tmp.json && mv tmp.json ArgentiRotations/ArgentiRoatations/ArgentiRotations.json
 
       - name: Restore Nuget Packages
         run: dotnet restore ArgentiRotations/ArgentiRotations.csproj
