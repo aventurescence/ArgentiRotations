@@ -39,7 +39,8 @@ jobs:
           }
       - name: Update AssemblyVersion in ArgentiRotations.json
         run: |
-          jq --arg tag "$tag" '.AssemblyVersion = $tag' ArgentiRotations/ArgentiRotations.json > tmp.json && mv tmp.json ArgentiRotations/ArgentiRotations.json
+          jq --arg tag "$tag" '.AssemblyVersion = $tag' ArgentiRotations/ArgentiRotations.json > tmp.json
+          Move-Item -Force tmp.json ArgentiRotations/ArgentiRotations.json
 
       - name: Restore Nuget Packages
         run: dotnet restore ArgentiRotations/ArgentiRotations.csproj
