@@ -1,8 +1,6 @@
-using RotationSolver.Basic;
-
 namespace ArgentiRotations.Ranged;
 
-[Rotation("BRD369v2", CombatType.PvE, GameVersion = "7.15",
+[Rotation("BRD369v2", CombatType.PvE, GameVersion = "7.2",
     Description = "Don't touch the config options! Only intended to be used in level 100 savage content. :3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/369BRDv2.cs")]
 [Api(4)]
