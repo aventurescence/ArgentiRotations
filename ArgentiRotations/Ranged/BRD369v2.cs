@@ -1,3 +1,5 @@
+using Dalamud.Game.ClientState.JobGauge.Enums;
+
 namespace ArgentiRotations.Ranged;
 
 [Rotation("BRD369v2", CombatType.PvE, GameVersion = "7.2",
