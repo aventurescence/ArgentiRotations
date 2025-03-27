@@ -8,7 +8,7 @@ internal static class DisplayStatusHelper
 {
     internal static float Scale => ImGuiHelpers.GlobalScale;
 
-    static int _idScope;
+    private static int _idScope;
 
     /// <summary>
     /// gets a unique id that can be used with ImGui.PushId() to avoid conflicts with type inspectors
@@ -57,13 +57,10 @@ internal static class DisplayStatusHelper
         var max = ImGui.GetItemRectMax();
         max.X = min.X + ImGui.GetContentRegionAvail().X;
         ImGui.GetWindowDrawList().AddRect(min - minPadding, max + maxPadding, ImGui.ColorConvertFloat4ToU32(color));
-
-        // this fits just the content, not the full width
-        //ImGui.GetWindowDrawList().AddRect( ImGui.GetItemRectMin() - padding, ImGui.GetItemRectMax() + padding, packedColor );
     }
 
 
-    public static bool BeginPaddedChild(string str_id, bool border = false, ImGuiWindowFlags flags = 0)
+    public static bool BeginPaddedChild(string strId, bool border = false, ImGuiWindowFlags flags = 0)
     {
         float padding = ImGui.GetStyle().WindowPadding.X;
         // Set cursor position with padding
@@ -77,7 +74,7 @@ internal static class DisplayStatusHelper
         size.Y -= 2 * padding;
 
         // Begin the child window
-        return ImGui.BeginChild(str_id, size, border, flags);
+        return ImGui.BeginChild(strId, size, border, flags);
     }
 
     public static void EndPaddedChild()
@@ -99,7 +96,8 @@ internal static class DisplayStatusHelper
         ImGui.SetCursorPosX(distance);
         drawAction();
     }
-    const ImGuiWindowFlags TOOLTIP_FLAG =
+
+    private const ImGuiWindowFlags TooltipFlag =
           ImGuiWindowFlags.Tooltip |
           ImGuiWindowFlags.NoMove |
           ImGuiWindowFlags.NoSavedSettings |
@@ -108,7 +106,7 @@ internal static class DisplayStatusHelper
           ImGuiWindowFlags.NoInputs |
           ImGuiWindowFlags.AlwaysAutoResize;
 
-    const string TOOLTIP_ID = "Churin Tooltips";
+    private const string TooltipId = "Churin Tooltips";
 
     public static void HoveredTooltip(string? text)
     {
@@ -142,9 +140,9 @@ internal static class DisplayStatusHelper
         using ImRaii.Color color = ImRaii.PushColor(ImGuiCol.BorderShadow, ImGuiColors.DalamudWhite);
 
         ImGui.SetNextWindowSizeConstraints(new Vector2(150, 0) * ImGuiHelpers.GlobalScale, new Vector2(1200, 1500) * ImGuiHelpers.GlobalScale);
-        ImGui.SetWindowPos(TOOLTIP_ID, ImGui.GetIO().MousePos);
+        ImGui.SetWindowPos(TooltipId, ImGui.GetIO().MousePos);
 
-        if (ImGui.Begin(TOOLTIP_ID, TOOLTIP_FLAG))
+        if (ImGui.Begin(TooltipId, TooltipFlag))
         {
             act();
             ImGui.End();

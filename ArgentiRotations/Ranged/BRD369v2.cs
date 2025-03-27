@@ -1,3 +1,4 @@
+using RotationSolver.Basic;
 
 namespace ArgentiRotations.Ranged;
 
@@ -5,24 +6,24 @@ namespace ArgentiRotations.Ranged;
     Description = "Don't touch the config options! Only intended to be used in level 100 savage content. :3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/369BRDv2.cs")]
 [Api(4)]
-public sealed class BRD369v2 : BardRotation
+public sealed class Brd369V2 : BardRotation
 {
     #region Config Options
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Wanderer's Minuet Uptime")]
-    public float WANDTime { get; set; } = 42;
+    public float WandTime { get; set; } = 42;
 
     [Range(0, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Mage's Ballad Uptime")]
-    public float MAGETime { get; set; } = 39;
+    public float MageTime { get; set; } = 39;
 
     [Range(0, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Army's Paeon Uptime")]
-    public float ARMYTime { get; set; } = 36;
+    public float ArmyTime { get; set; } = 36;
 
-    private float WANDRemainTime => 45 - WANDTime;
-    private float MAGERemainTime => 45 - MAGETime;
-    private float ARMYRemainTime => 45 - ARMYTime;
+    private float WandRemainTime => 45 - WandTime;
+    private float MageRemainTime => 45 - MageTime;
+    private float ArmyRemainTime => 45 - ArmyTime;
 
     // New configuration for enabling prepull Heartbreak Shot
     [RotationConfig(CombatType.PvE, Name = "Enable Prepull Heartbreak Shot")]
@@ -53,12 +54,12 @@ public sealed class BRD369v2 : BardRotation
     #endregion
 
     #region oGCD Logic
-    protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
+    protected override bool EmergencyAbility(IAction nextGcd, out IAction? act)
     {
 
-        if (nextGCD.IsTheSameTo(true, WindbitePvE, VenomousBitePvE, StraightShotPvE, IronJawsPvE))
+        if (nextGcd.IsTheSameTo(true, WindbitePvE, VenomousBitePvE, StraightShotPvE, IronJawsPvE))
         {
-            return base.EmergencyAbility(nextGCD, out act);
+            return base.EmergencyAbility(nextGcd, out act);
         }
         else if (Player.HasStatus(true, StatusID.RagingStrikes))
         {
@@ -72,22 +73,22 @@ public sealed class BRD369v2 : BardRotation
             }
         }
 
-        return base.EmergencyAbility(nextGCD, out act);
+        return base.EmergencyAbility(nextGcd, out act);
     }
 
-    protected override bool AttackAbility(IAction nextGCD, out IAction? act)
+    protected override bool AttackAbility(IAction nextGcd, out IAction? act)
     {
         act = null;
         UpdateBurstStatus();
-        if (Song == Song.NONE && InCombat)
+        if (Song == Song.None && InCombat)
         {
-            if (InBurstStatusCount < 1)
+            if (_inBurstStatusCount < 1)
             {
                 if (TheWanderersMinuetPvE.CanUse(out act) && WeaponRemain < 1.25f) return true;
                 if (MagesBalladPvE.CanUse(out act) && WeaponRemain < 0.8f) return true;
                 if (ArmysPaeonPvE.CanUse(out act) && WeaponRemain < 0.8f) return true;
             }
-            else if (InBurstStatusCount >= 1)
+            else if (_inBurstStatusCount >= 1)
             {
                 if (TheWanderersMinuetPvE.CanUse(out act) && WeaponRemain < 1.25f) return true;
                 if (MagesBalladPvE.CanUse(out act) && WeaponRemain < 0.8f) return true;
@@ -95,10 +96,10 @@ public sealed class BRD369v2 : BardRotation
             }
         }
 
-        if (Song == Song.WANDERER)
+        if (Song == Song.Wanderer)
         {
             UpdateBurstStatus();
-            if (InBurstStatusCount < 1)
+            if (_inBurstStatusCount < 1)
             {
                 if ((HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true) && (HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true)
                     && IsLastGCD(true, VenomousBitePvE))
@@ -119,13 +120,13 @@ public sealed class BRD369v2 : BardRotation
             }
             if (EnablePrepullHeartbreakShot)
             {
-                if (InBurstStatusCount >= 1)
+                if (_inBurstStatusCount >= 1)
                 {
                     if (TheWanderersMinuetPvE.Cooldown.IsCoolingDown && TheWanderersMinuetPvE.Cooldown.ElapsedAfter(1))
                     {
-                        if (InBurstStatusCount == 1 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
-                        if (InBurstStatusCount == 3 && PotionTimings == PotionTimingOption.ZeroAndSixMins && UseBurstMedicine(out act)) return true;
-                        if (InBurstStatusCount == 4 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
+                        if (_inBurstStatusCount == 1 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
+                        if (_inBurstStatusCount == 3 && PotionTimings == PotionTimingOption.ZeroAndSixMins && UseBurstMedicine(out act)) return true;
+                        if (_inBurstStatusCount == 4 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
                     }
                     if (TheWanderersMinuetPvE.Cooldown.IsCoolingDown && TheWanderersMinuetPvE.Cooldown.ElapsedAfter(2.01f)
                         && RadiantFinalePvE.CanUse(out act)) return true;
@@ -142,7 +143,7 @@ public sealed class BRD369v2 : BardRotation
             }
             else if (!EnablePrepullHeartbreakShot)
             {
-                if (InBurstStatusCount >= 1)
+                if (_inBurstStatusCount >= 1)
                 {
                     if (TheWanderersMinuetPvE.Cooldown.IsCoolingDown && TheWanderersMinuetPvE.Cooldown.ElapsedAfterGCD(1)
                         && RadiantFinalePvE.CanUse(out act)) return true;
@@ -150,9 +151,9 @@ public sealed class BRD369v2 : BardRotation
                     if (RadiantFinalePvE.Cooldown.IsCoolingDown && BattleVoicePvE.CanUse(out act)) return true;
                     if (BattleVoicePvE.Cooldown.IsCoolingDown)
                     {
-                        if (InBurstStatusCount == 1 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
-                        if (InBurstStatusCount == 3 && PotionTimings == PotionTimingOption.ZeroAndSixMins && UseBurstMedicine(out act)) return true;
-                        if (InBurstStatusCount == 4 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
+                        if (_inBurstStatusCount == 1 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
+                        if (_inBurstStatusCount == 3 && PotionTimings == PotionTimingOption.ZeroAndSixMins && UseBurstMedicine(out act)) return true;
+                        if (_inBurstStatusCount == 4 && PotionTimings == PotionTimingOption.TwoAndEightMins && UseBurstMedicine(out act)) return true;
                     }
                     if (RadiantFinalePvE.Cooldown.IsCoolingDown
                         && BattleVoicePvE.Cooldown.IsCoolingDown
@@ -166,32 +167,32 @@ public sealed class BRD369v2 : BardRotation
 
         if (TheWanderersMinuetPvE.CanUse(out act) && InCombat && WeaponRemain < 1.25f)
         {
-            if (SongEndAfter(ARMYRemainTime) && (Song != Song.NONE || Player.HasStatus(true, StatusID.ArmysEthos))) return true;
+            if (SongEndAfter(ArmyRemainTime) && (Song != Song.None || Player.HasStatus(true, StatusID.ArmysEthos))) return true;
         }
 
         if (EmpyrealArrowPvE.CanUse(out act))
         {
-            if (Song == Song.WANDERER)
+            if (Song == Song.Wanderer)
             {
                 if ((RadiantFinalePvE.Cooldown.IsCoolingDown
                     && BattleVoicePvE.Cooldown.IsCoolingDown
                     && RagingStrikesPvE.Cooldown.IsCoolingDown)
                     || InBurstStatus) return true;
             }
-            else if (Song == Song.MAGE)
+            else if (Song == Song.Mage)
             {
-                if (InBurstStatusCount <= 1)
+                if (_inBurstStatusCount <= 1)
                 {
-                    if (SongEndAfter(MAGERemainTime))
+                    if (SongEndAfter(MageRemainTime))
                     {
                         if (EmpyrealArrowPvE.CanUse(out act)) return true;
                         if (ArmysPaeonPvE.CanUse(out act)) return true;
                     }
                     else return true;
                 }
-                else if (InBurstStatusCount > 1)
+                else if (_inBurstStatusCount > 1)
                 {
-                    if (SongEndAfter(MAGERemainTime))
+                    if (SongEndAfter(MageRemainTime))
                     {
                         if (ArmysPaeonPvE.CanUse(out act)) return true;
                         if (EmpyrealArrowPvE.CanUse(out act)) return true;
@@ -199,11 +200,11 @@ public sealed class BRD369v2 : BardRotation
                     else return true;
                 }
             }
-            else if (Song == Song.ARMY && WeaponRemain > 0.9f) return true;
+            else if (Song == Song.Army && WeaponRemain > 0.9f) return true;
         }
         if (PitchPerfectPvE.CanUse(out act))
         {
-            if (SongEndAfter(WANDRemainTime) && Repertoire > 0 && WeaponRemain > 1.3f) return true;
+            if (SongEndAfter(WandRemainTime) && Repertoire > 0 && WeaponRemain > 1.3f) return true;
 
             if (Repertoire == 3)
             {
@@ -216,20 +217,20 @@ public sealed class BRD369v2 : BardRotation
             if (Repertoire >= 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(0, 1.25f) && RadiantFinalePvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.IsCoolingDown) return true;
         }
 
-        if (InBurstStatusCount == 2 && Song == Song.WANDERER && PotionTimings == PotionTimingOption.ZeroFiveAndTenMins && SongEndAfter(5) && UseBurstMedicine(out act)) return true;
+        if (_inBurstStatusCount == 2 && Song == Song.Wanderer && PotionTimings == PotionTimingOption.ZeroFiveAndTenMins && SongEndAfter(5) && UseBurstMedicine(out act)) return true;
 
         if (MagesBalladPvE.CanUse(out act) && InCombat && WeaponRemain < 1)
         {
-            if (Song == Song.WANDERER && SongEndAfter(WANDRemainTime)) return true;
+            if (Song == Song.Wanderer && SongEndAfter(WandRemainTime)) return true;
         }
 
         if (ArmysPaeonPvE.CanUse(out act) && InCombat)
         {
-            if (Song == Song.MAGE && SongEndAfter(MAGERemainTime) && InBurstStatusCount <= 1)
+            if (Song == Song.Mage && SongEndAfter(MageRemainTime) && _inBurstStatusCount <= 1)
             {
                 if (WeaponRemain < 1.25f) return true;
             }
-            else if (Song == Song.MAGE && SongEndAfter(MAGERemainTime) && InBurstStatusCount > 1) return true;
+            else if (Song == Song.Mage && SongEndAfter(MageRemainTime) && _inBurstStatusCount > 1) return true;
         }
         if (SidewinderPvE.CanUse(out act))
         {
@@ -253,8 +254,8 @@ public sealed class BRD369v2 : BardRotation
             if (BloodletterPvE.CanUse(out act, usedUp: true)) return true;
         }
 
-        // Prevents Bloodletter bumpcapping when MAGE is the song due to Repetoire procs
-        if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.MAGE && !SongEndAfterGCD(1))
+        // Prevents Bloodletter bumpcapping when.Mage is the song due to Repetoire procs
+        if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.Mage && !SongEndAfterGCD(1))
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
 
@@ -264,13 +265,13 @@ public sealed class BRD369v2 : BardRotation
         }
 
         // Stop using HeartbreakShotPvE during Army's Paeon to ensure 3 charges before Raging Strikes in Wanderer's Minuet
-        if (Song == Song.ARMY && ARMYTime >= 35 && EmpyrealArrowPvE.Cooldown.WillHaveOneCharge(0))
+        if (Song == Song.Army && ArmyTime >= 35 && EmpyrealArrowPvE.Cooldown.WillHaveOneCharge(0))
         {
             if (HeartbreakShotPvE.CanUse(out act, usedUp: true)) return true;
         }
 
         // Logic to ensure 4 HeartbreakShots in burst window
-        if (InBurstStatusCount >= 1 && Song == Song.WANDERER && RagingStrikesPvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.RecastTimeRemainOneCharge <= 45f)
+        if (_inBurstStatusCount >= 1 && Song == Song.Wanderer && RagingStrikesPvE.Cooldown.IsCoolingDown && RagingStrikesPvE.Cooldown.RecastTimeRemainOneCharge <= 45f)
         {
             if (HeartbreakShotPvE.Cooldown.WillHaveXCharges(3, 0) && RagingStrikesPvE.Cooldown.WillHaveOneCharge(0))
             {
@@ -280,7 +281,7 @@ public sealed class BRD369v2 : BardRotation
 
         if (BetterBloodletterLogic(out act)) return true;
 
-        return base.AttackAbility(nextGCD, out act);
+        return base.AttackAbility(nextGcd, out act);
     }
     #endregion
 
@@ -343,7 +344,7 @@ public sealed class BRD369v2 : BardRotation
 
         if (SoulVoice == 100 && BattleVoicePvE.Cooldown.WillHaveOneCharge(25)) return false;
 
-        if (Song == Song.WANDERER && SoulVoice >= 80 && !Player.HasStatus(true, StatusID.RagingStrikes)) return false;
+        if (Song == Song.Wanderer && SoulVoice >= 80 && !Player.HasStatus(true, StatusID.RagingStrikes)) return false;
 
         if (HostileTarget?.WillStatusEndGCD(1, 1, true, StatusID.Windbite, StatusID.Stormbite, StatusID.VenomousBite, StatusID.CausticBite) ?? false) return false;
 
@@ -351,7 +352,7 @@ public sealed class BRD369v2 : BardRotation
 
         if (SoulVoice == 100 && Player.HasStatus(true, StatusID.RagingStrikes) && Player.HasStatus(true, StatusID.BattleVoice)) return true;
 
-        if (Song == Song.MAGE && SoulVoice >= 80 && SongEndAfter(22) && SongEndAfter(18)) return true;
+        if (Song == Song.Mage && SoulVoice >= 80 && SongEndAfter(22) && SongEndAfter(18)) return true;
 
         if (!Player.HasStatus(true, StatusID.RagingStrikes) && SoulVoice == 100) return true;
 
@@ -385,26 +386,26 @@ public sealed class BRD369v2 : BardRotation
         return false;
     }
     private static bool InBurstStatus => Player.HasStatus(true, StatusID.RagingStrikes) && Player.HasStatus(true, StatusID.BattleVoice) && Player.HasStatus(true, StatusID.RadiantFinale);
-    private static int InBurstStatusCount = 0;
-    private static DateTime lastIncrementTime = DateTime.MinValue;
+    private static int _inBurstStatusCount = 0;
+    private static DateTime _lastIncrementTime = DateTime.MinValue;
     private static void UpdateBurstStatus()
     {
         if (CombatTime < 5)
         {
-            InBurstStatusCount = 0;
-            lastIncrementTime = DateTime.Now; // Update the timestamp
+            _inBurstStatusCount = 0;
+            _lastIncrementTime = DateTime.Now; // Update the timestamp
         }
-        if (InBurstStatus && Song == Song.WANDERER)
+        if (InBurstStatus && Song == Song.Wanderer)
         {
-            if (InBurstStatusCount < 1)
+            if (_inBurstStatusCount < 1)
             {
-                InBurstStatusCount++;
-                lastIncrementTime = DateTime.Now;
+                _inBurstStatusCount++;
+                _lastIncrementTime = DateTime.Now;
             }
-            if (InBurstStatusCount >= 1 && (DateTime.Now - lastIncrementTime).TotalSeconds >= 120)
+            if (_inBurstStatusCount >= 1 && (DateTime.Now - _lastIncrementTime).TotalSeconds >= 120)
             {
-                InBurstStatusCount++;
-                lastIncrementTime = DateTime.Now;
+                _inBurstStatusCount++;
+                _lastIncrementTime = DateTime.Now;
 
             }
         }

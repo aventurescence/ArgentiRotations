@@ -29,7 +29,7 @@ internal unsafe class CustomRotationAg
         /// </summary>
         internal static unsafe Countdown* Instance => (Countdown*)Framework.Instance()->GetUIModule()->GetAgentModule()->GetAgentByInternalId(AgentId.CountDownSettingDialog);
 
-        static RandomDelay _delay = new RandomDelay(() => (0f,1f));
+        private static RandomDelay _delay = new RandomDelay(() => (0f,1f));
 
         /// <summary>
         /// TimeRemaining.
@@ -63,24 +63,24 @@ internal unsafe class CustomRotationAg
     internal static int OpenerStep { get; set; } = 0;
     internal static bool OpenerHasFinished { get; set; } = false;
     internal static bool OpenerHasFailed { get; set; } = false;
-    internal const float universalFailsafeThreshold = 5.0f;
+    internal const float UniversalFailsafeThreshold = 5.0f;
     internal static bool OpenerTimeout { get; set; } = false; // TODO - make a method that when true, sends a debug log  and then sets the value back to false
 
-    internal static bool TESTOpenerAvailable { get; set; } = false;
+    internal static bool TestOpenerAvailable { get; set; } = false;
     internal static bool OpenerAvailable { get; set; } = false;
     internal static bool OpenerAvailableNoCountdown { get; set; } = false;
     internal static bool OpenerAvailableSavage { get; set; } = false;
     internal static bool OpenerAvailableUltimate { get; set; } = false;
     // Use a generic handler for determining if an opener is available
-    internal static bool IsOpenerAvailable => OpenerAvailable || OpenerAvailableNoCountdown || OpenerAvailableSavage || OpenerAvailableUltimate || TESTOpenerAvailable;
+    internal static bool IsOpenerAvailable => OpenerAvailable || OpenerAvailableNoCountdown || OpenerAvailableSavage || OpenerAvailableUltimate || TestOpenerAvailable;
 
-    internal static bool TESTStartOpener { get; set; } = false;
+    internal static bool TestStartOpener { get; set; } = false;
     internal static bool StartOpener { get; set; } = false;
     internal static bool StartOpenerNoCountdown { get; set; } = false;
     internal static bool StartOpenerSavage { get; set; } = false;
     internal static bool StartOpenerUltimate { get; set; } = false;
 
-    internal static bool TESTOpenerInProgress { get; set; } = false;
+    internal static bool TestOpenerInProgress { get; set; } = false;
     internal static bool OpenerInProgress { get; set; } = false;
     internal static bool OpenerInProgressNoCountdown { get; set; } = false;
     internal static bool OpenerInProgressSavage { get; set; } = false;
