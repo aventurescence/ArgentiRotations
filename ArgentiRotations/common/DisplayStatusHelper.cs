@@ -1,20 +1,35 @@
-using Dalamud.Interface.Utility;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 
 namespace ArgentiRotations.Common;
 
 internal static class DisplayStatusHelper
 {
-    internal static float Scale => ImGuiHelpers.GlobalScale;
+    private const ImGuiWindowFlags TooltipFlag =
+        ImGuiWindowFlags.Tooltip |
+        ImGuiWindowFlags.NoMove |
+        ImGuiWindowFlags.NoSavedSettings |
+        ImGuiWindowFlags.NoBringToFrontOnFocus |
+        ImGuiWindowFlags.NoDecoration |
+        ImGuiWindowFlags.NoInputs |
+        ImGuiWindowFlags.AlwaysAutoResize;
+
+    private const string TooltipId = "Churin Tooltips";
 
     private static int _idScope;
+    internal static float Scale => ImGuiHelpers.GlobalScale;
+
+    internal static float GetPaddingX => ImGui.GetStyle().WindowPadding.X;
 
     /// <summary>
-    /// gets a unique id that can be used with ImGui.PushId() to avoid conflicts with type inspectors
+    ///     gets a unique id that can be used with ImGui.PushId() to avoid conflicts with type inspectors
     /// </summary>
     /// <returns></returns>
-    internal static int GetScopeId() => _idScope++;
+    internal static int GetScopeId()
+    {
+        return _idScope++;
+    }
 
     internal static void TripleSpacing()
     {
@@ -30,28 +45,35 @@ internal static class DisplayStatusHelper
         ImGui.Spacing();
     }
 
-    internal static void SmallVerticalSpace() => ImGui.Dummy(new Vector2(0, 5));
+    internal static void SmallVerticalSpace()
+    {
+        ImGui.Dummy(new Vector2(0, 5));
+    }
 
-    internal static void MediumVerticalSpace() => ImGui.Dummy(new Vector2(0, 10));
-
-    internal static float GetPaddingX => ImGui.GetStyle().WindowPadding.X;
+    internal static void MediumVerticalSpace()
+    {
+        ImGui.Dummy(new Vector2(0, 10));
+    }
 
     /// <summary>
-    /// adds a DrawList command to draw a border around the group
+    ///     adds a DrawList command to draw a border around the group
     /// </summary>
     public static void BeginBorderedGroup()
     {
         ImGui.BeginGroup();
     }
 
-    public static void EndBorderedGroup() => EndBorderedGroup(new Vector2(3, 2), new Vector2(0, 3));
+    public static void EndBorderedGroup()
+    {
+        EndBorderedGroup(new Vector2(3, 2), new Vector2(0, 3));
+    }
 
-    public static void EndBorderedGroup(Vector2 minPadding, Vector2 maxPadding = default(Vector2))
+    public static void EndBorderedGroup(Vector2 minPadding, Vector2 maxPadding = default)
     {
         ImGui.EndGroup();
 
         // attempt to size the border around the content to frame it
-        var color = ImGui.GetStyle().Colors[(int) ImGuiCol.Border];
+        var color = ImGui.GetStyle().Colors[(int)ImGuiCol.Border];
 
         var min = ImGui.GetItemRectMin();
         var max = ImGui.GetItemRectMax();
@@ -62,14 +84,14 @@ internal static class DisplayStatusHelper
 
     public static bool BeginPaddedChild(string strId, bool border = false, ImGuiWindowFlags flags = 0)
     {
-        float padding = ImGui.GetStyle().WindowPadding.X;
+        var padding = ImGui.GetStyle().WindowPadding.X;
         // Set cursor position with padding
-        float cursorPosX = ImGui.GetCursorPosX() + padding;
+        var cursorPosX = ImGui.GetCursorPosX() + padding;
         ImGui.SetCursorPosX(cursorPosX);
 
         // Adjust the size to account for padding
         // Get the available size and adjust it to account for padding
-        Vector2 size = ImGui.GetContentRegionAvail();
+        var size = ImGui.GetContentRegionAvail();
         size.X -= 2 * padding;
         size.Y -= 2 * padding;
 
@@ -84,7 +106,7 @@ internal static class DisplayStatusHelper
 
     public static void SetCursorMiddle()
     {
-        float cursorPosX = ImGui.GetContentRegionAvail().X / 2;
+        var cursorPosX = ImGui.GetContentRegionAvail().X / 2;
         ImGui.SetCursorPosX(cursorPosX);
     }
 
@@ -97,49 +119,30 @@ internal static class DisplayStatusHelper
         drawAction();
     }
 
-    private const ImGuiWindowFlags TooltipFlag =
-          ImGuiWindowFlags.Tooltip |
-          ImGuiWindowFlags.NoMove |
-          ImGuiWindowFlags.NoSavedSettings |
-          ImGuiWindowFlags.NoBringToFrontOnFocus |
-          ImGuiWindowFlags.NoDecoration |
-          ImGuiWindowFlags.NoInputs |
-          ImGuiWindowFlags.AlwaysAutoResize;
-
-    private const string TooltipId = "Churin Tooltips";
-
     public static void HoveredTooltip(string? text)
     {
-        if (!ImGui.IsItemHovered())
-        {
-            return;
-        }
+        if (!ImGui.IsItemHovered()) return;
 
         ShowTooltip(text);
     }
 
     public static void ShowTooltip(string? text)
     {
-        if (string.IsNullOrEmpty(text))
-        {
-            return;
-        }
+        if (string.IsNullOrEmpty(text)) return;
         ///ShowTooltip(() => ImGui.Text(text));
         ShowTooltip(() => ImGui.TextColored(ImGuiColors.DalamudGrey2, text));
     }
 
     public static void ShowTooltip(Action act)
     {
-        if (act == null)
-        {
-            return;
-        }
+        if (act == null) return;
 
         ImGui.SetNextWindowBgAlpha(1);
 
-        using ImRaii.Color color = ImRaii.PushColor(ImGuiCol.BorderShadow, ImGuiColors.DalamudWhite);
+        using var color = ImRaii.PushColor(ImGuiCol.BorderShadow, ImGuiColors.DalamudWhite);
 
-        ImGui.SetNextWindowSizeConstraints(new Vector2(150, 0) * ImGuiHelpers.GlobalScale, new Vector2(1200, 1500) * ImGuiHelpers.GlobalScale);
+        ImGui.SetNextWindowSizeConstraints(new Vector2(150, 0) * ImGuiHelpers.GlobalScale,
+            new Vector2(1200, 1500) * ImGuiHelpers.GlobalScale);
         ImGui.SetWindowPos(TooltipId, ImGui.GetIO().MousePos);
 
         if (ImGui.Begin(TooltipId, TooltipFlag))
@@ -148,6 +151,4 @@ internal static class DisplayStatusHelper
             ImGui.End();
         }
     }
-
-
 }

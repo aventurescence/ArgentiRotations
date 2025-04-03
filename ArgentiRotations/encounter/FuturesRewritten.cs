@@ -1,5 +1,3 @@
-
-
 namespace ArgentiRotations.Encounter;
 
 [Api(4)]
@@ -15,7 +13,7 @@ public class FuturesRewritten : DancerRotation
         Adds,
         Gaia,
         LesRoomates,
-        Pandora,
+        Pandora
     }
 
     protected static FruPhase CurrentPhase { get; private set; } = FruPhase.None;
@@ -30,6 +28,7 @@ public class FuturesRewritten : DancerRotation
             CurrentPhase = phase;
             return phase;
         }
+
         return FruPhase.None;
     }
 
@@ -46,6 +45,7 @@ public class FuturesRewritten : DancerRotation
             _ => FruPhase.None
         };
     }
+
     #endregion
 
     #region FRU Downtimes
@@ -73,6 +73,7 @@ public class FuturesRewritten : DancerRotation
             CurrentDowntime = downtime;
             return downtime;
         }
+
         return FruDowntime.None;
     }
 
@@ -106,9 +107,10 @@ public class FuturesRewritten : DancerRotation
             default:
                 return FruDowntime.None;
         }
-        
+
         return FruDowntime.None;
     }
+
     #endregion
 
     #region FRU Timers
@@ -122,28 +124,24 @@ public class FuturesRewritten : DancerRotation
         { FruDowntime.UltimateRelativity, 43.9f },
         { FruDowntime.CrystalizeTime, 52.8f }
     };
-    
+
     // Active downtime timers stored as expiration timestamps.
     private static readonly Dictionary<FruDowntime, float> ActiveDowntimeTimers = new();
 
     // Updates the downtime timer by setting its expiration time.
     private static void StartDowntimeTimer(FruDowntime downtime)
     {
-        if (DowntimeDurations.TryGetValue(downtime, value: out var duration))
-        {
+        if (DowntimeDurations.TryGetValue(downtime, out var duration))
             ActiveDowntimeTimers[downtime] = CombatTime + duration;
-        }
     }
-    
+
     // Checks if the current downtime has expired and resets it if needed.
     protected static void UpdateFruDowntime()
     {
         if (CurrentDowntime != FruDowntime.None &&
             ActiveDowntimeTimers.TryGetValue(CurrentDowntime, out var expiration) &&
             CombatTime > expiration)
-        {
             CurrentDowntime = FruDowntime.None;
-        }
     }
 
     #endregion

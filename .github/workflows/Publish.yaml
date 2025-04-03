@@ -44,6 +44,7 @@ jobs:
 
       - name: Restore Nuget Packages
         run: dotnet restore ArgentiRotations/ArgentiRotations.csproj
+
       - name: Build Rotations
         run: dotnet build --no-restore -c Release ArgentiRotations/ArgentiRotations.csproj -p:AssemblyVersion=$env:tag -p:FileVersion=$env:tag -p:InformationalVersion=$env:tag --output .\build
 
