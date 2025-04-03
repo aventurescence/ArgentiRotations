@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-            <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+            <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
             <AssemblyName>$(MSBuildProjectName)</AssemblyName>
             <FileVersion>$(FileVersion)</FileVersion>
             <InformationalVersion>$(InformationalVersion)</InformationalVersion>

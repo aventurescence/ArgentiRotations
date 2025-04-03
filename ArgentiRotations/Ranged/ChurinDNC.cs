@@ -12,14 +12,14 @@ public sealed class ChurinDnc : FuturesRewritten
     #region Config Options
 
     [RotationConfig(CombatType.PvE, Name = "Holds Tech Step if no targets in range (Warning, will drift)")]
-    private static bool HoldTechForTargets { get; } = true;
+    private static bool HoldTechForTargets { get; set;} = true;
 
     [RotationConfig(CombatType.PvE,
         Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
-    private string DancePartnerName { get; } = "";
+    private string DancePartnerName { get; set; } = "";
 
     [RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
-    private bool LoadFru { get; } = false;
+    private bool LoadFru { get; set; } = false;
 
     #endregion
     
@@ -96,9 +96,9 @@ public sealed class ChurinDnc : FuturesRewritten
 
     private static bool ShouldUseLastDance { get; set; } = true;
     private static bool ShouldUseTechStep { get; set; } = true;
-    private static bool ShouldUseStandardStep { get; } = true;
+    private static bool ShouldUseStandardStep { get; set; } = true;
     private static bool ShouldUseFlourish { get; set; }
-    private static bool ShouldFinishingMove { get; } = true;
+    private static bool ShouldFinishingMove => true;
     private static readonly bool HasSpellInWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
     private static readonly bool HasReturn = Player.HasStatus(false, StatusID.Return);
     private static readonly bool ReturnEnding = HasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
