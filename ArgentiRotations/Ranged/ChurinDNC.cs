@@ -1,5 +1,6 @@
-using Dalamud.Interface.Colors;
+using System.Diagnostics.CodeAnalysis;
 using ArgentiRotations.Encounter;
+using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
 
@@ -11,39 +12,118 @@ public sealed class ChurinDnc : FuturesRewritten
     #region Config Options
 
     [RotationConfig(CombatType.PvE, Name = "Holds Tech Step if no targets in range (Warning, will drift)")]
-    private static bool HoldTechForTargets { get; set; } = true;
+    private static bool HoldTechForTargets { get; } = true;
 
-    [RotationConfig(CombatType.PvE, Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
-    private string DancePartnerName { get; set; } = "";
+    [RotationConfig(CombatType.PvE,
+        Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
+    private string DancePartnerName { get; } = "";
 
     [RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
-    private bool LoadFru { get; set; } = false;
+    private bool LoadFru { get; } = false;
+
+    #endregion
+    
+    #region Countdown Logic
+
+    // Override the method for actions to be taken during countdown phase of combat
+    protected override IAction? CountDownAction(float remainTime)
+    {
+        // If there are 15 or fewer seconds remaining in the countdown 
+        if (remainTime >= 15) return base.CountDownAction(remainTime);
+        // Attempt to use Standard Step if applicable
+        if (StandardStepPvE.CanUse(out var act)) return act;
+        // Fallback to executing step GCD action if Standard Step is not used
+        if (ExecuteStepGCD(out act)) return act;
+        // Finish the dance if the conditions are met
+        if (remainTime <= 0.54f && FinishTheDance(out act)) return act;
+        // If none of the above conditions are met, fallback to the base class method
+        return base.CountDownAction(remainTime);
+    }
+
+    #endregion
+    
+    #region oGCD Logic
+
+    /// Override the method for handling emergency abilities
+    // ReSharper disable once InconsistentNaming
+    protected override bool EmergencyAbility(IAction? nextGCD, out IAction? act)
+    {
+        if (DevilmentAfterFinish(out act)) return true;
+        if (FallbackDevilment(out act)) return true;
+        if (NotDancing(nextGCD, out act)) return true;
+
+        act = null;
+        return false;
+    }
+
+    /// Override the method for handling attack abilities
+    // ReSharper disable once InconsistentNaming
+    protected override bool AttackAbility(IAction nextGCD, out IAction? act)
+    {
+        act = null;
+        if (LoadFru)
+        {
+            CheckBoss();
+            CheckDowntime();
+            UpdateFruDowntime();
+        }
+
+        if (IsDancing || AboutToDance) return false;
+
+        if (nextGCD.AnimationLockTime > 0.75f) return false;
+
+        return oGCDHelper(out act, nextGCD) || base.AttackAbility(nextGCD, out act);
+    }
 
     #endregion
 
-    #region  Properties
+    #region GCD Logic
+
+    /// Override the method for handling general Global Cooldown (GCD) actions
+    protected override bool GeneralGCD(out IAction? act)
+    {
+        if (!LoadFru) return HoldGcd(out act) || base.GeneralGCD(out act);
+        CheckBoss();
+        CheckDowntime();
+        UpdateFruDowntime();
+
+        return HoldGcd(out act) || base.GeneralGCD(out act);
+    }
+
+    #endregion
+    
+    #region Properties
 
     private static bool ShouldUseLastDance { get; set; } = true;
     private static bool ShouldUseTechStep { get; set; } = true;
-    private static bool ShouldUseStandardStep { get; set; } = true;
+    private static bool ShouldUseStandardStep { get; } = true;
     private static bool ShouldUseFlourish { get; set; }
-    private static bool ShouldFinishingMove { get; set; } = true;
+    private static bool ShouldFinishingMove { get; } = true;
     private static readonly bool HasSpellInWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
     private static readonly bool HasReturn = Player.HasStatus(false, StatusID.Return);
     private static readonly bool ReturnEnding = HasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
     public static readonly bool HasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
     private static bool _shouldRemoveFinishingMove;
-    private bool AboutToDance => StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-    private static bool DanceDance => Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
+
+    private bool AboutToDance =>
+        StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
+
+    private static bool DanceDance =>
+        Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
+
     private bool StandardReady => StandardStepPvE.Cooldown.ElapsedAfter(28);
     private bool TechnicalReady => TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-    private static bool StepFinishReady => Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2 || Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4;
+
+    private static bool StepFinishReady => (Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2) ||
+                                           (Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4);
+
     private static bool AreDanceTargetsInRange => AllHostileTargets.Any(target => target.DistanceToPlayer() <= 15);
 
-    
+
     public override void DisplayStatus()
     {
-        DisplayStatusHelper.BeginPaddedChild("The CustomRotation's status window", true, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
+        DisplayStatusHelper.BeginPaddedChild("The CustomRotation's status window", true,
+            ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
         DrawRotationStatus();
         DrawCombatStatus();
         ImGui.Separator();
@@ -73,24 +153,24 @@ public sealed class ChurinDnc : FuturesRewritten
         DisplayStatusHelper.DrawItemMiddle(() =>
         {
             ImGui.Text("Combat Status");
-        
+
             // Calculate the width of the window
             var windowWidth = ImGui.GetWindowWidth();
-        
+
             // Calculate the width of the text for current FRU Boss
-            var textWidth = ImGui.CalcTextSize("current FRU Boss: " + FuturesRewritten.CurrentPhase).X;
+            var textWidth = ImGui.CalcTextSize("current FRU Boss: " + CurrentPhase).X;
             ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
-            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss: " + FuturesRewritten.CurrentPhase);
-        
+            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss: " + CurrentPhase);
+
             // Calculate the width of the text for Combat Time
             textWidth = ImGui.CalcTextSize("Combat Time: " + CombatTime).X;
             ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
             ImGui.Text("Combat Time: " + CombatTime);
-        
+
             // Calculate the width of the text for Current Downtime
-            textWidth = ImGui.CalcTextSize("Current Downtime: " + FuturesRewritten.CurrentDowntime).X;
+            textWidth = ImGui.CalcTextSize("Current Downtime: " + CurrentDowntime).X;
             ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
-            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime: " + FuturesRewritten.CurrentDowntime);
+            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime: " + CurrentDowntime);
         }, ImGui.GetWindowWidth(), ImGui.CalcTextSize("Combat Status").X);
         ImGui.Text("Should Use Tech Step?:" + ShouldUseTechStep);
         ImGui.Text("Should Use Flourish?:" + ShouldUseFlourish);
@@ -104,816 +184,515 @@ public sealed class ChurinDnc : FuturesRewritten
     }
 
     #endregion
-
-    #region Countdown Logic
-    // Override the method for actions to be taken during countdown phase of combat
-    protected override IAction? CountDownAction(float remainTime)
-    {
-        // If there are 15 or fewer seconds remaining in the countdown 
-        if (remainTime >= 15) return base.CountDownAction(remainTime);
-        // Attempt to use Standard Step if applicable
-        else
-        {
-        if (StandardStepPvE.CanUse(out IAction? act, skipAoeCheck: true)) return act;
-        // Fallback to executing step GCD action if Standard Step is not used
-        if (ExecuteStepGCD(out act)) return act;
-        // Finish the dance if the conditions are met
-        if (remainTime <= 0.54f && FinishTheDance(out act)) return act;
-        // If none of the above conditions are met, fallback to the base class method
-        }
-        return base.CountDownAction(remainTime);
-    }
-    #endregion
-
-    #region oGCD Logic
-
-    /// Override the method for handling emergency abilities
-    protected override bool EmergencyAbility(IAction? nextGCD, out IAction? act)
-    {
-        if (DevilmentAfterFinish(out act)) return true;
-        if (FallbackDevilment(out act)) return true;
-        if (NotDancing(nextGCD, out act)) return true;
-
-        act = null;
-        return false;
-    }
     
-    /// Override the method for handling attack abilities
-    protected override bool AttackAbility(IAction nextGCD, out IAction? act)
-    {
-        act = null;
-        if (LoadFru)
-        {
-            CheckBoss();
-            CheckDowntime();
-            UpdateFruDowntime();
-        }
-
-        if (IsDancing || AboutToDance) return false;
-
-        if (nextGCD.AnimationLockTime > 0.75f) return false;
-
-        return OGcdHelper(out act, nextGCD) || base.AttackAbility(nextGCD, out act);
-    }
-
-    #endregion
-
-    #region GCD Logic
-    /// Override the method for handling general Global Cooldown (GCD) actions
-    protected override bool GeneralGCD(out IAction? act)
-    {
-        if (!LoadFru) return TryExecuteGcd(out act) || base.GeneralGCD(out act);
-        CheckBoss();
-        CheckDowntime();
-        UpdateFruDowntime();
-        return TryExecuteGcd(out act) || base.GeneralGCD(out act);
-    }
-    
-    #endregion
-
     #region Extra Methods
-    /// <summary>
-    /// Helper method to handle attack actions during the global cooldown (GCD) based on certain conditions.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <param name="burst">Indicates whether the attack should be a burst attack.</param>
-    /// <returns>True if an attack GCD action was performed; otherwise, false.</returns>
-    private bool AttackGcd(out IAction? act, bool burst)
-    {
-        // Check if the player is currently dancing
-        if (IsDancing)
+
+        #region Technical Step Logic
+        private bool HoldGcd(out IAction? act)
+        {
+            // If technical step conditions require holding GCD attacks, exit early.
+            if (ShouldHoldForTechnicalStep())
+            {
+                act = null;
+                return false;
+            }
+            // Otherwise, try to use technical step first then other GCD actions.
+            return TryUseTechnicalStep(out act) || HandleGcdActions(out act);
+        }
+
+        private bool ShouldHoldForTechnicalStep()
+        {
+            var noTechStatus = !Player.HasStatus(true, StatusID.TechnicalStep) &&
+                               !Player.HasStatus(true, StatusID.TechnicalFinish);
+            var techStepSoon = TechnicalStepPvE.IsEnabled &&
+                               TechnicalStepPvE.Cooldown.WillHaveOneCharge(1);
+            var actionsUnavailable = !TechnicalStepPvE.CanUse(out _) &&
+                                     !TillanaPvE.CanUse(out _);
+            var notInTechPhase = !DanceDance;
+
+            return noTechStatus && techStepSoon && actionsUnavailable && notInTechPhase && !IsDancing;
+        }
+
+        private bool TryUseTechnicalStep(out IAction? act)
+        {
+            // Use the current instance rather than creating a new one.
+            var shouldHoldForTechFinish = InCombat && HoldTechForTargets && AreDanceTargetsInRange;
+            if (shouldHoldForTechFinish)
+            {
+                ShouldUseTechStep = true;
+            }
+
+            if (ShouldUseTechStep &&
+                TechnicalStepPvE.IsEnabled &&
+                TechnicalStepPvE.CanUse(out act, skipAoeCheck: true))
+            {
+                return true;
+            }
+            if (FinishTheDance(out act)) return true;
+
+            act = null;
+            return false;
+        }
+        #endregion
+
+        #region Burst Logic
+
+        private bool AttackGcd(out IAction? act, bool burst)
+        {
+            if (IsDancing) return SetActToNull(out act);
+
+            if (HandleTillana(out act)) return true;
+            if (HandleLastDance(out act)) return true;
+            if (HandleDanceDance(out act, burst)) return true;
+            if (TryUseStandardStep(out act)) return true;
+            if (TryUseFinishingMove(out act)) return true;
+            if (HandleBasicGcd(out act)) return true;
+
+            return SetActToNull(out act);
+        }
+
+        private bool HandleDanceDance(out IAction? act, bool burst)
+        {
+            if (burst)
+            {
+                if (TryUseDanceOfTheDawn(out act)) return true;
+                if (TryUseFinishingMoveBurst(out act)) return true;
+                if (TryUseStarfallDance(out act)) return true;
+                if (TryUseSaberDanceBurst(out act)) return true;
+            }
+
+            return SetActToNull(out act);
+        }
+
+        private bool TryUseDanceOfTheDawn(out IAction? act)
+        {
+            if (Esprit >= 50 && DanceOfTheDawnPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            return SetActToNull(out act);
+        }
+
+        private bool HandleTillana(out IAction? act)
+        {
+            if (Esprit <= 45 && !DevilmentPvE.CanUse(out _, skipComboCheck: true) && TillanaPvE.CanUse(out act))
+                return true;
+            return SetActToNull(out act);
+        }
+
+        private bool HandleLastDance(out IAction? act)
+        {
+            if (TechnicalStepPvE.Cooldown.ElapsedAfter(103))
+                ShouldUseLastDance = false;
+
+            var standardOrFinishingCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2) ||
+                                            FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2);
+
+            if (DanceDance || standardOrFinishingCharge || Player.WillStatusEnd(2.5f, true, StatusID.LastDanceReady))
+                ShouldUseLastDance = true;
+
+            if (ShouldUseLastDance && LastDancePvE.CanUse(out act))
+                return true;
+
+            return SetActToNull(out act);
+        }
+
+        private bool TryUseStarfallDance(out IAction? act)
+        {
+            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7);
+            var standardStepNotReady =
+                StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown;
+            if (devilmentElapsed && standardStepNotReady && StarfallDancePvE.CanUse(out act, skipAoeCheck: true))
+                return true;
+
+            return SetActToNull(out act);
+        }
+
+        private bool TryUseSaberDanceBurst(out IAction? act)
+        {
+            var hasEnoughEsprit = Esprit >= 50;
+            var canUseSaberDance = SaberDancePvE.CanUse(out act, skipAoeCheck: true);
+            var noFinishingMove =
+                !(FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1) ||
+                  StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1)) &&
+                !(FinishingMovePvE.CanUse(out _, skipAoeCheck: true) ||
+                  StandardStepPvE.CanUse(out _, skipAoeCheck: true)) &&
+                Player.WillStatusEnd(2.5f, true, StatusID.Devilment);
+
+            if (noFinishingMove && hasEnoughEsprit && canUseSaberDance) return true;
+
+            return SetActToNull(out act);
+        }
+
+        private bool TryUseFinishingMoveBurst(out IAction? act)
+        {
+            var canUseFinishingMove = ShouldFinishingMove && AreDanceTargetsInRange;
+            var hasLastDance = Player.HasStatus(true, StatusID.LastDanceReady);
+            if (!hasLastDance && canUseFinishingMove && FinishingMovePvE.CanUse(out act, skipAoeCheck: true))
+                return true;
+
+            return SetActToNull(out act);
+        }
+
+        private bool TryUseFinishingMove(out IAction? act)
+        {
+            var hasLastDance = Player.HasStatus(true, StatusID.LastDanceReady);
+            var canUseFinishingMove = ShouldFinishingMove && !hasLastDance;
+            if (canUseFinishingMove && FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
+
+            return SetActToNull(out act);
+        }
+
+
+        #endregion
+
+        #region Regular GCD Logic
+        /// <summary>
+        ///     Handles the logic for executing general global cooldown (GCD) actions.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if a GCD action was performed; otherwise, false.</returns>
+        private bool HandleGcdActions(out IAction? act)
+        {
+            return TryUseClosedPosition(out act) ||
+                   ExecuteStepGCD(out act) ||
+                   TryUseTechnicalStep(out act) ||
+                   FinishTheDance(out act) ||
+                   TryUseStandardStep(out act) ||
+                   TryUseSaberDance(out act) ||
+                   AttackGcd(out act, Player.HasStatus(true, StatusID.Devilment));
+        }
+
+        /// <summary>
+        ///     Handles the logic for using basic global cooldown (GCD) actions.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if a basic GCD action was performed; otherwise, false.</returns>
+        private bool HandleBasicGcd(out IAction? act)
+        {
+            // Determine if neither Standard Step nor Technical Step is ready
+            var isNotStepReady = !(StandardReady || TechnicalReady);
+
+            // Determine if Last Dance cannot be used
+            var cannotUseLastDance = !ShouldUseLastDance || !LastDancePvE.CanUse(out _, skipAoeCheck: true);
+
+            // Check if Esprit is low (less than or equal to 70)
+            var hasLowEsprit = Esprit < 50;
+
+            // Determine if prioritized GCD actions should be used
+            var shouldUseBasicGcd = (isNotStepReady && cannotUseLastDance) || hasLowEsprit;
+
+            // Attempt to use basic GCD actions if conditions are met
+            if (shouldUseBasicGcd) return TryUseBasicGcDs(out act);
+
+            // No basic GCD action was performed
+            act = null;
+            return false;
+        }
+
+        /// <summary>
+        ///     Attempts to use the Standard Step action.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if the Standard Step action was performed; otherwise, false.</returns>
+        private bool TryUseStandardStep(out IAction? act)
+        {
+            // Check if Standard Step should be used and if it can be used
+            if (ShouldUseStandardStep && StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
+
+            // No Standard Step action was performed
+            act = null;
+            return false;
+        }
+
+        /// <summary>
+        ///     Attempts to use basic global cooldown (GCD) actions in a prioritized order.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if a basic GCD action was performed; otherwise, false.</returns>
+        private bool TryUseBasicGcDs(out IAction? act)
+        {
+            return TryUseAction(BloodshowerPvE, out act) ||
+                   TryUseAction(FountainfallPvE, out act) ||
+                   TryUseAction(RisingWindmillPvE, out act) ||
+                   TryUseAction(ReverseCascadePvE, out act) ||
+                   TryUseAction(BladeshowerPvE, out act) ||
+                   TryUseAction(WindmillPvE, out act) ||
+                   TryUseAction(FountainPvE, out act) ||
+                   TryUseAction(CascadePvE, out act);
+        }
+
+        private static bool TryUseAction(IBaseAction actionProvider, out IAction? act)
+        {
+            if (actionProvider.CanUse(out act)) return true;
+            act = null;
+            return false;
+        }
+
+        /// <summary>
+        ///     Attempts to use Saber Dance.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if Saber Dance was performed; otherwise, false.</returns>
+        private bool TryUseSaberDance(out IAction? act)
+        {
+            // Check if the player has enough Esprit
+            var hasEnoughEsprit = Esprit >= 70;
+
+            // Check if Technical Step is not ready
+            var techStepNotReady = !TechnicalStepPvE.Cooldown.WillHaveOneCharge(0.5f);
+
+            // Check if Standard Step is not ready
+            var standardStepNotReady = !StandardStepPvE.Cooldown.WillHaveOneCharge(0.5f);
+
+            // Check if Saber Dance can be used
+            var canUseSaberDance = SaberDancePvE.CanUse(out act);
+
+            // Determine if Saber Dance should be used
+            var shouldUseSaberDance = hasEnoughEsprit && (techStepNotReady || standardStepNotReady) && canUseSaberDance;
+
+            // Attempt to use Saber Dance if conditions are met
+            if (shouldUseSaberDance) return true;
+
+            // No Saber Dance action was performed
+            act = null;
+            return false;
+        }
+        #endregion
+
+        #region Helper Logic
+
+        /// <summary>
+        ///     Holds the dance finish until the target is in range (14 yalms).
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if a dance finish action was performed; otherwise, false.</returns>
+        private bool FinishTheDance(out IAction? act)
+        {
+            // Guard clause: return early if none of the finish conditions are met.
+            var isStepReadyAndInRange = StepFinishReady && AreDanceTargetsInRange;
+            var isStandardEnding = Player.WillStatusEnd(1f, true, StatusID.StandardStep);
+            var isTechnicalEnding = Player.WillStatusEnd(1f, true, StatusID.TechnicalStep);
+            var shouldFinishDance = isStepReadyAndInRange || isStandardEnding || isTechnicalEnding;
+
+            if (!shouldFinishDance) return SetActToNull(out act);
+
+            if (DoubleStandardFinishPvE.CanUse(out act)) return true;
+            if (QuadrupleTechnicalFinishPvE.CanUse(out act)) return true;
+
+            return SetActToNull(out act);
+        }
+
+        /// <summary>
+        ///     Attempts to use the Closed Position action.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if the Closed Position action was performed; otherwise, false.</returns>
+        private bool TryUseClosedPosition(out IAction? act)
+        {
+            // Check if Closed Position can be used
+            if (!CanUseClosedPosition(out act)) return false;
+
+            // Set the dance partner target
+            SetDancePartnerTarget();
+
+            return true;
+        }
+
+        /// <summary>
+        ///     Determines if the Closed Position action can be used.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if the Closed Position action can be used; otherwise, false.</returns>
+        private bool CanUseClosedPosition(out IAction? act)
+        {
+            act = null;
+            return !InCombat && !Player.HasStatus(true, StatusID.ClosedPosition) && ClosedPositionPvE.CanUse(out act);
+        }
+
+        /// <summary>
+        ///     Sets the dance partner target based on the specified dance partner name.
+        /// </summary>
+        private void SetDancePartnerTarget()
+        {
+            // Check if the dance partner name is specified
+            if (string.IsNullOrEmpty(DancePartnerName)) return;
+
+            // Iterate through party members to find the dance partner
+            foreach (var player in PartyMembers)
+            {
+                if (player.Name.ToString() != DancePartnerName) continue;
+                // Set the Closed Position target to the dance partner
+                ClosedPositionPvE.Target = new TargetResult(player, [player], player.Position);
+                break;
+            }
+        }
+
+        /// <summary>
+        ///     Determines whether the Devilment action can be used after the Technical Finish status is active.
+        /// </summary>
+        /// <param name="act">The action to be performed if Devilment can be used.</param>
+        /// <returns>
+        ///     <c>true</c> if the Devilment action can be used; otherwise, <c>false</c>.
+        /// </returns>
+        private bool DevilmentAfterFinish(out IAction? act)
+        {
+            if (Player.HasStatus(true, StatusID.TechnicalFinish) && DevilmentPvE.CanUse(out act)) return true;
+            return SetActToNull(out act);
+        }
+
+        /// <summary>
+        ///     Attempts to use the Devilment action if the last GCD action was Quadruple Technical Finish.
+        /// </summary>
+        /// <param name="act">The action to be used if the conditions are met.</param>
+        /// <returns>True if the Devilment action can be used; otherwise, false.</returns>
+        private bool FallbackDevilment(out IAction? act)
+        {
+            if (IsLastGCD(ActionID.QuadrupleTechnicalFinishPvE) && DevilmentPvE.CanUse(out act)) return true;
+            return SetActToNull(out act);
+        }
+
+        /// <summary>
+        ///     Determines if the character is not dancing and can use an emergency ability.
+        /// </summary>
+        /// <param name="nextGcd">The next global cooldown action.</param>
+        /// <param name="act">The action to be performed if the emergency ability can be used.</param>
+        /// <returns>
+        ///     True if the character can use an emergency ability; otherwise, false.
+        /// </returns>
+        private bool NotDancing(IAction? nextGcd, out IAction? act)
+        {
+            if (!IsDancing && !(StandardReady || TechnicalReady) && nextGcd != null)
+                return base.EmergencyAbility(nextGcd, out act);
+
+            return SetActToNull(out act);
+        }
+
+        /// <summary>
+        ///     Helper method to handle off-global cooldown (oGCD) actions.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <param name="nextGCD">The next global cooldown (GCD) action to be performed.</param>
+        /// <returns>True if an oGCD action was performed; otherwise, false.</returns>
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        private bool oGCDHelper(out IAction? act, IAction nextGCD)
+        {
+            if (HandleFlourish(out act)) return true;
+            if (_shouldRemoveFinishingMove) RemoveFinishingMove();
+            if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (ShouldUseFeathers(nextGCD, out act)) return true;
+            if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (UseClosedPosition(out act)) return true;
+
+            return SetActToNull(out act);
+        }
+
+        /// <summary>
+        ///     Handles the logic for removing the Finishing Move status.
+        /// </summary>
+        /// <returns>True if removing Finishing Move was performed; otherwise, false.</returns>
+        private static void RemoveFinishingMove()
+        {
+            if (Player.HasStatus(true, StatusID.FinishingMoveReady))
+            {
+                StatusHelper.StatusOff(StatusID.FinishingMoveReady);
+                _shouldRemoveFinishingMove = false;
+            }
+        }
+
+        /// <summary>
+        ///     Handles the logic for using the Flourish action.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if the Flourish action was performed; otherwise, false.</returns>
+        private bool HandleFlourish(out IAction? act)
+        {
+            act = null;
+            if (DanceDance || TechnicalStepPvE.Cooldown.WillHaveOneCharge(67)) ShouldUseFlourish = true;
+
+            if (ShouldUseFlourish && FlourishPvE.CanUse(out act, skipAoeCheck: true))
+            {
+                return true;
+            }
+
+            if (!TechnicalStepPvE.IsEnabled || Player.HasStatus(true, StatusID.ThreefoldFanDance))
+            {
+                ShouldUseFlourish = false;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines whether feathers should be used based on the next GCD action and current player status.
+        /// </summary>
+        /// <param name="nextGcd">The next global cooldown (GCD) action to be performed.</param>
+        /// <param name="act"> The action to be performed, if any.</param>
+        /// <returns>True if a feather action was performed; otherwise, false.</returns>
+        private bool ShouldUseFeathers(IAction nextGcd, out IAction? act)
+        {
+            // Define GCD actions that can support feathers usage.
+            IAction[] feathersGCD = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
+
+            var hasDevilment = Player.HasStatus(true, StatusID.Devilment);
+            var hasEnoughFeathers = Feathers > 3 && feathersGCD.Contains(nextGcd);
+            var noThreefoldFanDance = !Player.HasStatus(true, StatusID.ThreefoldFanDance);
+
+            if ((hasDevilment || hasEnoughFeathers) && noThreefoldFanDance)
+            {
+                if (FanDanceIiPvE.CanUse(out act)) return true;
+                if (FanDancePvE.CanUse(out act)) return true;
+            }
+
+            return SetActToNull(out act);
+        }
+
+        /// <summary>
+        ///     Handles the logic for using the Closed Position action.
+        /// </summary>
+        /// <param name="act">The action to be performed, if any.</param>
+        /// <returns>True if the Closed Position action was performed; otherwise, false.</returns>
+        private bool UseClosedPosition(out IAction? act)
+        {
+            // Check if Closed Position can be used
+            if (!ClosedPositionPvE.CanUse(out act)) return false;
+
+            // Check if the player is in combat and has the Closed Position status
+            if (InCombat && Player.HasStatus(true, StatusID.ClosedPosition))
+                // Check party members for Closed Position status
+                return CheckPartyMembersForClosedPosition();
+
+            // Closed Position action was not performed
+            return false;
+        }
+
+        /// <summary>
+        ///     Checks party members for the Closed Position status and ensures the target is set correctly.
+        /// </summary>
+        /// <returns>
+        ///     True if a party member with the Closed Position status is found and the target is set correctly; otherwise,
+        ///     false.
+        /// </returns>
+        private bool CheckPartyMembersForClosedPosition()
+        {
+            foreach (var friend in PartyMembers)
+            {
+                // Check if the party member has the Closed Position status
+                if (!friend.HasStatus(true, StatusID.ClosedPosition_2026)) continue;
+                // Check if the Closed Position target is not set to this party member
+                if (ClosedPositionPvE.Target.Target != friend) return true;
+                break;
+            }
+
+            // No party member with the Closed Position status was found or the target is already set correctly
+            return false;
+        }
+
+        // Helper method to set act to null and return false.
+        private static bool SetActToNull(out IAction? act)
         {
             act = null;
             return false;
         }
 
-        // Attempt to handle Tillana
-        if (HandleTillana(out act))
-        {
-            return true;
-        }
+        #endregion
 
-        // Attempt to handle Last Dance
-        if (HandleLastDance(out act))
-        {
-            return true;
-        }
-
-        // Attempt to handle PriorityGCDs during burst windows
-        if (HandleDanceDance(out act, burst))
-        {
-            return true;
-        }
-
-        // Attempt to use Standard Step
-        if (TryUseStandardStep(out act))
-        {
-            return true;
-        }
-
-        // Attempt to handle Finishing Move
-        if (TryUseFinishingMove(out act))
-        {
-            return true;
-        }
-
-        // Attempt to handle basic GCD action
-        if (HandleBasicGcd(out act))
-        {
-            return true;
-        }
-
-        // No attack GCD action was performed
-        act = null;
-        return false;
-    }
-    /// <summary>
-    /// Attempts to execute a general global cooldown (GCD) action.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if a GCD action was performed; otherwise, false.</returns>
-    private bool TryExecuteGcd(out IAction? act)
-    {
-        // Check if GCD attacks should be held for Technical Step
-        if (!ShouldHoldForTechnicalStep())
-            return TryUseTechnicalStep(out act) ||
-                   // Handle other GCD actions
-                   HandleGcdActions(out act);
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Handles the logic for executing general global cooldown (GCD) actions.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if a GCD action was performed; otherwise, false.</returns>
-    private bool HandleGcdActions(out IAction? act)
-    {
-        return TryUseClosedPosition(out act) ||
-               TryUseTechnicalStep(out act) ||
-               FinishTheDance(out act) ||
-               ExecuteStepGCD(out act) ||
-               TryUseStandardStep(out act) ||
-               TryUseSaberDance(out act) ||
-               AttackGcd(out act, Player.HasStatus(true, StatusID.Devilment));
-    }
-
-    /// <summary>
-    /// Handles the logic for using the Tillana.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if Tillana was performed; otherwise, false.</returns>
-    private bool HandleTillana(out IAction? act)
-    {
-        // Check if Esprit is less than or equal to 50 and Devilment cannot be used
-        if (Esprit <= 45 && !DevilmentPvE.CanUse(out _, skipComboCheck: true))
-        {
-            // Attempt to use Tillana, skipping the AoE check
-            if (TillanaPvE.CanUse(out act, skipAoeCheck: true)) return true;
-        }
-
-        // No Tillana action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Handles the logic for using the Last Dance.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Last Dance action was performed; otherwise, false.</returns>
-    private static bool HandleLastDance(out IAction? act)
-    {
-        ChurinDnc instance = new();
-        // Check if the Technical Step cooldown has elapsed more than 103 seconds
-        if (instance.TechnicalStepPvE.Cooldown.ElapsedAfter(103))
-        {
-            ShouldUseLastDance = false;
-        }
-
-        // Check if buffs are active and Standard Step cooldown will not have one charge in 2.5 seconds
-        var standardStepWillHaveCharge = instance.StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2);
-        var finishingMoveWillHaveCharge = instance.FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2);
-        var standardOrFinishingCharge = standardStepWillHaveCharge || finishingMoveWillHaveCharge;
-
-        if (DanceDance && standardOrFinishingCharge)
-        {
-            ShouldUseLastDance = true;
-        }
-
-        // Attempt to use Last Dance if shouldUseLastDance is true
-        if (ShouldUseLastDance)
-        {
-            if (instance.LastDancePvE.CanUse(out act, skipAoeCheck: true)) return true;
-        }
-
-        // No Last Dance action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Handles the logic for using Priority Actions during burst windows.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <param name="burst">Indicates whether the action should be performed during a burst window.</param>
-    /// <returns>True if a Dance action was performed; otherwise, false.</returns>
-    private bool HandleDanceDance(out IAction? act, bool burst)
-    {
-        // Check if the action should be performed during a burst window
-        if (burst)
-        {
-            // Attempt to use Dance of the Dawn
-            if (TryUseDanceOfTheDawn(out act)) return true;
-
-            // Attempt to use Finishing Move during burst
-            if (TryUseFinishingMoveBurst(out act)) return true;
-
-            // Attempt to use Starfall Dance
-            if (TryUseStarfallDance(out act)) return true;
-
-            // Attempt to use Saber Dance during burst
-            if (TryUseSaberDanceBurst(out act)) return true;
-        }
-
-        // No Dance action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to use Dance of the Dawn.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Dance of the Dawn action was performed; otherwise, false.</returns>
-    private bool TryUseDanceOfTheDawn(out IAction? act)
-    {
-        // Check if Esprit is greater than or equal to 50 and if Dance of the Dawn can be used
-        if (Esprit >= 50 && DanceOfTheDawnPvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-        // Dance of the Dawn was not performed.
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to use Saber Dance during a burst window.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if Saber Dance action was performed; otherwise, false.</returns>
-    private bool TryUseSaberDanceBurst(out IAction? act)
-    {
-        // Check if the player has enough Esprit
-        var hasEnoughEsprit = Esprit >= 50;
-        // Check if Saber Dance can be used
-        var canUseSaberDance = SaberDancePvE.CanUse(out act, skipAoeCheck: true);
-        // Check if Finishing Move or Standard Step is not ready
-        var finishingMoveNotReady = !FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1) || !StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1);
-        var canUseFinishingMove = FinishingMovePvE.CanUse(out _, skipAoeCheck: true) || StandardStepPvE.CanUse(out _, skipAoeCheck: true);
-        var starfallDanceElapsed = Player.WillStatusEnd(2.5f, true, StatusID.Devilment);
-        var noFinishingMove = finishingMoveNotReady && !canUseFinishingMove;
-        var noFMorSD = noFinishingMove && starfallDanceElapsed;
-        
-        if (noFMorSD && hasEnoughEsprit)
-        {
-            if (canUseSaberDance) return true;
-        }
-
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to use Starfall Dance.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Starfall Dance action was performed; otherwise, false.</returns>
-    private bool TryUseStarfallDance(out IAction? act)
-    {
-        // Check if the Devilment cooldown has elapsed more than 7 seconds
-        var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7);
-
-        // Check if the Standard Step is in cooldown
-        var standardStepNotReady = StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown;
-
-        // Check if Starfall Dance can be used
-        var canUseStarfallDance = StarfallDancePvE.CanUse(out act, skipAoeCheck: true);
-
-        // Attempt to use Starfall Dance if conditions are met
-        if (devilmentElapsed)
-        {
-            if (standardStepNotReady)
-            {
-                if (canUseStarfallDance)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // No Starfall Dance action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to use Finishing Move.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Finishing Move action was performed; otherwise, false.</returns>
-    private bool TryUseFinishingMove(out IAction? act)
-    {
-        var hasLastDance = Player.HasStatus(true, StatusID.LastDanceReady);
-        var canUseFinishingMove = ShouldFinishingMove && !hasLastDance;
-        // Check if the player does not have the Last Dance Ready status and if Finishing Move can be used
-        if (canUseFinishingMove && FinishingMovePvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-        // No Finishing Move action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Handles the logic for using basic global cooldown (GCD) actions.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if a basic GCD action was performed; otherwise, false.</returns>
-    private bool HandleBasicGcd(out IAction? act)
-    {
-        // Determine if neither Standard Step nor Technical Step is ready
-        var isNotStepReady = !(StandardReady || TechnicalReady);
-
-        // Determine if Last Dance cannot be used
-        var cannotUseLastDance = !ShouldUseLastDance || !LastDancePvE.CanUse(out _, skipAoeCheck: true);
-
-        // Check if Esprit is low (less than or equal to 70)
-        var hasLowEsprit = Esprit <= 70;
-
-        // Determine if prioritized GCD actions should be used
-        var shouldUseBasicGcd = (isNotStepReady && cannotUseLastDance) || hasLowEsprit;
-
-        // Attempt to use basic GCD actions if conditions are met
-        if (shouldUseBasicGcd)
-        {
-            return TryUseBasicGcDs(out act);
-        }
-
-        // No basic GCD action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to use basic global cooldown (GCD) actions in a prioritized order.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if a basic GCD action was performed; otherwise, false.</returns>
-    private bool TryUseBasicGcDs(out IAction? act)
-    {
-        return TryUseBladeshower(out act) ||
-                TryUseBloodshower(out act) ||
-               TryUseFountainfall(out act) ||
-               TryUseRisingWindmill(out act) ||
-               TryUseReverseCascade(out act) ||
-               TryUseWindmill(out act) ||
-               TryUseFountain(out act) ||
-               TryUseCascade(out act);
-    }
-
-    private bool TryUseBloodshower(out IAction? act)
-    {
-        if (BloodshowerPvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    private bool TryUseFountainfall(out IAction? act)
-    {
-        if (FountainfallPvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    private bool TryUseRisingWindmill(out IAction? act)
-    {
-        if (RisingWindmillPvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    private bool TryUseReverseCascade(out IAction? act)
-    {
-        if (ReverseCascadePvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    private bool TryUseBladeshower(out IAction? act)
-    {
-        if (BladeshowerPvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    private bool TryUseWindmill(out IAction? act)
-    {
-        if (WindmillPvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    private bool TryUseFountain(out IAction? act)
-    {
-        if (FountainPvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    private bool TryUseCascade(out IAction? act)
-    {
-        if (CascadePvE.CanUse(out act)) return true;
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Holds the dance finish until the target is in range (14 yalms).
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if a dance finish action was performed; otherwise, false.</returns>
-    private bool FinishTheDance(out IAction? act)
-    {
-        // Check for Standard Step if targets are in range or status is about to end.
-        var isStepFinishReadyAndTargetsInRange = StepFinishReady && AreDanceTargetsInRange;
-        var isStandardStepEnding = Player.WillStatusEnd(1f, true, StatusID.StandardStep);
-        var isTechnicalStepEnding = Player.WillStatusEnd(1f, true, StatusID.TechnicalStep);
-        var shouldFinishDance = isStepFinishReadyAndTargetsInRange || isStandardStepEnding || isTechnicalStepEnding;
-
-        if (shouldFinishDance)
-        {
-            if (DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
-            if (QuadrupleTechnicalFinishPvE.CanUse(out act, skipAoeCheck: true)) return true;
-        }
-
-        act = null;
-        return false;
-    }
-    /// <summary>
-    /// Attempts to use the Closed Position action.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Closed Position action was performed; otherwise, false.</returns>
-    private bool TryUseClosedPosition(out IAction? act)
-    {
-        // Check if Closed Position can be used
-        if (!CanUseClosedPosition(out act))
-        {
-            return false;
-        }
-
-        // Set the dance partner target
-        SetDancePartnerTarget();
-
-        return true;
-    }
-
-    /// <summary>
-    /// Determines if the Closed Position action can be used.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Closed Position action can be used; otherwise, false.</returns>
-    private bool CanUseClosedPosition(out IAction? act)
-    {
-        act = null;
-        return !InCombat && !Player.HasStatus(true, StatusID.ClosedPosition) && ClosedPositionPvE.CanUse(out act);
-    }
-
-    /// <summary>
-    /// Sets the dance partner target based on the specified dance partner name.
-    /// </summary>
-    private void SetDancePartnerTarget()
-    {
-        // Check if the dance partner name is specified
-        if (string.IsNullOrEmpty(DancePartnerName)) return;
-
-        // Iterate through party members to find the dance partner
-        foreach (var player in PartyMembers)
-        {
-            if (player.Name.ToString() != DancePartnerName) continue;
-            // Set the Closed Position target to the dance partner
-            ClosedPositionPvE.Target = new TargetResult(player, [player], player.Position);
-            break;
-        }
-    }
-
-    /// <summary>
-    /// Attempts to use the Standard Step action.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Standard Step action was performed; otherwise, false.</returns>
-    private bool TryUseStandardStep(out IAction? act)
-    {
-        // Check if Standard Step should be used and if it can be used
-        if (ShouldUseStandardStep && StandardStepPvE.CanUse(out act, skipAoeCheck: true))
-        {
-            return true;
-        }
-
-        // No Standard Step action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to use Saber Dance.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if Saber Dance was performed; otherwise, false.</returns>
-    private bool TryUseSaberDance(out IAction? act)
-    {
-        // Check if the player has enough Esprit
-        var hasEnoughEsprit = Esprit >= 70;
-
-        // Check if Technical Step is not ready
-        var techStepNotReady = !TechnicalStepPvE.Cooldown.WillHaveOneCharge(0.5f);
-
-        // Check if Standard Step is not ready
-        var standardStepNotReady = !StandardStepPvE.Cooldown.WillHaveOneCharge(0.5f);
-
-        // Check if Saber Dance can be used
-        var canUseSaberDance = SaberDancePvE.CanUse(out act);
-
-        // Determine if Saber Dance should be used
-        var shouldUseSaberDance = hasEnoughEsprit && (techStepNotReady || standardStepNotReady) && canUseSaberDance;
-
-        // Attempt to use Saber Dance if conditions are met
-        if (shouldUseSaberDance)
-        {
-            return true;
-        }
-
-        // No Saber Dance action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to use the Finishing Move action during a burst window.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Finishing Move action was performed; otherwise, false.</returns>
-    private bool TryUseFinishingMoveBurst(out IAction? act)
-    {
-        // Determine if Finishing Move should be used and if dance targets are in range
-        var canUseFinishingMove = ShouldFinishingMove && AreDanceTargetsInRange;
-        var hasLastDance = Player.HasStatus(true, StatusID.LastDanceReady);
-        var canFinish = !hasLastDance && canUseFinishingMove;
-
-        // Attempt to use Finishing Move if conditions are met
-        if (canFinish && FinishingMovePvE.CanUse(out act, skipAoeCheck: true))
-        {
-            return true;
-        }
-
-        // No Finishing Move action was performed
-        act = null;
-        return false;
-    }
-    /// <summary>
-    /// Determines whether GCD attacks should be held because Technical Step is about to become available.
-    /// </summary>
-    /// <returns>True if GCD attacks should be held; otherwise, false.</returns>
-    private bool ShouldHoldForTechnicalStep()
-    {
-        return !JustUsedTech() && ShouldHold();
-    }
-
-    private bool JustUsedTech()
-    {
-        var canUseTillana = TillanaPvE.CanUse(out _);
-        var technicalStepNotReady = Player.HasStatus(true, StatusID.TechnicalStep);
-        var isDanceDance = DanceDance;
-        return canUseTillana || technicalStepNotReady || isDanceDance;
-    }
-
-    private bool ShouldHold()
-    {
-        var isCoolingDown = !Player.HasStatus(true, StatusID.TechnicalStep) || !Player.HasStatus(true, StatusID.TechnicalFinish);
-        var willHaveOneCharge = TechnicalStepPvE.Cooldown.WillHaveOneCharge(1);
-        var cannotUse = !TechnicalStepPvE.CanUse(out _) && !TillanaPvE.CanUse(out _);
-
-        return isCoolingDown && willHaveOneCharge && cannotUse;
-    }
-    private static bool TryUseTechnicalStep(out IAction? act)
-    {
-        ChurinDnc instance = new();
-        var shouldHoldTechFinish = InCombat && HoldTechForTargets && AreDanceTargetsInRange;
-
-        if (shouldHoldTechFinish)
-        {
-            ShouldUseTechStep = true;
-        }
-
-        if (ShouldUseTechStep && instance.TechnicalStepPvE.CanUse(out act, skipAoeCheck: true))
-        {
-            return true;
-        }
-
-        act = null;
-        return false;
-    }
-        /// <summary>
-    /// Determines whether the Devilment action can be used after the Technical Finish status is active.
-    /// </summary>
-    /// <param name="act">The action to be performed if Devilment can be used.</param>
-    /// <returns>
-    /// <c>true</c> if the Devilment action can be used; otherwise, <c>false</c>.
-    /// </returns>
-    private bool DevilmentAfterFinish(out IAction? act)
-    {
-        if (Player.HasStatus(true, StatusID.TechnicalFinish))
-        {
-            if (DevilmentPvE.CanUse(out act)) return true;
-        }
-        act = null;
-        return false;
-    }
-    /// <summary>
-    /// Attempts to use the Devilment action if the last GCD action was Quadruple Technical Finish.
-    /// </summary>
-    /// <param name="act">The action to be used if the conditions are met.</param>
-    /// <returns>True if the Devilment action can be used; otherwise, false.</returns>
-    private bool FallbackDevilment(out IAction? act)
-    {
-        if (IsLastGCD(ActionID.QuadrupleTechnicalFinishPvE))
-        {
-            if (DevilmentPvE.CanUse(out act)) return true;
-        }
-        act = null;
-        return false;
-    }
-    /// <summary>
-    /// Determines if the character is not dancing and can use an emergency ability.
-    /// </summary>
-    /// <param name="nextGcd">The next global cooldown action.</param>
-    /// <param name="act">The action to be performed if the emergency ability can be used.</param>
-    /// <returns>
-    /// True if the character can use an emergency ability; otherwise, false.
-    /// </returns>
-    private bool NotDancing(IAction? nextGcd, out IAction? act)
-    {
-        var isNotDancing = !IsDancing;
-        var isNotStandardOrTechnicalReady = !(StandardReady || TechnicalReady);
-        var canUseEmergencyAbility = isNotDancing && isNotStandardOrTechnicalReady && nextGcd != null;
-        if (canUseEmergencyAbility)
-        {
-            if (nextGcd != null)
-            {
-                return base.EmergencyAbility(nextGcd, out act);
-            }
-        }
-        act = null;
-        return false;
-    }
-        /// <summary>
-    /// Helper method to handle off-global cooldown (oGCD) actions.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <param name="nextGcd">The next global cooldown (GCD) action to be performed.</param>
-    /// <returns>True if an oGCD action was performed; otherwise, false.</returns>
-    private bool OGcdHelper(out IAction? act, IAction nextGcd)
-    {
-        if (HandleFlourish(out act)) return true;
-
-        if (_shouldRemoveFinishingMove)
-        {
-            RemoveFinishingMove();
-        }
-
-        if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-        if (ShouldUseFeathers(nextGcd, out act)) return true;
-
-        if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
-
-        if (UseClosedPosition(out act)) return true;
-
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Handles the logic for removing the Finishing Move status.
-    /// </summary>
-    /// <returns>True if removing Finishing Move was performed; otherwise, false.</returns>
-    private static void RemoveFinishingMove()
-    {
-        // Check if the finishing move should be removed and if the player has the Finishing Move Ready status
-        if (!Player.HasStatus(true, StatusID.FinishingMoveReady)) return;
-        // Remove the Finishing Move Ready status
-        StatusHelper.StatusOff(StatusID.FinishingMoveReady);
-
-        // Reset the RemoveFinishingMove flag
-        _shouldRemoveFinishingMove = false;
-    }
-
-    /// <summary>
-    /// Handles the logic for using the Flourish action.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Flourish action was performed; otherwise, false.</returns>
-    private static bool HandleFlourish(out IAction? act)
-    {
-        act = null;
-
-        // Check if DanceDance is active and set shouldUseFlourish accordingly
-        if (DanceDance)
-        {
-            ShouldUseFlourish = true;
-        }
-
-        // Attempt to use Flourish if shouldUseFlourish is true
-        if (!ShouldUseFlourish) return false;
-        ChurinDnc instance = new();
-        // Check if the player does not have the Threefold Fan Dance status and if Flourish can be used
-        return !Player.HasStatus(true, StatusID.ThreefoldFanDance) && instance.FlourishPvE.CanUse(out act, isFirstAbility: true);
-        // No Flourish action was performed
-    }
-
-    /// <summary>
-    /// Determines whether feathers should be used based on the next GCD action and current player status.
-    /// </summary>
-    /// <param name="nextGcd">The next global cooldown (GCD) action to be performed.</param>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if a feather action was performed; otherwise, false.</returns>
-    private bool ShouldUseFeathers(IAction nextGcd, out IAction? act)
-    {
-        // Define the GCD actions that can use feathers
-        IAction[] feathersGcDs = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
-
-        // Check if the player has the Devilment status
-        var hasDevilment = Player.HasStatus(true, StatusID.Devilment);
-
-        // Check if the player has more than 3 feathers and the next GCD action is one of the feather GCDs
-        var hasEnoughFeathers = Feathers > 3 && feathersGcDs.Contains(nextGcd);
-
-        // Check if the player does not have the Threefold Fan Dance status
-        var noThreefoldFanDance = !Player.HasStatus(true, StatusID.ThreefoldFanDance);
-
-        // Determine if feathers can be used based on the Devilment status or the number of feathers
-        var canUseFeathers = hasDevilment || hasEnoughFeathers;
-
-        // Attempt to use feathers if conditions are met
-        if (canUseFeathers && noThreefoldFanDance)
-        {
-            if (FanDanceIiPvE.CanUse(out act)) return true;
-            if (FanDancePvE.CanUse(out act)) return true;
-        }
-
-        // No feather action was performed
-        act = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Handles the logic for using the Closed Position action.
-    /// </summary>
-    /// <param name="act">The action to be performed, if any.</param>
-    /// <returns>True if the Closed Position action was performed; otherwise, false.</returns>
-    private bool UseClosedPosition(out IAction? act)
-    {
-        // Check if Closed Position can be used
-        if (!ClosedPositionPvE.CanUse(out act)) return false;
-
-        // Check if the player is in combat and has the Closed Position status
-        if (InCombat && Player.HasStatus(true, StatusID.ClosedPosition))
-        {
-            // Check party members for Closed Position status
-            return CheckPartyMembersForClosedPosition();
-        }
-
-        // Closed Position action was not performed
-        return false;
-    }
-
-    /// <summary>
-    /// Checks party members for the Closed Position status and ensures the target is set correctly.
-    /// </summary>
-    /// <returns>True if a party member with the Closed Position status is found and the target is set correctly; otherwise, false.</returns>
-    private bool CheckPartyMembersForClosedPosition()
-    {
-        foreach (var friend in PartyMembers)
-        {
-            // Check if the party member has the Closed Position status
-            if (!friend.HasStatus(true, StatusID.ClosedPosition_2026)) continue;
-            // Check if the Closed Position target is not set to this party member
-            if (ClosedPositionPvE.Target.Target != friend) return true;
-            break;
-        }
-
-        // No party member with the Closed Position status was found or the target is already set correctly
-        return false;
-    }
-    #endregion
+        #endregion
 }

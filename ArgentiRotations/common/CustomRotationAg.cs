@@ -1,88 +1,101 @@
+using Serilog;
+
 namespace ArgentiRotations.Common;
 
 internal unsafe class CustomRotationAg
 {
     #region CountDown
+
     /// <summary>
-    /// The struct about countdown.
+    ///     The struct about countdown.
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    private unsafe struct Countdown
+    private struct Countdown
     {
         /// <summary>
-        /// Timer.
+        ///     Timer.
         /// </summary>
         [FieldOffset(0x28)] internal float Timer;
 
         /// <summary>
-        /// Is this action active.
+        ///     Is this action active.
         /// </summary>
         [FieldOffset(0x38)] internal byte Active;
 
         /// <summary>
-        /// Init.
+        ///     Init.
         /// </summary>
         [FieldOffset(0x3C)] internal uint Initiator;
 
         /// <summary>
-        /// The instance about this struct.
+        ///     The instance about this struct.
         /// </summary>
-        internal static unsafe Countdown* Instance => (Countdown*)Framework.Instance()->GetUIModule()->GetAgentModule()->GetAgentByInternalId(AgentId.CountDownSettingDialog);
+        internal static Countdown* Instance =>
+            (Countdown*)Framework.Instance()->GetUIModule()->GetAgentModule()->GetAgentByInternalId(
+                AgentId.CountDownSettingDialog);
 
-        private static RandomDelay _delay = new RandomDelay(() => (0f,1f));
+        private static RandomDelay _delay = new(() => (0f, 1f));
 
         /// <summary>
-        /// TimeRemaining.
+        ///     TimeRemaining.
         /// </summary>
         internal static float TimeRemaining
         {
             get
             {
-                Countdown* inst = Instance;
+                var inst = Instance;
                 return _delay.Delay(inst->Active != 0) ? inst->Timer : 0;
             }
         }
 
         /// <summary>
-        /// Is Countdown Active.
+        ///     Is Countdown Active.
         /// </summary>
         internal static bool IsCountdownActive
         {
             get
             {
-                Countdown* inst = Instance;
+                var inst = Instance;
                 return inst->Active != 0;
             }
         }
     }
+
     internal static bool CountDownActive => Countdown.IsCountdownActive;
     internal static float CountDownTime => Countdown.TimeRemaining;
+
     #endregion
 
     #region Openers
-    internal static int OpenerStep { get; set; } = 0;
-    internal static bool OpenerHasFinished { get; set; } = false;
-    internal static bool OpenerHasFailed { get; set; } = false;
+
+    internal static int OpenerStep { get; set; }
+    internal static bool OpenerHasFinished { get; set; }
+    internal static bool OpenerHasFailed { get; set; }
     internal const float UniversalFailsafeThreshold = 5.0f;
-    internal static bool OpenerTimeout { get; set; } = false; // TODO - make a method that when true, sends a debug log  and then sets the value back to false
+
+    internal static bool OpenerTimeout { get; set; } =
+        false; // TODO - make a method that when true, sends a debug log  and then sets the value back to false
 
     internal static bool TestOpenerAvailable { get; set; } = false;
     internal static bool OpenerAvailable { get; set; } = false;
     internal static bool OpenerAvailableNoCountdown { get; set; } = false;
     internal static bool OpenerAvailableSavage { get; set; } = false;
+
     internal static bool OpenerAvailableUltimate { get; set; } = false;
+
     // Use a generic handler for determining if an opener is available
-    internal static bool IsOpenerAvailable => OpenerAvailable || OpenerAvailableNoCountdown || OpenerAvailableSavage || OpenerAvailableUltimate || TestOpenerAvailable;
+    internal static bool IsOpenerAvailable => OpenerAvailable || OpenerAvailableNoCountdown || OpenerAvailableSavage ||
+                                              OpenerAvailableUltimate || TestOpenerAvailable;
 
     internal static bool TestStartOpener { get; set; } = false;
-    internal static bool StartOpener { get; set; } = false;
+    internal static bool StartOpener { get; set; }
     internal static bool StartOpenerNoCountdown { get; set; } = false;
     internal static bool StartOpenerSavage { get; set; } = false;
     internal static bool StartOpenerUltimate { get; set; } = false;
 
     internal static bool TestOpenerInProgress { get; set; } = false;
-    internal static bool OpenerInProgress { get; set; } = false;
-    internal static bool OpenerInProgressNoCountdown { get; set; } = false;
+    internal static bool OpenerInProgress { get; set; }
+    internal static bool OpenerInProgressNoCountdown { get; set; }
     internal static bool OpenerInProgressSavage { get; set; } = false;
     internal static bool OpenerInProgressUltimate { get; set; } = false;
 
@@ -94,15 +107,9 @@ internal unsafe class CustomRotationAg
             StartOpener = false;
         }
 
-        if (OpenerAvailableNoCountdown && !OpenerInProgressNoCountdown)
-        {
-            OpenerInProgressNoCountdown = true;
-        }
+        if (OpenerAvailableNoCountdown && !OpenerInProgressNoCountdown) OpenerInProgressNoCountdown = true;
 
-        if (OpenerHasFinished || OpenerHasFailed)
-        {
-            ResetOpenerProperties();
-        }
+        if (OpenerHasFinished || OpenerHasFailed) ResetOpenerProperties();
     }
 
     internal static void ResetOpenerProperties()
@@ -114,6 +121,7 @@ internal unsafe class CustomRotationAg
         OpenerHasFailed = false;
         Debug("Opener values have been reset.");
     }
+
     internal static bool OpenerController(bool lastAction, bool nextAction)
     {
         if (lastAction)
@@ -122,23 +130,33 @@ internal unsafe class CustomRotationAg
             Debug($"Last action matched! Proceeding to step: {OpenerStep}");
             return false;
         }
+
         return nextAction;
     }
+
     #endregion
 
     #region Logging
+
     private const string ArgentiLog = "[Argenti Rotations]";
 
     /// <summary>
-    /// Sends a debug level message to the Dalamud log console.
+    ///     Sends a debug level message to the Dalamud log console.
     /// </summary>
     /// <param name="message"></param>
-    internal static void Debug(string message) => Serilog.Log.Debug("{ArgentiLog} {Message}", ArgentiLog, message);
+    internal static void Debug(string message)
+    {
+        Log.Debug("{ArgentiLog} {Message}", ArgentiLog, message);
+    }
 
     /// <summary>
-    /// Sends a warning level message to the Dalamud log console.
+    ///     Sends a warning level message to the Dalamud log console.
     /// </summary>
     /// <param name="message"></param>
-    internal static void Warning(string message) => Serilog.Log.Warning("{ArgentiLog} {Message}", ArgentiLog, message);
+    internal static void Warning(string message)
+    {
+        Log.Warning("{ArgentiLog} {Message}", ArgentiLog, message);
+    }
+
     #endregion
 }
