@@ -6,6 +6,41 @@ namespace ArgentiRotations.Ranged;
 [Api(4)]
 public sealed class Brd369V2 : BardRotation
 {
+    #region Config Options
+    [Range(1, 45, ConfigUnitType.Seconds, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Wanderer's Minuet Uptime")]
+    public float WandTime { get; set; } = 42;
+
+    [Range(0, 45, ConfigUnitType.Seconds, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Mage's Ballad Uptime")]
+    public float MageTime { get; set; } = 39;
+
+    [Range(0, 45, ConfigUnitType.Seconds, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Army's Paeon Uptime")]
+    public float ArmyTime { get; set; } = 36;
+
+    private float WandRemainTime => 45 - WandTime;
+    private float MageRemainTime => 45 - MageTime;
+    private float ArmyRemainTime => 45 - ArmyTime;
+
+    // New configuration for enabling prepull Heartbreak Shot
+    [RotationConfig(CombatType.PvE, Name = "Enable Prepull Heartbreak Shot")]
+    public bool EnablePrepullHeartbreakShot { get; set; } = false;
+
+    // Removed RotationConfig attribute for First song to disable changing the option
+
+    [RotationConfig(CombatType.PvE, Name = "Potion Timings")]
+    public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
+
+    public enum PotionTimingOption
+    {
+        None,
+        ZeroAndSixMins,
+        TwoAndEightMins,
+        ZeroFiveAndTenMins
+    }
+
+    #endregion
     #region Prepull Heartbreak Shot
 
     protected override IAction? CountDownAction(float remainTime)
@@ -71,42 +106,7 @@ public sealed class Brd369V2 : BardRotation
 
     #endregion
 
-    #region Config Options
 
-    [Range(1, 45, ConfigUnitType.Seconds, 1)]
-    [RotationConfig(CombatType.PvE, Name = "Wanderer's Minuet Uptime")]
-    public float WandTime { get; set; } = 42;
-
-    [Range(0, 45, ConfigUnitType.Seconds, 1)]
-    [RotationConfig(CombatType.PvE, Name = "Mage's Ballad Uptime")]
-    public float MageTime { get; set; } = 39;
-
-    [Range(0, 45, ConfigUnitType.Seconds, 1)]
-    [RotationConfig(CombatType.PvE, Name = "Army's Paeon Uptime")]
-    public float ArmyTime { get; set; } = 36;
-
-    private float WandRemainTime => 45 - WandTime;
-    private float MageRemainTime => 45 - MageTime;
-    private float ArmyRemainTime => 45 - ArmyTime;
-
-    // New configuration for enabling prepull Heartbreak Shot
-    [RotationConfig(CombatType.PvE, Name = "Enable Prepull Heartbreak Shot")]
-    public bool EnablePrepullHeartbreakShot { get; set; } = false;
-
-    // Removed RotationConfig attribute for First song to disable changing the option
-
-    [RotationConfig(CombatType.PvE, Name = "Potion Timings")]
-    public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
-
-    public enum PotionTimingOption
-    {
-        None,
-        ZeroAndSixMins,
-        TwoAndEightMins,
-        ZeroFiveAndTenMins
-    }
-
-    #endregion
 
     #region oGCD Logic
 
