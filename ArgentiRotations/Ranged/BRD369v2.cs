@@ -9,30 +9,30 @@ public sealed class Brd369V2 : BardRotation
     #region Config Options
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Wanderer's Minuet Uptime")]
-    private float WandTime { get; set; } = 42;
+    public float WandTime { get; set; } = 42;
 
     [Range(0, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Mage's Ballad Uptime")]
-    private float MageTime { get; set; } = 39;
+    public float MageTime { get; set; } = 39;
 
     [Range(0, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Army's Paeon Uptime")]
-    private float ArmyTime { get; set; } = 36;
+    public float ArmyTime { get; set; } = 36;
 
     private float WandRemainTime => 45 - WandTime;
     private float MageRemainTime => 45 - MageTime;
     private float ArmyRemainTime => 45 - ArmyTime;
 
-    // New configuration for enabling pre-pull Heartbreak Shot
-    [RotationConfig(CombatType.PvE, Name = "Enable Pre-pull Heartbreak Shot")]
-    private bool EnablePrepullHeartbreakShot { get; set; } = false;
+    // New configuration for enabling prepull Heartbreak Shot
+    [RotationConfig(CombatType.PvE, Name = "Enable Prepull Heartbreak Shot")]
+    public bool EnablePrepullHeartbreakShot { get; set; } = false;
 
     // Removed RotationConfig attribute for First song to disable changing the option
 
     [RotationConfig(CombatType.PvE, Name = "Potion Timings")]
-    private PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
+    public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
 
-    private enum PotionTimingOption
+    public enum PotionTimingOption
     {
         None,
         ZeroAndSixMins,
@@ -86,7 +86,7 @@ public sealed class Brd369V2 : BardRotation
         if (QuickNockPvE.CanUse(out act)) return true;
 
         if (IronJawsPvE.EnoughLevel && HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true &&
-            HostileTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite))
+            HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true)
         {
             // Do not use WindbitePvE or VenomousBitePvE if both statuses are present and IronJawsPvE has enough level
         }
@@ -154,7 +154,7 @@ public sealed class Brd369V2 : BardRotation
             UpdateBurstStatus();
             if (_inBurstStatusCount < 1)
                 if (HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true &&
-                    HostileTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite)
+                    HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true
                     && IsLastGCD(true, VenomousBitePvE))
                 {
                     if ((PotionTimings == PotionTimingOption.ZeroAndSixMins ||
@@ -341,7 +341,7 @@ public sealed class Brd369V2 : BardRotation
             if (BloodletterPvE.CanUse(out act, usedUp: true)) return true;
         }
 
-        // Prevents Bloodletter bump-capping when.Mage is the song due to Repertoire procs
+        // Prevents Bloodletter bumpcapping when.Mage is the song due to Repetoire procs
         if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.Mage && !SongEndAfterGCD(1))
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
@@ -357,7 +357,8 @@ public sealed class Brd369V2 : BardRotation
                 return true;
 
         // Logic to ensure 4 HeartbreakShots in burst window
-        if (_inBurstStatusCount >= 1 && Song == Song.Wanderer && RagingStrikesPvE.Cooldown is { IsCoolingDown: true, RecastTimeRemainOneCharge: <= 45f })
+        if (_inBurstStatusCount >= 1 && Song == Song.Wanderer && RagingStrikesPvE.Cooldown.IsCoolingDown &&
+            RagingStrikesPvE.Cooldown.RecastTimeRemainOneCharge <= 45f)
             if (HeartbreakShotPvE.Cooldown.WillHaveXCharges(3, 0) && RagingStrikesPvE.Cooldown.WillHaveOneCharge(0))
                 if (HeartbreakShotPvE.CanUse(out act))
                     return true;
