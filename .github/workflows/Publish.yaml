@@ -16,37 +16,25 @@ jobs:
 
       - name: Get Environment Variables
         run: |
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          $tag = "${{ github.ref }}" -replace 'refs/tags/', ''
+
+          "tag=$tag" | Out-File -Append -FilePath $Env:GITHUB_ENV
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-            node-version: '14'
-
       - name: Download Dalamud Latest
         run: |
           Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
-          if ($?) {
-            Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
-          } else {
-            Write-Error "Failed to download Dalamud Latest"
-            exit 1
-          }
-      - name: Update AssemblyVersion in ArgentiRotations.json
-        run: |
-          jq --arg tag "$tag" '.AssemblyVersion = $tag' ArgentiRotations/ArgentiRotations.json > tmp.json
-          Move-Item -Force tmp.json ArgentiRotations/ArgentiRotations.json
+          Expand-Archive -Force latest.zip -DestinationPath "$env:AppData\XIVLauncher\addon\Hooks\dev"
 
       - name: Restore Nuget Packages
         run: dotnet restore ArgentiRotations/ArgentiRotations.csproj
 
       - name: Build Rotations
-        run: dotnet build --no-restore -c Release ArgentiRotations/ArgentiRotations.csproj -p:AssemblyVersion="${{ env.tag }}" -p:FileVersion="${{ env.tag }}" -p:InformationalVersion="${{ env.tag }}" --output .\build
+        run: dotnet build --no-restore -c Release ArgentiRotations/ArgentiRotations.csproj -p:AssemblyVersion=${{ env.tag }} -p:FileVersion=${{ env.tag }} -p:PackageVersion=${{ env.tag }} -p:InformationalVersion=${{ env.tag }} --output .\build
 
       - name: Publish Rotations
         uses: softprops/action-gh-release@v2

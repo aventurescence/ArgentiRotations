@@ -4,8 +4,6 @@
             <TargetFramework>.net9.0-windows7.0</TargetFramework>
             <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
             <AssemblyName>$(MSBuildProjectName)</AssemblyName>
-            <FileVersion>$(FileVersion)</FileVersion>
-            <InformationalVersion>$(InformationalVersion)</InformationalVersion>
             <AssemblyVersion>$(AssemblyVersion)</AssemblyVersion>
           </PropertyGroup>
           <ItemGroup>

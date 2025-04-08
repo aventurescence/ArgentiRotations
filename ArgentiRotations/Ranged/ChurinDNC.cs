@@ -242,9 +242,7 @@ public sealed class ChurinDnc : FuturesRewritten
             if (HandleDanceDance(out act, burst)) return true;
             if (TryUseStandardStep(out act)) return true;
             if (TryUseFinishingMove(out act)) return true;
-            if (HandleBasicGcd(out act)) return true;
-
-            return SetActToNull(out act);
+            return HandleBasicGcd(out act) || SetActToNull(out act);
         }
 
         private bool HandleDanceDance(out IAction? act, bool burst)
@@ -288,7 +286,7 @@ public sealed class ChurinDnc : FuturesRewritten
 
         private bool TryUseStarfallDance(out IAction? act)
         {
-            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) || Player.WillStatusEndGCD(2,0, true, StatusID.Devilment);
+            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) || !Player.WillStatusEndGCD(2,0, true, StatusID.Devilment);
             var standardOrFinishingCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1) ||
                                             FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1);
             if (devilmentElapsed && !standardOrFinishingCharge && StarfallDancePvE.CanUse(out act))
@@ -306,7 +304,7 @@ public sealed class ChurinDnc : FuturesRewritten
                   StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1)) &&
                 !(FinishingMovePvE.CanUse(out _, skipAoeCheck: true) ||
                   StandardStepPvE.CanUse(out _, skipAoeCheck: true)) &&
-                !Player.WillStatusEnd(2.5f, true, StatusID.Devilment);
+                !Player.WillStatusEnd(2, true, StatusID.Devilment);
 
             if (noFinishingMove && hasEnoughEsprit && canUseSaberDance) return true;
 
@@ -349,7 +347,8 @@ public sealed class ChurinDnc : FuturesRewritten
                    FinishTheDance(out act) ||
                    TryUseStandardStep(out act) ||
                    TryUseSaberDance(out act) ||
-                   AttackGcd(out act, Player.HasStatus(true, StatusID.Devilment));
+                   AttackGcd(out act, Player.HasStatus(true, StatusID.Devilment)) ||
+                   HandleBasicGcd(out act);
         }
 
         /// <summary>
