@@ -4,7 +4,7 @@ using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.2", Description = "Only for level 100 content, ok?")]
+[Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.2", Description = "For High end content use, stay cute my dancer friends. <3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
 public sealed class ChurinDnc : FuturesRewritten
@@ -193,8 +193,7 @@ public sealed class ChurinDnc : FuturesRewritten
             // If technical step conditions require holding GCD attacks, exit early.
             if (ShouldHoldForTechnicalStep())
             {
-                act = null;
-                return false;
+                return SetActToNull(out act);
             }
             // Otherwise, try to use technical step first then other GCD actions.
             return TryUseTechnicalStep(out act) || HandleGcdActions(out act);
@@ -228,10 +227,7 @@ public sealed class ChurinDnc : FuturesRewritten
             {
                 return true;
             }
-            if (FinishTheDance(out act)) return true;
-
-            act = null;
-            return false;
+            return FinishTheDance(out act) || SetActToNull(out act);
         }
         #endregion
 
@@ -253,15 +249,11 @@ public sealed class ChurinDnc : FuturesRewritten
 
         private bool HandleDanceDance(out IAction? act, bool burst)
         {
-            if (burst)
-            {
-                if (TryUseDanceOfTheDawn(out act)) return true;
-                if (TryUseFinishingMoveBurst(out act)) return true;
-                if (TryUseStarfallDance(out act)) return true;
-                if (TryUseSaberDanceBurst(out act)) return true;
-            }
-
-            return SetActToNull(out act);
+            if (!burst) return SetActToNull(out act);
+            if (TryUseDanceOfTheDawn(out act)) return true;
+            if (TryUseFinishingMoveBurst(out act)) return true;
+            if (TryUseStarfallDance(out act)) return true;
+            return TryUseSaberDanceBurst(out act) || SetActToNull(out act);
         }
 
         private bool TryUseDanceOfTheDawn(out IAction? act)
@@ -296,10 +288,10 @@ public sealed class ChurinDnc : FuturesRewritten
 
         private bool TryUseStarfallDance(out IAction? act)
         {
-            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7);
-            var standardStepNotReady =
-                StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown;
-            if (devilmentElapsed && standardStepNotReady && StarfallDancePvE.CanUse(out act, skipAoeCheck: true))
+            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) || Player.WillStatusEndGCD(2,0, true, StatusID.Devilment);
+            var standardOrFinishingCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1) ||
+                                            FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1);
+            if (devilmentElapsed && !standardOrFinishingCharge && StarfallDancePvE.CanUse(out act))
                 return true;
 
             return SetActToNull(out act);
@@ -314,7 +306,7 @@ public sealed class ChurinDnc : FuturesRewritten
                   StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1)) &&
                 !(FinishingMovePvE.CanUse(out _, skipAoeCheck: true) ||
                   StandardStepPvE.CanUse(out _, skipAoeCheck: true)) &&
-                Player.WillStatusEnd(2.5f, true, StatusID.Devilment);
+                !Player.WillStatusEnd(2.5f, true, StatusID.Devilment);
 
             if (noFinishingMove && hasEnoughEsprit && canUseSaberDance) return true;
 
@@ -377,14 +369,13 @@ public sealed class ChurinDnc : FuturesRewritten
             var hasLowEsprit = Esprit < 50;
 
             // Determine if prioritized GCD actions should be used
-            var shouldUseBasicGcd = (isNotStepReady && cannotUseLastDance) || hasLowEsprit;
+            var shouldUseBasicGcd = isNotStepReady && cannotUseLastDance && hasLowEsprit;
 
             // Attempt to use basic GCD actions if conditions are met
             if (shouldUseBasicGcd) return TryUseBasicGcDs(out act);
 
             // No basic GCD action was performed
-            act = null;
-            return false;
+            return SetActToNull(out act);
         }
 
         /// <summary>
@@ -396,10 +387,12 @@ public sealed class ChurinDnc : FuturesRewritten
         {
             // Check if Standard Step should be used and if it can be used
             if (ShouldUseStandardStep && StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (Player.HasStatus(true, StatusID.Devilment) &&
+                (Player.WillStatusEnd( 5, true, StatusID.StandardFinish) || !Player.HasStatus(true, StatusID.StandardFinish)) &&
+                StandardStepPvE.CanUse(out act)) return true;
 
             // No Standard Step action was performed
-            act = null;
-            return false;
+            return SetActToNull(out act);
         }
 
         /// <summary>
@@ -422,8 +415,8 @@ public sealed class ChurinDnc : FuturesRewritten
         private static bool TryUseAction(IBaseAction actionProvider, out IAction? act)
         {
             if (actionProvider.CanUse(out act)) return true;
-            act = null;
-            return false;
+
+            return SetActToNull(out act);
         }
 
         /// <summary>
@@ -449,11 +442,9 @@ public sealed class ChurinDnc : FuturesRewritten
             var shouldUseSaberDance = hasEnoughEsprit && (techStepNotReady || standardStepNotReady) && canUseSaberDance;
 
             // Attempt to use Saber Dance if conditions are met
-            if (shouldUseSaberDance) return true;
-
-            // No Saber Dance action was performed
-            act = null;
-            return false;
+            return shouldUseSaberDance ||
+                   // No Saber Dance action was performed
+                   SetActToNull(out act);
         }
         #endregion
 
@@ -474,8 +465,8 @@ public sealed class ChurinDnc : FuturesRewritten
 
             if (!shouldFinishDance) return SetActToNull(out act);
 
-            if (DoubleStandardFinishPvE.CanUse(out act)) return true;
-            if (QuadrupleTechnicalFinishPvE.CanUse(out act)) return true;
+            if (DoubleStandardFinishPvE.CanUse(out act) ||
+                QuadrupleTechnicalFinishPvE.CanUse(out act)) return true;
 
             return SetActToNull(out act);
         }
@@ -574,6 +565,7 @@ public sealed class ChurinDnc : FuturesRewritten
         [SuppressMessage("ReSharper", "InconsistentNaming")]
         private bool oGCDHelper(out IAction? act, IAction nextGCD)
         {
+            if (IsDancing) return SetActToNull(out act);
             if (HandleFlourish(out act)) return true;
             if (_shouldRemoveFinishingMove) RemoveFinishingMove();
             if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
