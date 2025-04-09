@@ -236,13 +236,13 @@ public sealed class ChurinDnc : FuturesRewritten
         private bool AttackGcd(out IAction? act, bool burst)
         {
             if (IsDancing) return SetActToNull(out act);
-
+            if (!burst) return SetActToNull(out act);
             if (HandleTillana(out act)) return true;
             if (HandleLastDance(out act)) return true;
             if (HandleDanceDance(out act, burst)) return true;
             if (TryUseStandardStep(out act)) return true;
             if (TryUseFinishingMove(out act)) return true;
-            return HandleBasicGcd(out act) || SetActToNull(out act);
+            return SetActToNull(out act);
         }
 
         private bool HandleDanceDance(out IAction? act, bool burst)
@@ -333,7 +333,7 @@ public sealed class ChurinDnc : FuturesRewritten
 
         #endregion
 
-        #region Regular GCD Logic
+        #region GCD Helpers
         /// <summary>
         ///     Handles the logic for executing general global cooldown (GCD) actions.
         /// </summary>
@@ -341,13 +341,14 @@ public sealed class ChurinDnc : FuturesRewritten
         /// <returns>True if a GCD action was performed; otherwise, false.</returns>
         private bool HandleGcdActions(out IAction? act)
         {
-            return TryUseClosedPosition(out act) ||
+            return AttackGcd(out act, Player.HasStatus(true, StatusID.Devilment)) ||
                    ExecuteStepGCD(out act) ||
-                   TryUseTechnicalStep(out act) ||
                    FinishTheDance(out act) ||
+                   TryUseTechnicalStep(out act) ||
                    TryUseStandardStep(out act) ||
+                   HandleLastDance(out act) ||
+                   AvoidFeatherOvercap(out act) ||
                    TryUseSaberDance(out act) ||
-                   AttackGcd(out act, Player.HasStatus(true, StatusID.Devilment)) ||
                    HandleBasicGcd(out act);
         }
 
@@ -364,11 +365,8 @@ public sealed class ChurinDnc : FuturesRewritten
             // Determine if Last Dance cannot be used
             var cannotUseLastDance = !ShouldUseLastDance || !LastDancePvE.CanUse(out _, skipAoeCheck: true);
 
-            // Check if Esprit is low (less than or equal to 70)
-            var hasLowEsprit = Esprit < 50;
-
             // Determine if prioritized GCD actions should be used
-            var shouldUseBasicGcd = isNotStepReady && cannotUseLastDance && hasLowEsprit;
+            var shouldUseBasicGcd = isNotStepReady && cannotUseLastDance;
 
             // Attempt to use basic GCD actions if conditions are met
             if (shouldUseBasicGcd) return TryUseBasicGcDs(out act);
@@ -385,7 +383,7 @@ public sealed class ChurinDnc : FuturesRewritten
         private bool TryUseStandardStep(out IAction? act)
         {
             // Check if Standard Step should be used and if it can be used
-            if (ShouldUseStandardStep && StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (!Player.HasStatus(true,StatusID.Devilment) && ShouldUseStandardStep && StandardStepPvE.CanUse(out act, skipAoeCheck: true)) return true;
             if (Player.HasStatus(true, StatusID.Devilment) &&
                 (Player.WillStatusEnd( 5, true, StatusID.StandardFinish) || !Player.HasStatus(true, StatusID.StandardFinish)) &&
                 StandardStepPvE.CanUse(out act)) return true;
@@ -401,23 +399,34 @@ public sealed class ChurinDnc : FuturesRewritten
         /// <returns>True if a basic GCD action was performed; otherwise, false.</returns>
         private bool TryUseBasicGcDs(out IAction? act)
         {
-            return TryUseAction(BloodshowerPvE, out act) ||
-                   TryUseAction(FountainfallPvE, out act) ||
-                   TryUseAction(RisingWindmillPvE, out act) ||
-                   TryUseAction(ReverseCascadePvE, out act) ||
-                   TryUseAction(BladeshowerPvE, out act) ||
-                   TryUseAction(WindmillPvE, out act) ||
-                   TryUseAction(FountainPvE, out act) ||
-                   TryUseAction(CascadePvE, out act);
+            return BloodshowerPvE.CanUse(out act) ||
+                   RisingWindmillPvE.CanUse(out act) ||
+                   FountainfallPvE.CanUse(out act) ||
+                   ReverseCascadePvE.CanUse(out act) ||
+                   FountainPvE.CanUse(out act) ||
+                   CascadePvE.CanUse(out act);
         }
 
-        private static bool TryUseAction(IBaseAction actionProvider, out IAction? act)
+        private bool AvoidFeatherOvercap(out IAction? act)
         {
-            if (actionProvider.CanUse(out act)) return true;
+            var procsAvailable = Player.HasStatus(true, StatusID.SilkenSymmetry) ||
+                                 Player.HasStatus(true, StatusID.SilkenFlow) ||
+                                 Player.HasStatus(true, StatusID.FlourishingSymmetry) ||
+                                 Player.HasStatus(true, StatusID.FlourishingFlow);
+            var hasEnoughFeathers = Feathers > 3;
+            var noDevilment = !Player.HasStatus(true, StatusID.Devilment);
+
+            if (procsAvailable && noDevilment && hasEnoughFeathers)
+            {
+                if (FanDanceIiPvE.CanUse(out act)) return true;
+                if (FanDancePvE.CanUse(out act)) return true;
+                if (Esprit >= 50 && SaberDancePvE.CanUse(out act)) return true;
+                if (FinishingMovePvE.CanUse(out act)) return true;
+                if (!Player.HasStatus(true, StatusID.SilkenSymmetry) && CascadePvE.CanUse(out act)) return true;
+            }
 
             return SetActToNull(out act);
         }
-
         /// <summary>
         ///     Attempts to use Saber Dance.
         /// </summary>
@@ -445,10 +454,6 @@ public sealed class ChurinDnc : FuturesRewritten
                    // No Saber Dance action was performed
                    SetActToNull(out act);
         }
-        #endregion
-
-        #region Helper Logic
-
         /// <summary>
         ///     Holds the dance finish until the target is in range (14 yalms).
         /// </summary>
@@ -469,6 +474,9 @@ public sealed class ChurinDnc : FuturesRewritten
 
             return SetActToNull(out act);
         }
+        #endregion
+
+        #region OGCD Helpers
 
         /// <summary>
         ///     Attempts to use the Closed Position action.
@@ -570,6 +578,7 @@ public sealed class ChurinDnc : FuturesRewritten
             if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
             if (ShouldUseFeathers(nextGCD, out act)) return true;
             if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (TryUseClosedPosition(out act)) return true;
             if (UseClosedPosition(out act)) return true;
 
             return SetActToNull(out act);
@@ -614,19 +623,20 @@ public sealed class ChurinDnc : FuturesRewritten
         /// <summary>
         /// Determines whether feathers should be used based on the next GCD action and current player status.
         /// </summary>
-        /// <param name="nextGcd">The next global cooldown (GCD) action to be performed.</param>
+        /// <param name="nextGCD"></param>
         /// <param name="act"> The action to be performed, if any.</param>
         /// <returns>True if a feather action was performed; otherwise, false.</returns>
-        private bool ShouldUseFeathers(IAction nextGcd, out IAction? act)
+        private bool ShouldUseFeathers(IAction nextGCD, out IAction? act)
         {
             // Define GCD actions that can support feathers usage.
             IAction[] feathersGCD = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
 
             var hasDevilment = Player.HasStatus(true, StatusID.Devilment);
-            var hasEnoughFeathers = Feathers > 3 && feathersGCD.Contains(nextGcd);
+            var hasEnoughFeathers = Feathers > 3 && feathersGCD.Contains(nextGCD);
             var noThreefoldFanDance = !Player.HasStatus(true, StatusID.ThreefoldFanDance);
+            var flourishReady = FlourishPvE.Cooldown.WillHaveOneCharge(2.5f);
 
-            if ((hasDevilment || hasEnoughFeathers) && noThreefoldFanDance)
+            if ((hasDevilment || hasEnoughFeathers) && (noThreefoldFanDance || flourishReady))
             {
                 if (FanDanceIiPvE.CanUse(out act)) return true;
                 if (FanDancePvE.CanUse(out act)) return true;
@@ -634,6 +644,8 @@ public sealed class ChurinDnc : FuturesRewritten
 
             return SetActToNull(out act);
         }
+
+
 
         /// <summary>
         ///     Handles the logic for using the Closed Position action.
