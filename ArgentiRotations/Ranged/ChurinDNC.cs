@@ -294,10 +294,10 @@ public sealed class ChurinDnc : DancerRotation
 
         private bool TryUseStarfallDance(out IAction? act)
         {
-            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) || !Player.WillStatusEndGCD(2,0, true, StatusID.Devilment);
+            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) || Player.WillStatusEndGCD(2,0, true, StatusID.Devilment);
             var standardOrFinishingCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1) ||
                                             FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1);
-            if (devilmentElapsed && !standardOrFinishingCharge && StarfallDancePvE.CanUse(out act) && Esprit <= 60)
+            if ((devilmentElapsed || standardOrFinishingCharge ||  Esprit <= 80) && StarfallDancePvE.CanUse(out act))
                 return true;
 
             return SetActToNull(out act);
