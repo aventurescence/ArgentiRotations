@@ -1,7 +1,6 @@
 namespace ArgentiRotations.Encounter;
 
-[Api(4)]
-public class FuturesRewritten : DancerRotation
+public abstract class FuturesRewritten : DancerRotation
 {
     #region FRU Phases
 

@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using ArgentiRotations.Encounter;
 using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
@@ -7,7 +6,7 @@ namespace ArgentiRotations.Ranged;
 [Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.2", Description = "For High end content use, stay cute my dancer friends. <3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
-public sealed class ChurinDnc : FuturesRewritten
+public sealed class ChurinDnc : DancerRotation
 {
     #region Config Options
 
@@ -18,8 +17,8 @@ public sealed class ChurinDnc : FuturesRewritten
         Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
     private string DancePartnerName { get; set; } = "";
 
-    [RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
-    private bool LoadFru { get; set; } = false;
+    //[RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
+    //private bool LoadFru { get; set; } = false;
 
     #endregion
     
@@ -61,14 +60,14 @@ public sealed class ChurinDnc : FuturesRewritten
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
         act = null;
-        if (LoadFru)
-        {
-            CheckBoss();
-            CheckDowntime();
-            UpdateFruDowntime();
-        }
+        //if (LoadFru)
+        //{
+            //CheckBoss();
+            //CheckDowntime();
+            //UpdateFruDowntime();
+        //}
 
-        if (IsDancing || AboutToDance) return false;
+        if (IsDancing) return false;
 
         if (nextGCD.AnimationLockTime > 0.75f) return false;
 
@@ -82,10 +81,10 @@ public sealed class ChurinDnc : FuturesRewritten
     /// Override the method for handling general Global Cooldown (GCD) actions
     protected override bool GeneralGCD(out IAction? act)
     {
-        if (!LoadFru) return HoldGcd(out act) || base.GeneralGCD(out act);
-        CheckBoss();
-        CheckDowntime();
-        UpdateFruDowntime();
+        //if (!LoadFru) return HoldGcd(out act) || base.GeneralGCD(out act);
+        //CheckBoss();
+        //CheckDowntime();
+        //UpdateFruDowntime();
 
         return HoldGcd(out act) || base.GeneralGCD(out act);
     }
@@ -155,22 +154,22 @@ public sealed class ChurinDnc : FuturesRewritten
             ImGui.Text("Combat Status");
 
             // Calculate the width of the window
-            var windowWidth = ImGui.GetWindowWidth();
+            //var windowWidth = ImGui.GetWindowWidth();
 
             // Calculate the width of the text for current FRU Boss
-            var textWidth = ImGui.CalcTextSize("current FRU Boss: " + CurrentPhase).X;
-            ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
-            ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss: " + CurrentPhase);
+            //var textWidth = ImGui.CalcTextSize("current FRU Boss: " + CurrentPhase).X;
+            //ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            //ImGui.TextColored(ImGuiColors.HealerGreen, "current FRU Boss: " + CurrentPhase);
 
             // Calculate the width of the text for Combat Time
-            textWidth = ImGui.CalcTextSize("Combat Time: " + CombatTime).X;
-            ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
-            ImGui.Text("Combat Time: " + CombatTime);
+            //textWidth = ImGui.CalcTextSize("Combat Time: " + CombatTime).X;
+            //ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            //ImGui.Text("Combat Time: " + CombatTime);
 
             // Calculate the width of the text for Current Downtime
-            textWidth = ImGui.CalcTextSize("Current Downtime: " + CurrentDowntime).X;
-            ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
-            ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime: " + CurrentDowntime);
+            //textWidth = ImGui.CalcTextSize("Current Downtime: " + CurrentDowntime).X;
+            //ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            //ImGui.TextColored(ImGuiColors.DalamudRed, "Current Downtime: " + CurrentDowntime);
         }, ImGui.GetWindowWidth(), ImGui.CalcTextSize("Combat Status").X);
         ImGui.Text("Should Use Tech Step?:" + ShouldUseTechStep);
         ImGui.Text("Should Use Flourish?:" + ShouldUseFlourish);
@@ -238,17 +237,16 @@ public sealed class ChurinDnc : FuturesRewritten
             if (IsDancing) return SetActToNull(out act);
             if (!burst) return SetActToNull(out act);
             if (HandleTillana(out act)) return true;
-            if (HandleLastDance(out act)) return true;
             if (HandleDanceDance(out act, burst)) return true;
             if (TryUseStandardStep(out act)) return true;
-            if (TryUseFinishingMove(out act)) return true;
-            return SetActToNull(out act);
+            return TryUseFinishingMove(out act) || SetActToNull(out act);
         }
 
         private bool HandleDanceDance(out IAction? act, bool burst)
         {
             if (!burst) return SetActToNull(out act);
             if (TryUseDanceOfTheDawn(out act)) return true;
+            if (HandleLastDance(out act)) return true;
             if (TryUseFinishingMoveBurst(out act)) return true;
             if (TryUseStarfallDance(out act)) return true;
             return TryUseSaberDanceBurst(out act) || SetActToNull(out act);
@@ -264,6 +262,9 @@ public sealed class ChurinDnc : FuturesRewritten
         {
             if (Esprit <= 45 && !DevilmentPvE.CanUse(out _, skipComboCheck: true) && TillanaPvE.CanUse(out act))
                 return true;
+            if (Player.WillStatusEnd(2.5f, true, StatusID.FlourishingFinish) && TillanaPvE.CanUse(out act))
+                return true;
+
             return SetActToNull(out act);
         }
 
@@ -274,8 +275,15 @@ public sealed class ChurinDnc : FuturesRewritten
 
             var standardOrFinishingCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2) ||
                                             FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2);
+            var finishedDance = StandardStepPvE.Cooldown.ElapsedAfter(1) || FinishingMovePvE.Cooldown.ElapsedAfter(1);
 
-            if (DanceDance || standardOrFinishingCharge || Player.WillStatusEnd(2.5f, true, StatusID.LastDanceReady))
+            if (DanceDance && Esprit >= 50 && finishedDance)
+                ShouldUseLastDance = false;
+
+            if (Esprit < 50 && Player.HasStatus(true, StatusID.LastDanceReady) && !TechnicalStepPvE.Cooldown.ElapsedAfter(103))
+                ShouldUseLastDance = true;
+
+            if (DanceDance && standardOrFinishingCharge || Player.WillStatusEnd(2.5f, true, StatusID.LastDanceReady))
                 ShouldUseLastDance = true;
 
             if (ShouldUseLastDance && LastDancePvE.CanUse(out act))
@@ -289,7 +297,7 @@ public sealed class ChurinDnc : FuturesRewritten
             var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) || !Player.WillStatusEndGCD(2,0, true, StatusID.Devilment);
             var standardOrFinishingCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1) ||
                                             FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1);
-            if (devilmentElapsed && !standardOrFinishingCharge && StarfallDancePvE.CanUse(out act))
+            if (devilmentElapsed && !standardOrFinishingCharge && StarfallDancePvE.CanUse(out act) && Esprit <= 60)
                 return true;
 
             return SetActToNull(out act);
@@ -303,8 +311,7 @@ public sealed class ChurinDnc : FuturesRewritten
                 !(FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1) ||
                   StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1)) &&
                 !(FinishingMovePvE.CanUse(out _, skipAoeCheck: true) ||
-                  StandardStepPvE.CanUse(out _, skipAoeCheck: true)) &&
-                !Player.WillStatusEnd(2, true, StatusID.Devilment);
+                  StandardStepPvE.CanUse(out _, skipAoeCheck: true));
 
             if (noFinishingMove && hasEnoughEsprit && canUseSaberDance) return true;
 
@@ -347,7 +354,6 @@ public sealed class ChurinDnc : FuturesRewritten
                    TryUseTechnicalStep(out act) ||
                    TryUseStandardStep(out act) ||
                    HandleLastDance(out act) ||
-                   AvoidFeatherOvercap(out act) ||
                    TryUseSaberDance(out act) ||
                    HandleBasicGcd(out act);
         }
@@ -369,10 +375,9 @@ public sealed class ChurinDnc : FuturesRewritten
             var shouldUseBasicGcd = isNotStepReady && cannotUseLastDance;
 
             // Attempt to use basic GCD actions if conditions are met
-            if (shouldUseBasicGcd) return TryUseBasicGcDs(out act);
-
-            // No basic GCD action was performed
-            return SetActToNull(out act);
+            return shouldUseBasicGcd ? TryUseBasicGcDs(out act) :
+                // No basic GCD action was performed
+                SetActToNull(out act);
         }
 
         /// <summary>
@@ -407,26 +412,6 @@ public sealed class ChurinDnc : FuturesRewritten
                    CascadePvE.CanUse(out act);
         }
 
-        private bool AvoidFeatherOvercap(out IAction? act)
-        {
-            var procsAvailable = Player.HasStatus(true, StatusID.SilkenSymmetry) ||
-                                 Player.HasStatus(true, StatusID.SilkenFlow) ||
-                                 Player.HasStatus(true, StatusID.FlourishingSymmetry) ||
-                                 Player.HasStatus(true, StatusID.FlourishingFlow);
-            var hasEnoughFeathers = Feathers > 3;
-            var noDevilment = !Player.HasStatus(true, StatusID.Devilment);
-
-            if (procsAvailable && noDevilment && hasEnoughFeathers)
-            {
-                if (FanDanceIiPvE.CanUse(out act)) return true;
-                if (FanDancePvE.CanUse(out act)) return true;
-                if (Esprit >= 50 && SaberDancePvE.CanUse(out act)) return true;
-                if (FinishingMovePvE.CanUse(out act)) return true;
-                if (!Player.HasStatus(true, StatusID.SilkenSymmetry) && CascadePvE.CanUse(out act)) return true;
-            }
-
-            return SetActToNull(out act);
-        }
         /// <summary>
         ///     Attempts to use Saber Dance.
         /// </summary>
@@ -575,13 +560,11 @@ public sealed class ChurinDnc : FuturesRewritten
             if (IsDancing) return SetActToNull(out act);
             if (HandleFlourish(out act)) return true;
             if (_shouldRemoveFinishingMove) RemoveFinishingMove();
-            if (FanDanceIiiPvE.CanUse(out act, skipAoeCheck: true)) return true;
+            if (FanDanceIiiPvE.CanUse(out act)) return true;
             if (ShouldUseFeathers(nextGCD, out act)) return true;
             if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
             if (TryUseClosedPosition(out act)) return true;
-            if (UseClosedPosition(out act)) return true;
-
-            return SetActToNull(out act);
+            return UseClosedPosition(out act) || SetActToNull(out act);
         }
 
         /// <summary>
@@ -590,11 +573,9 @@ public sealed class ChurinDnc : FuturesRewritten
         /// <returns>True if removing Finishing Move was performed; otherwise, false.</returns>
         private static void RemoveFinishingMove()
         {
-            if (Player.HasStatus(true, StatusID.FinishingMoveReady))
-            {
-                StatusHelper.StatusOff(StatusID.FinishingMoveReady);
-                _shouldRemoveFinishingMove = false;
-            }
+            if (!Player.HasStatus(true, StatusID.FinishingMoveReady)) return;
+            StatusHelper.StatusOff(StatusID.FinishingMoveReady);
+            _shouldRemoveFinishingMove = false;
         }
 
         /// <summary>
@@ -632,11 +613,11 @@ public sealed class ChurinDnc : FuturesRewritten
             IAction[] feathersGCD = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
 
             var hasDevilment = Player.HasStatus(true, StatusID.Devilment);
-            var hasEnoughFeathers = Feathers > 3 && feathersGCD.Contains(nextGCD);
+            var hasEnoughFeathers = Feathers > 3;
             var noThreefoldFanDance = !Player.HasStatus(true, StatusID.ThreefoldFanDance);
-            var flourishReady = FlourishPvE.Cooldown.WillHaveOneCharge(2.5f);
+            var techSoon = TechnicalStepPvE.Cooldown.WillHaveOneCharge(15);
 
-            if ((hasDevilment || hasEnoughFeathers) && (noThreefoldFanDance || flourishReady))
+            if ((hasDevilment || hasEnoughFeathers) && noThreefoldFanDance && (!techSoon || feathersGCD.Contains(nextGCD)))
             {
                 if (FanDanceIiPvE.CanUse(out act)) return true;
                 if (FanDancePvE.CanUse(out act)) return true;
