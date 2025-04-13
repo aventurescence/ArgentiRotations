@@ -69,7 +69,7 @@ public sealed class ChurinDnc : DancerRotation
 
         if (IsDancing) return false;
 
-        if (nextGCD.AnimationLockTime > 0.75f) return false;
+        if (nextGCD.AnimationLockTime > 0.6f) return false;
 
         return oGCDHelper(out act, nextGCD) || base.AttackAbility(nextGCD, out act);
     }
@@ -103,9 +103,6 @@ public sealed class ChurinDnc : DancerRotation
     private static readonly bool ReturnEnding = HasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
     public static readonly bool HasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
     private static bool _shouldRemoveFinishingMove;
-
-    private bool AboutToDance =>
-        StandardStepPvE.Cooldown.ElapsedAfter(28) || TechnicalStepPvE.Cooldown.ElapsedAfter(118);
 
     private static bool DanceDance =>
         Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
@@ -294,10 +291,11 @@ public sealed class ChurinDnc : DancerRotation
 
         private bool TryUseStarfallDance(out IAction? act)
         {
-            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) || Player.WillStatusEndGCD(2,0, true, StatusID.Devilment);
+            var devilmentElapsed = DevilmentPvE.Cooldown.ElapsedAfter(7) ;
+            var devilmentEnding = Player.WillStatusEndGCD(2, 0, true, StatusID.Devilment);
             var standardOrFinishingCharge = StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1) ||
                                             FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1);
-            if ((devilmentElapsed || standardOrFinishingCharge ||  Esprit <= 80) && StarfallDancePvE.CanUse(out act))
+            if ((devilmentElapsed && Esprit < 80 || devilmentEnding || !standardOrFinishingCharge) && StarfallDancePvE.CanUse(out act))
                 return true;
 
             return SetActToNull(out act);
@@ -585,20 +583,21 @@ public sealed class ChurinDnc : DancerRotation
         /// <returns>True if the Flourish action was performed; otherwise, false.</returns>
         private bool HandleFlourish(out IAction? act)
         {
-            act = null;
-            if (DanceDance || TechnicalStepPvE.Cooldown.WillHaveOneCharge(67)) ShouldUseFlourish = true;
+            var burstReady = TechnicalStepPvE.CanUse(out _) && DevilmentPvE.CanUse(out _);
+
+            if (DanceDance || TechnicalStepPvE.Cooldown.ElapsedAfter(67)) ShouldUseFlourish = true;
+
+            if (!TechnicalStepPvE.IsEnabled || Player.HasStatus(true, StatusID.ThreefoldFanDance) || burstReady)
+            {
+                ShouldUseFlourish = false;
+            }
 
             if (ShouldUseFlourish && FlourishPvE.CanUse(out act, skipAoeCheck: true))
             {
                 return true;
             }
 
-            if (!TechnicalStepPvE.IsEnabled || Player.HasStatus(true, StatusID.ThreefoldFanDance))
-            {
-                ShouldUseFlourish = false;
-            }
-
-            return false;
+            return SetActToNull(out act);
         }
 
         /// <summary>
@@ -612,16 +611,16 @@ public sealed class ChurinDnc : DancerRotation
             // Define GCD actions that can support feathers usage.
             IAction[] feathersGCD = [ReverseCascadePvE, FountainfallPvE, RisingWindmillPvE, BloodshowerPvE];
 
+            var hasProcs = Player.HasStatus(true, StatusID.SilkenFlow) ||
+                           Player.HasStatus(true, StatusID.SilkenSymmetry) ||
+                           Player.HasStatus(true, StatusID.FlourishingFlow) ||
+                           Player.HasStatus(true, StatusID.FlourishingSymmetry);
             var hasDevilment = Player.HasStatus(true, StatusID.Devilment);
             var hasEnoughFeathers = Feathers > 3;
             var noThreefoldFanDance = !Player.HasStatus(true, StatusID.ThreefoldFanDance);
-            var techSoon = TechnicalStepPvE.Cooldown.WillHaveOneCharge(15);
 
-            if ((hasDevilment || hasEnoughFeathers) && noThreefoldFanDance && (!techSoon || feathersGCD.Contains(nextGCD)))
-            {
-                if (FanDanceIiPvE.CanUse(out act)) return true;
-                if (FanDancePvE.CanUse(out act)) return true;
-            }
+            if ((hasDevilment || (hasEnoughFeathers && (hasProcs || feathersGCD.Contains(nextGCD)))) &&
+                noThreefoldFanDance) return FanDanceIiPvE.CanUse(out act) || FanDancePvE.CanUse(out act);
 
             return SetActToNull(out act);
         }
