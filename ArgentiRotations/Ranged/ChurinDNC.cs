@@ -57,11 +57,9 @@ public sealed class ChurinDnc : DancerRotation
     // ReSharper disable once InconsistentNaming
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
-        if (IsDancing) return SetActToNull(out act);
+        if (IsDancing || nextGCD.AnimationLockTime > 0.6f) return SetActToNull(out act);
 
-        if (nextGCD.AnimationLockTime > 0.6f) return SetActToNull(out act);
-
-        return oGCDHelper(out act, nextGCD) || base.AttackAbility(nextGCD, out act);
+        return oGCDHelper(out act) || base.AttackAbility(nextGCD, out act);
     }
 
     #endregion
@@ -477,7 +475,8 @@ public sealed class ChurinDnc : DancerRotation
 
         private bool ProcHelper(out IAction? act)
         {
-            var starfallEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingStarfall) && Player.HasStatus(true, StatusID.FlourishingStarfall);
+            var starfallEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingStarfall) && Player.HasStatus(true, StatusID.FlourishingStarfall)||
+                                 Player.WillStatusEnd(2.5f, true,StatusID.Devilment) && Player.HasStatus(true, StatusID.Devilment);
             var silkenFlowEnding = Player.WillStatusEnd(2.5f, true, StatusID.SilkenFlow) && Player.HasStatus(true, StatusID.SilkenFlow);
             var silkenSymmetryEnding = Player.WillStatusEnd(2.5f, true, StatusID.SilkenSymmetry) && Player.HasStatus(true, StatusID.SilkenSymmetry);
             var flourishingFlowEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingFlow) && Player.HasStatus(true, StatusID.FlourishingFlow);
@@ -587,16 +586,15 @@ public sealed class ChurinDnc : DancerRotation
         ///     Helper method to handle off-global cooldown (oGCD) actions.
         /// </summary>
         /// <param name="act">The action to be performed, if any.</param>
-        /// <param name="nextGCD">The next global cooldown (GCD) action to be performed.</param>
         /// <returns>True if an oGCD action was performed; otherwise, false.</returns>
         [SuppressMessage("ReSharper", "InconsistentNaming")]
-        private bool oGCDHelper(out IAction? act, IAction nextGCD)
+        private bool oGCDHelper(out IAction? act)
         {
             if (IsDancing) return SetActToNull(out act);
             if (HandleFlourish(out act)) return true;
             if (_shouldRemoveFinishingMove) RemoveFinishingMove();
             if (FanDanceIiiPvE.CanUse(out act)) return true;
-            if (ShouldUseFeathers(nextGCD, out act)) return true;
+            if (ShouldUseFeathers(out act)) return true;
             if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
             if (TryUseClosedPosition(out act)) return true;
             return UseClosedPosition(out act) || SetActToNull(out act);
@@ -635,10 +633,9 @@ public sealed class ChurinDnc : DancerRotation
         /// <summary>
         /// Determines whether feathers should be used based on the next GCD action and current player status.
         /// </summary>
-        /// <param name="nextGCD"></param>
         /// <param name="act"> The action to be performed, if any.</param>
         /// <returns>True if a feather action was performed; otherwise, false.</returns>
-        private bool ShouldUseFeathers(IAction nextGCD, out IAction? act)
+        private bool ShouldUseFeathers(out IAction? act)
         {
             var hasProcs = Player.HasStatus(true, StatusID.SilkenFlow) ||
                            Player.HasStatus(true, StatusID.SilkenSymmetry) ||
