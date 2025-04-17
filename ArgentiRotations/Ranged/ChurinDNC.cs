@@ -477,18 +477,20 @@ public sealed class ChurinDnc : DancerRotation
 
         private bool ProcHelper(out IAction? act)
         {
-            var silkenFlowEnding = Player.WillStatusEnd(1f, true, StatusID.SilkenFlow) && Player.HasStatus(true, StatusID.SilkenFlow);
-            var silkenSymmetryEnding = Player.WillStatusEnd(1f, true, StatusID.SilkenSymmetry) && Player.HasStatus(true, StatusID.SilkenSymmetry);
-            var flourishingFlowEnding = Player.WillStatusEnd(1f, true, StatusID.FlourishingFlow) && Player.HasStatus(true, StatusID.FlourishingFlow);
-            var flourishingSymmetryEnding = Player.WillStatusEnd(1f, true, StatusID.FlourishingSymmetry) && Player.HasStatus(true, StatusID.FlourishingSymmetry);
-            var anyProcsEnding = silkenFlowEnding || silkenSymmetryEnding || flourishingFlowEnding || flourishingSymmetryEnding;
+            var starfallEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingStarfall) && Player.HasStatus(true, StatusID.FlourishingStarfall);
+            var silkenFlowEnding = Player.WillStatusEnd(2.5f, true, StatusID.SilkenFlow) && Player.HasStatus(true, StatusID.SilkenFlow);
+            var silkenSymmetryEnding = Player.WillStatusEnd(2.5f, true, StatusID.SilkenSymmetry) && Player.HasStatus(true, StatusID.SilkenSymmetry);
+            var flourishingFlowEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingFlow) && Player.HasStatus(true, StatusID.FlourishingFlow);
+            var flourishingSymmetryEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingSymmetry) && Player.HasStatus(true, StatusID.FlourishingSymmetry);
+            var anyProcsEnding = silkenFlowEnding || silkenSymmetryEnding || flourishingFlowEnding || flourishingSymmetryEnding || starfallEnding;
 
             if (!anyProcsEnding) return SetActToNull(out act);
-
-            if (silkenFlowEnding || flourishingFlowEnding)
-                return ReverseCascadePvE.CanUse(out act);
+            if (starfallEnding) return StarfallDancePvE.CanUse(out act);
             if (silkenSymmetryEnding || flourishingSymmetryEnding)
                 return FountainfallPvE.CanUse(out act);
+            if (silkenFlowEnding || flourishingFlowEnding)
+                return ReverseCascadePvE.CanUse(out act);
+
 
             return SetActToNull(out act);
         }
