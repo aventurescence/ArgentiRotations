@@ -141,12 +141,18 @@ public sealed class ChurinDnc : DancerRotation
         ImGui.Text("Procs Expiring?:");
         ImGui.Text("Silken Flow:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.SilkenFlow) &&
                   Player.HasStatus(true, StatusID.SilkenFlow)));
+        ImGui.SameLine();
         ImGui.Text("Silken Symmetry:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.SilkenSymmetry) &&
                   Player.HasStatus(true, StatusID.SilkenSymmetry)));
         ImGui.Text("Flourishing Flow:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.FlourishingFlow) &&
                   Player.HasStatus(true, StatusID.FlourishingFlow)));
+        ImGui.SameLine();
         ImGui.Text("Flourishing Symmetry:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.FlourishingSymmetry) &&
                   Player.HasStatus(true, StatusID.FlourishingSymmetry)));
+        ImGui.Text("Flourishing Starfall:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.FlourishingStarfall) &&
+                  Player.HasStatus(true, StatusID.FlourishingStarfall)));
+        ImGui.SameLine();
+        ImGui.Text("Has Starfall Dance?" + Player.HasStatus(true, StatusID.FlourishingStarfall));
         ChurinDnc instance = new();
         ImGui.Text("Should Hold for Finishing Move?:" + instance.ShouldHoldForFinishingMove());
         ImGui.Text("Should Hold for Tech Step?:" + instance.ShouldHoldForTechnicalStep());
@@ -195,7 +201,7 @@ public sealed class ChurinDnc : DancerRotation
             var actionUnavailable = !FinishingMovePvE.CanUse(out _) &&
                                      !StandardStepPvE.CanUse(out _);
 
-            return hasFinishingMove && finishingMoveSoon && actionUnavailable;
+            return hasFinishingMove && finishingMoveSoon && actionUnavailable && !DanceDance;
         }
 
 
@@ -235,7 +241,8 @@ public sealed class ChurinDnc : DancerRotation
         private bool TechGCD(out IAction? act, bool burst)
         {
             if (!burst || IsDancing) return SetActToNull(out act);
-            return HandleDanceDance(out act) || SetActToNull(out act);
+
+            return HandleDanceDance(out act);
         }
 
         private bool HandleDanceDance(out IAction? act)
@@ -243,8 +250,8 @@ public sealed class ChurinDnc : DancerRotation
             if (TryUseTillana(out act)) return true;
             if (TryUseDanceOfTheDawn(out act)) return true;
             if (TryUseLastDance(out act)) return true;
-            if (TryUseFinishingMove(out act)) return true;
             if (TryUseStarfallDance(out act)) return true;
+            if (TryUseFinishingMove(out act)) return true;
             return TryUseSaberDanceBurst(out act) || SetActToNull(out act);
         }
 
@@ -308,15 +315,18 @@ public sealed class ChurinDnc : DancerRotation
 
         private bool TryUseStarfallDance(out IAction? act)
         {
-            var danceReady = StandardStepPvE.Cooldown.WillHaveOneCharge(1.5f) ||
-                             FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f);
-            var starfallEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingStarfall);
+            // Check if the proc is active and about to end.
+            var starfallEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingStarfall) &&
+                                 Player.HasStatus(true, StatusID.FlourishingStarfall);
+            // Check if the player currently has the Starfall proc.
             var hasStarfall = Player.HasStatus(true, StatusID.FlourishingStarfall);
 
-            if (Esprit >= 60 && !starfallEnding || !hasStarfall)
+            // If proc is missing or insufficient Esprit, do not use Starfall Dance.
+            if (!hasStarfall || Esprit > 80 && !starfallEnding)
                 return SetActToNull(out act);
 
-            if (starfallEnding || hasStarfall && !danceReady)
+            // Use Starfall Dance if the proc is about to expire or if dance steps are not ready.
+            if (starfallEnding || hasStarfall)
                 return StarfallDancePvE.CanUse(out act);
 
             return SetActToNull(out act);
@@ -444,10 +454,7 @@ public sealed class ChurinDnc : DancerRotation
                              FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f);
 
             // Check if Saber Dance should be used
-            if (Esprit >= 70 && !danceReady)
-                return SaberDancePvE.CanUse(out act);
-
-            if (Feathers > 3 & hasProcs && Esprit >= 50)
+            if ((Esprit >= 70 && !danceReady) || (Feathers > 3 & hasProcs && Esprit >= 50))
                 return SaberDancePvE.CanUse(out act);
 
             return SetActToNull(out act);
@@ -475,8 +482,8 @@ public sealed class ChurinDnc : DancerRotation
 
         private bool ProcHelper(out IAction? act)
         {
-            var starfallEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingStarfall) && Player.HasStatus(true, StatusID.FlourishingStarfall)||
-                                 Player.WillStatusEnd(2.5f, true,StatusID.Devilment) && Player.HasStatus(true, StatusID.Devilment);
+            var starfallEnding = (Player.WillStatusEnd(5f, true, StatusID.FlourishingStarfall) && Player.HasStatus(true, StatusID.FlourishingStarfall))||
+                                 (Player.WillStatusEnd(5f, true,StatusID.Devilment) && Player.HasStatus(true, StatusID.Devilment));
             var silkenFlowEnding = Player.WillStatusEnd(2.5f, true, StatusID.SilkenFlow) && Player.HasStatus(true, StatusID.SilkenFlow);
             var silkenSymmetryEnding = Player.WillStatusEnd(2.5f, true, StatusID.SilkenSymmetry) && Player.HasStatus(true, StatusID.SilkenSymmetry);
             var flourishingFlowEnding = Player.WillStatusEnd(2.5f, true, StatusID.FlourishingFlow) && Player.HasStatus(true, StatusID.FlourishingFlow);
@@ -484,6 +491,7 @@ public sealed class ChurinDnc : DancerRotation
             var anyProcsEnding = silkenFlowEnding || silkenSymmetryEnding || flourishingFlowEnding || flourishingSymmetryEnding || starfallEnding;
 
             if (!anyProcsEnding) return SetActToNull(out act);
+
             if (starfallEnding) return StarfallDancePvE.CanUse(out act);
             if (silkenSymmetryEnding || flourishingSymmetryEnding)
                 return FountainfallPvE.CanUse(out act);
