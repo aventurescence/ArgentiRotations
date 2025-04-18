@@ -386,12 +386,16 @@ public sealed class ChurinDnc : DancerRotation
             var isNotStepReady = !(StandardReady || TechnicalReady) ||
                                  StandardStepPvE.CanUse(out _) || TechnicalStepPvE.CanUse(out _) || FinishingMovePvE.CanUse(out _) ||
                                  (FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f));
+            var starfallEnding = Player.HasStatus(true, StatusID.FlourishingStarfall) &&
+                              Player.WillStatusEnd(3, true, StatusID.FlourishingStarfall);
+            var tillanaEnding = Player.HasStatus(true, StatusID.FlourishingFinish) &&
+                              Player.WillStatusEnd(3, true, StatusID.FlourishingFinish);
 
             // Determine if Last Dance cannot be used
             var cannotUseLastDance = !ShouldUseLastDance || !LastDancePvE.CanUse(out _, skipAoeCheck: true);
 
             // Determine if prioritized GCD actions should be used
-            var shouldUseBasicGcd = isNotStepReady && cannotUseLastDance && Esprit > 50;
+            var shouldUseBasicGcd = isNotStepReady && cannotUseLastDance && Esprit > 50 && !starfallEnding && !tillanaEnding;
 
             // Attempt to use basic GCD actions if conditions are met
             return shouldUseBasicGcd ? TryUseBasicGcDs(out act) :
