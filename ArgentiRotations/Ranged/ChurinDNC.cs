@@ -80,28 +80,42 @@ public sealed class ChurinDNC : DancerRotation
     }
 
     #endregion
-    
+
     #region Properties
+
+    #region Status Flags
 
     private static bool ShouldUseLastDance { get; set; } = true;
     private static bool ShouldUseTechStep { get; set; }
+
     public ChurinDNC()
     {
         ShouldUseTechStep = TechnicalStepPvE.IsEnabled;
     }
+
     private static bool ShouldUseStandardStep { get; set; } = true;
+
     private static bool ShouldUseFlourish { get; set; }
+
     //private static readonly bool HasSpellInWaitingReturn = Player.HasStatus(false, StatusID.SpellInWaitingReturn_4208);
     //private static readonly bool HasReturn = Player.HasStatus(false, StatusID.Return);
     //private static readonly bool ReturnEnding = HasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
     private static bool _shouldRemoveFinishingMove;
+
     private static bool DanceDance =>
         Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
+
     private bool StandardReady => StandardStepPvE.Cooldown.ElapsedAfter(28);
     private bool TechnicalReady => TechnicalStepPvE.Cooldown.ElapsedAfter(118);
+
     private static bool StepFinishReady => (Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2) ||
                                            (Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4);
+
     private static bool AreDanceTargetsInRange => AllHostileTargets.Any(target => target.DistanceToPlayer() <= 15);
+
+    #endregion
+
+    #region Extra Property Methods
 
     private static int StatusTimeConverter(bool useFlag, StatusID status)
     {
@@ -143,6 +157,9 @@ public sealed class ChurinDNC : DancerRotation
         return remaining <= threshold;
     }
 
+    #endregion
+
+    #region Status Window
 
     public override void DisplayStatus()
     {
@@ -213,35 +230,40 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.TableNextColumn();
             ImGui.Text("Silken Flow:");
             ImGui.TableNextColumn();
-            ImGui.Text($"Ending: {Player.HasStatus(true, StatusID.SilkenFlow) && Player.WillStatusEnd(3, true, StatusID.SilkenFlow)}  Duration: {StatusTimeConverter(true, StatusID.SilkenFlow)}");
+            ImGui.Text(
+                $"Ending: {Player.HasStatus(true, StatusID.SilkenFlow) && Player.WillStatusEnd(3, true, StatusID.SilkenFlow)}  Duration: {StatusTimeConverter(true, StatusID.SilkenFlow)}");
 
             // Row 6: Silken Symmetry with duration
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
             ImGui.Text("Silken Symmetry:");
             ImGui.TableNextColumn();
-            ImGui.Text($"Ending: {IsStatusEnding(StatusID.SilkenSymmetry, 3)}  Duration: {StatusTimeConverter(true, StatusID.SilkenSymmetry)}");
+            ImGui.Text(
+                $"Ending: {IsStatusEnding(StatusID.SilkenSymmetry, 3)}  Duration: {StatusTimeConverter(true, StatusID.SilkenSymmetry)}");
 
             // Row 7: Flourishing Flow with duration
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
             ImGui.Text("Flourishing Flow:");
             ImGui.TableNextColumn();
-            ImGui.Text($"Ending: {IsStatusEnding(StatusID.FlourishingFlow, 3)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingFlow)}");
+            ImGui.Text(
+                $"Ending: {IsStatusEnding(StatusID.FlourishingFlow, 3)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingFlow)}");
 
             // Row 8: Flourishing Symmetry with duration
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
             ImGui.Text("Flourishing Symmetry:");
             ImGui.TableNextColumn();
-            ImGui.Text($"Ending: {IsStatusEnding(StatusID.FlourishingSymmetry, 3)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingSymmetry)}");
+            ImGui.Text(
+                $"Ending: {IsStatusEnding(StatusID.FlourishingSymmetry, 3)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingSymmetry)}");
 
             // Row 9: Flourishing Starfall with duration
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
             ImGui.Text("Flourishing Starfall:");
             ImGui.TableNextColumn();
-            ImGui.Text($"Ending: {IsStatusEnding(StatusID.FlourishingStarfall, 5)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingStarfall)}");
+            ImGui.Text(
+                $"Ending: {IsStatusEnding(StatusID.FlourishingStarfall, 5)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingStarfall)}");
 
             // Row 10: Should Hold for Finishing Move
             ImGui.TableNextRow();
@@ -288,6 +310,8 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.EndTable();
         }
     }
+
+    #endregion
 
     #endregion
     

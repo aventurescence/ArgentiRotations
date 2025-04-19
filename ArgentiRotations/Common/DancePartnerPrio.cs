@@ -1,3 +1,4 @@
+using ECommons.ExcelServices;
 namespace ArgentiRotations.Common;
 
 public enum DancePartnerPrio : byte
@@ -15,4 +16,24 @@ public enum DancePartnerPrio : byte
     MCH = 11,
     BRD = 12,
     DNC = 13
+}
+
+public static class DancePartnerMapping
+{
+    private static readonly Dictionary<DancePartnerPrio, Job> JobMap = new()
+    {
+        { DancePartnerPrio.SAM, Job.SAM },
+        { DancePartnerPrio.PCT, Job.PCT },
+        { DancePartnerPrio.RPR, Job.RPR },
+        { DancePartnerPrio.VPR, Job.VPR },
+        { DancePartnerPrio.MNK, Job.MNK },
+        { DancePartnerPrio.NIN, Job.NIN },
+        { DancePartnerPrio.DRG, Job.DRG },
+        { DancePartnerPrio.BLM, Job.BLM },
+        { DancePartnerPrio.RDM, Job.RDM },
+        { DancePartnerPrio.SMN, Job.SMN },
+        { DancePartnerPrio.MCH, Job.MCH },
+        { DancePartnerPrio.BRD, Job.BRD },
+        { DancePartnerPrio.DNC, Job.DNC },
+    };
 }
