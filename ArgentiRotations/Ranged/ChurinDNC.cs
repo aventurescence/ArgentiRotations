@@ -3,18 +3,20 @@ using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("ChurinDNC", CombatType.PvE, GameVersion = "7.2", Description = "For High end content use, stay cute my dancer friends. <3")]
+[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2", Description = "For High end content use, stay cute my dancer friends. <3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
-public sealed class ChurinDnc : DancerRotation
+public sealed class ChurinDNC : DancerRotation
 {
     #region Config Options
 
     [RotationConfig(CombatType.PvE, Name = "Holds Tech Step if no targets in range (Warning, will drift)")]
     private static bool HoldTechForTargets { get; set;} = true;
 
-    [RotationConfig(CombatType.PvE,
-        Name = "Dance Partner Name (If empty or not found uses default dance partner priority)")]
+    [RotationConfig(CombatType.PvE,Name = "Hold Standard Step if no targets in range (Warning, will drift)")]
+    private static bool HoldStandardForTargets { get; set;} = true;
+
+    [RotationConfig(CombatType.PvE, Name = "Set Dance Partner Priority)")]
     private string DancePartnerName { get; set; } = "";
 
     //[RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
@@ -82,25 +84,64 @@ public sealed class ChurinDnc : DancerRotation
     #region Properties
 
     private static bool ShouldUseLastDance { get; set; } = true;
-    private static bool ShouldUseTechStep { get; set; } = true;
+    private static bool ShouldUseTechStep { get; set; }
+    public ChurinDNC()
+    {
+        ShouldUseTechStep = TechnicalStepPvE.IsEnabled;
+    }
     private static bool ShouldUseStandardStep { get; set; } = true;
     private static bool ShouldUseFlourish { get; set; }
-
-    private static readonly bool HasSpellInWaitingReturn = Player.HasStatus(false, StatusID.SpellinWaitingReturn_4208);
-    private static readonly bool HasReturn = Player.HasStatus(false, StatusID.Return);
-    private static readonly bool ReturnEnding = HasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
+    //private static readonly bool HasSpellInWaitingReturn = Player.HasStatus(false, StatusID.SpellInWaitingReturn_4208);
+    //private static readonly bool HasReturn = Player.HasStatus(false, StatusID.Return);
+    //private static readonly bool ReturnEnding = HasReturn && Player.WillStatusEnd(7, false, StatusID.Return);
     private static bool _shouldRemoveFinishingMove;
-
     private static bool DanceDance =>
         Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
-
     private bool StandardReady => StandardStepPvE.Cooldown.ElapsedAfter(28);
     private bool TechnicalReady => TechnicalStepPvE.Cooldown.ElapsedAfter(118);
-
     private static bool StepFinishReady => (Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2) ||
                                            (Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4);
-
     private static bool AreDanceTargetsInRange => AllHostileTargets.Any(target => target.DistanceToPlayer() <= 15);
+
+    private static int StatusTimeConverter(bool useFlag, StatusID status)
+    {
+        return (int)Math.Round(Player.StatusTime(useFlag, status));
+    }
+
+
+    private static readonly Dictionary<StatusID, float> StatusDurations = new()
+    {
+        { StatusID.FlourishingStarfall, 20 },
+        { StatusID.Devilment, 20 },
+        { StatusID.SilkenFlow, 30 },
+        { StatusID.SilkenSymmetry, 30 },
+        { StatusID.FlourishingFlow, 30 },
+        { StatusID.FlourishingSymmetry, 30 },
+        { StatusID.FlourishingFinish, 20 },
+        { StatusID.TechnicalFinish, 20 },
+        { StatusID.StandardFinish, 60 },
+        { StatusID.LastDanceReady, 30 },
+        { StatusID.FinishingMoveReady, 30 }
+    };
+
+    private const float GracePeriod = 0.5f;
+
+    private static bool IsStatusEnding(StatusID status, float threshold)
+    {
+        if (!Player.HasStatus(true, status)) return false;
+
+        var remaining = Player.StatusTime(true, status);
+
+        if (remaining == 0) return false;
+
+        if (StatusDurations.TryGetValue(status, out var maxDuration))
+        {
+            var activeTime = maxDuration - remaining;
+            if (activeTime < GracePeriod) return false;
+        }
+
+        return remaining <= threshold;
+    }
 
 
     public override void DisplayStatus()
@@ -124,42 +165,128 @@ public sealed class ChurinDnc : DancerRotation
         }, ImGui.GetWindowWidth(), textSize);
     }
 
-    private static void DrawCombatStatus()
+    private void DrawCombatStatus()
     {
         ImGui.BeginGroup();
         DrawCombatStatusText();
         ImGui.EndGroup();
     }
 
-    private static void DrawCombatStatusText()
+    private void DrawCombatStatusText()
     {
-        ImGui.Text("Should Use Tech Step?:" + ShouldUseTechStep);
-        ImGui.Text("Should Use Flourish?:" + ShouldUseFlourish);
-        ImGui.Text("Should Use Standard Step?:" + ShouldUseStandardStep);
-        ImGui.Text("Has Finishing Move:" + Player.HasStatus(true, StatusID.FinishingMoveReady));
-        ImGui.Text("In Burst:" + DanceDance);
-        ImGui.Text("Procs Expiring?:");
-        ImGui.Text("Silken Flow:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.SilkenFlow) &&
-                  Player.HasStatus(true, StatusID.SilkenFlow)));
-        ImGui.SameLine();
-        ImGui.Text("Silken Symmetry:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.SilkenSymmetry) &&
-                  Player.HasStatus(true, StatusID.SilkenSymmetry)));
-        ImGui.Text("Flourishing Flow:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.FlourishingFlow) &&
-                  Player.HasStatus(true, StatusID.FlourishingFlow)));
-        ImGui.SameLine();
-        ImGui.Text("Flourishing Symmetry:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.FlourishingSymmetry) &&
-                  Player.HasStatus(true, StatusID.FlourishingSymmetry)));
-        ImGui.Text("Flourishing Starfall:" + (Player.WillStatusEndGCD(1, 0, true, StatusID.FlourishingStarfall) &&
-                  Player.HasStatus(true, StatusID.FlourishingStarfall)));
-        ImGui.SameLine();
-        ImGui.Text("Has Starfall Dance?" + Player.HasStatus(true, StatusID.FlourishingStarfall));
-        ChurinDnc instance = new();
-        ImGui.Text("Should Hold for Finishing Move?:" + instance.ShouldHoldForFinishingMove());
-        ImGui.Text("Should Hold for Tech Step?:" + instance.ShouldHoldForTechnicalStep());
-        ImGui.Text("has Return:" + HasReturn);
-        ImGui.Text("Return ending?" + ReturnEnding);
-        ImGui.Text("has Spell in Waiting Return:" + HasSpellInWaitingReturn);
-        ImGui.Text("has Dance Targets in Range" + AreDanceTargetsInRange);
+        if (ImGui.BeginTable("CombatStatusTable", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        {
+            ImGui.TableSetupColumn("Label");
+            ImGui.TableSetupColumn("Value");
+            ImGui.TableHeadersRow();
+
+            // Row 1: Should Use Tech Step
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Should Use Tech Step?");
+            ImGui.TableNextColumn();
+            ImGui.Text(ShouldUseTechStep.ToString());
+
+            // Row 2: Should Use Flourish
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Should Use Flourish?");
+            ImGui.TableNextColumn();
+            ImGui.Text(ShouldUseFlourish.ToString());
+
+            // Row 3: Should Use Standard Step
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Should Use Standard Step?");
+            ImGui.TableNextColumn();
+            ImGui.Text(ShouldUseStandardStep.ToString());
+
+            // Row 4: In Burst
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("In Burst:");
+            ImGui.TableNextColumn();
+            ImGui.Text(DanceDance.ToString());
+
+            // Row 5: Silken Flow with duration
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Silken Flow:");
+            ImGui.TableNextColumn();
+            ImGui.Text($"Ending: {Player.HasStatus(true, StatusID.SilkenFlow) && Player.WillStatusEnd(3, true, StatusID.SilkenFlow)}  Duration: {StatusTimeConverter(true, StatusID.SilkenFlow)}");
+
+            // Row 6: Silken Symmetry with duration
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Silken Symmetry:");
+            ImGui.TableNextColumn();
+            ImGui.Text($"Ending: {IsStatusEnding(StatusID.SilkenSymmetry, 3)}  Duration: {StatusTimeConverter(true, StatusID.SilkenSymmetry)}");
+
+            // Row 7: Flourishing Flow with duration
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Flourishing Flow:");
+            ImGui.TableNextColumn();
+            ImGui.Text($"Ending: {IsStatusEnding(StatusID.FlourishingFlow, 3)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingFlow)}");
+
+            // Row 8: Flourishing Symmetry with duration
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Flourishing Symmetry:");
+            ImGui.TableNextColumn();
+            ImGui.Text($"Ending: {IsStatusEnding(StatusID.FlourishingSymmetry, 3)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingSymmetry)}");
+
+            // Row 9: Flourishing Starfall with duration
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Flourishing Starfall:");
+            ImGui.TableNextColumn();
+            ImGui.Text($"Ending: {IsStatusEnding(StatusID.FlourishingStarfall, 5)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingStarfall)}");
+
+            // Row 10: Should Hold for Finishing Move
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Should Hold for Finishing Move?");
+            ImGui.TableNextColumn();
+            ImGui.Text(ShouldHoldForFinishingMove().ToString());
+
+            // Row 11: Should Hold for Tech Step
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Should Hold for Tech Step?");
+            ImGui.TableNextColumn();
+            ImGui.Text(ShouldHoldForTechnicalStep().ToString());
+
+            // Row 14: Has Return
+            //ImGui.TableNextRow();
+            //ImGui.TableNextColumn();
+            //.Text("Has Return?");
+            //ImGui.TableNextColumn();
+            //ImGui.Text(HasReturn.ToString());
+
+            // Row 15: Return Ending
+            //ImGui.TableNextRow();
+            //ImGui.TableNextColumn();
+            //ImGui.Text("Return Ending?");
+            //ImGui.TableNextColumn();
+            //ImGui.Text(ReturnEnding.ToString());
+
+            // Row 16: Has Spell in Waiting Return
+            //ImGui.TableNextRow();
+            //ImGui.TableNextColumn();
+            //ImGui.Text("Has Spell in Waiting Return?");
+            //ImGui.TableNextColumn();
+            //ImGui.Text(HasSpellInWaitingReturn.ToString());
+
+            // Row 12: Has Dance Targets in Range?
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Has Dance Targets in Range?");
+            ImGui.TableNextColumn();
+            ImGui.Text(AreDanceTargetsInRange.ToString());
+
+            ImGui.EndTable();
+        }
     }
 
     #endregion
@@ -175,6 +302,11 @@ public sealed class ChurinDnc : DancerRotation
                 return SetActToNull(out act);
             }
 
+            if (IsDancing && StepFinishReady)
+            {
+                return FinishTheDance(out act);
+            }
+
             // Otherwise, try to use technical step first then other GCD actions.
             return TryUseTechnicalStep(out act) ||
                    TryUseFinishingMove(out act) ||
@@ -183,7 +315,7 @@ public sealed class ChurinDnc : DancerRotation
 
         private bool ShouldHoldForTechnicalStep()
         {
-            var techStepSoon = TechnicalStepPvE.IsEnabled &&
+            var techStepSoon = TechnicalStepPvE.Cooldown.IsCoolingDown &&
                                         TechnicalStepPvE.Cooldown.WillHaveOneCharge(1.5f);
             var noTechStatus = !Player.HasStatus(true, StatusID.TechnicalStep)
                 && !Player.HasStatus(true, StatusID.TechnicalFinish) && !DanceDance;
@@ -191,17 +323,16 @@ public sealed class ChurinDnc : DancerRotation
                                      !TillanaPvE.CanUse(out _);
             var alreadyDancing = IsDancing && StepFinishReady;
 
-            return noTechStatus && techStepSoon && actionsUnavailable && !alreadyDancing ;
+            return noTechStatus && techStepSoon && actionsUnavailable && !alreadyDancing && ShouldUseTechStep ;
         }
 
         private bool ShouldHoldForFinishingMove()
         {
-            var finishingMoveSoon = StandardStepPvE.Cooldown.WillHaveOneCharge(1.5f);
+            var finishingMoveSoon = FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f);
             var hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
-            var actionUnavailable = !FinishingMovePvE.CanUse(out _) &&
-                                     !StandardStepPvE.CanUse(out _);
+            var actionUnavailable = !FinishingMovePvE.CanUse(out _);
 
-            return hasFinishingMove && finishingMoveSoon && actionUnavailable && !DanceDance;
+            return hasFinishingMove && finishingMoveSoon && actionUnavailable && DanceDance;
         }
 
 
@@ -211,28 +342,22 @@ public sealed class ChurinDnc : DancerRotation
             var noValidTargets = InCombat && !AreDanceTargetsInRange && HoldTechForTargets;
             var sendTechStep = InCombat && !HoldTechForTargets && !AreDanceTargetsInRange;
 
-            if (shouldHoldForTechFinish)
+            if ((shouldHoldForTechFinish || sendTechStep) && TechnicalStepPvE.IsEnabled)
             {
                 ShouldUseTechStep = true;
             }
-
-            if (sendTechStep)
-            {
-                ShouldUseTechStep = true;
-            }
-
 
             if (noValidTargets || !TechnicalStepPvE.IsEnabled)
             {
                 ShouldUseTechStep = false;
             }
 
-            if (ShouldUseTechStep &&
-                TechnicalStepPvE.IsEnabled && !IsDancing)
+            return ShouldUseTechStep switch
             {
-                return TechnicalStepPvE.CanUse(out act);
-            }
-            return FinishTheDance(out act) || SetActToNull(out act);
+                false => SetActToNull(out act),
+                true when !IsDancing => TechnicalStepPvE.CanUse(out act),
+                _ => SetActToNull(out act)
+            };
         }
         #endregion
 
@@ -364,10 +489,10 @@ public sealed class ChurinDnc : DancerRotation
         {
             return TryUseTillana(out act) ||
                    ProcHelper(out act) ||
-                    TechGCD(out act, Player.HasStatus(true, StatusID.Devilment)) ||
                    ExecuteStepGCD(out act) ||
                    FinishTheDance(out act) ||
                    TryUseTechnicalStep(out act) ||
+                   TechGCD(out act, Player.HasStatus(true, StatusID.Devilment)) ||
                    TryUseLastDance(out act) ||
                    TryUseFinishingMove(out act) ||
                    TryUseStandardStep(out act) ||
@@ -382,20 +507,14 @@ public sealed class ChurinDnc : DancerRotation
         /// <returns>True if a basic GCD action was performed; otherwise, false.</returns>
         private bool HandleBasicGcd(out IAction? act)
         {
-            // Determine if neither Standard Step nor Technical Step is ready
-            var isNotStepReady = !(StandardReady || TechnicalReady) ||
-                                 StandardStepPvE.CanUse(out _) || TechnicalStepPvE.CanUse(out _) || FinishingMovePvE.CanUse(out _) ||
-                                 (FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f));
-            var starfallEnding = Player.HasStatus(true, StatusID.FlourishingStarfall) &&
-                              Player.WillStatusEnd(3, true, StatusID.FlourishingStarfall);
-            var tillanaEnding = Player.HasStatus(true, StatusID.FlourishingFinish) &&
-                              Player.WillStatusEnd(3, true, StatusID.FlourishingFinish);
+            var hasProcs = Player.HasStatus(true, StatusID.SilkenSymmetry) || Player.HasStatus(true,StatusID.SilkenFlow) ||
+                           Player.HasStatus(true, StatusID.FlourishingSymmetry) || Player.HasStatus(true, StatusID.FlourishingFlow);
+            var hasLastDance = Player.HasStatus(true,StatusID.LastDanceReady);
+            var noPriorityGCD = DanceDance && !hasLastDance || Esprit > 50 ;
 
-            // Determine if Last Dance cannot be used
-            var cannotUseLastDance = !ShouldUseLastDance || !LastDancePvE.CanUse(out _, skipAoeCheck: true);
 
             // Determine if prioritized GCD actions should be used
-            var shouldUseBasicGcd = isNotStepReady && cannotUseLastDance && Esprit > 50 && !starfallEnding && !tillanaEnding;
+            var shouldUseBasicGcd = (noPriorityGCD && hasProcs) || !DanceDance;
 
             // Attempt to use basic GCD actions if conditions are met
             return shouldUseBasicGcd ? TryUseBasicGcDs(out act) :
@@ -410,7 +529,7 @@ public sealed class ChurinDnc : DancerRotation
         /// <returns>True if the Standard Step action was performed; otherwise, false.</returns>
         private bool TryUseStandardStep(out IAction? act)
         {
-            if (!DanceDance || (Player.HasStatus(true,StatusID.StandardFinish) && Player.WillStatusEnd(5,true, StatusID.StandardFinish)))
+            if (!DanceDance || (Player.HasStatus(true,StatusID.StandardFinish) && Player.WillStatusEnd(5,true, StatusID.StandardFinish) && !Player.HasStatus(true,StatusID.BrinkOfDeath)))
             {
                 ShouldUseStandardStep = true;
             }
@@ -477,39 +596,36 @@ public sealed class ChurinDnc : DancerRotation
         private bool FinishTheDance(out IAction? act)
         {
             // Guard clause: return early if none of the finish conditions are met.
-            var isStepReadyAndInRange = StepFinishReady && AreDanceTargetsInRange;
-            var isStandardEnding = Player.WillStatusEnd(1f, true, StatusID.StandardStep);
-            var isTechnicalEnding = Player.WillStatusEnd(1f, true, StatusID.TechnicalStep);
-            var shouldFinishDance = isStepReadyAndInRange || isStandardEnding || isTechnicalEnding;
+            var waitForTargets = (HoldTechForTargets || HoldStandardForTargets) && AreDanceTargetsInRange;
+            var sendDanceFinish = !HoldTechForTargets || !HoldStandardForTargets;
+            var isStandardEnding = Player.HasStatus(true,StatusID.StandardStep) && Player.WillStatusEnd(1f, true, StatusID.StandardStep);
+            var isTechnicalEnding = Player.HasStatus(true,StatusID.TechnicalStep) && Player.WillStatusEnd(1f, true, StatusID.TechnicalStep);
+            var shouldFinishDance = sendDanceFinish || waitForTargets || isStandardEnding || isTechnicalEnding;
 
-            if (!shouldFinishDance) return SetActToNull(out act);
-
-            if (DoubleStandardFinishPvE.CanUse(out act) ||
-                QuadrupleTechnicalFinishPvE.CanUse(out act)) return true;
-
-            return SetActToNull(out act);
+            return shouldFinishDance switch
+            {
+                false => SetActToNull(out act),
+                true => DoubleStandardFinishPvE.CanUse(out act) || QuadrupleTechnicalFinishPvE.CanUse(out act)
+            };
         }
+
 
         private bool ProcHelper(out IAction? act)
         {
-            var starfallEnding = Player.HasStatus(true, StatusID.FlourishingStarfall) && Player.WillStatusEnd(5, true, StatusID.FlourishingStarfall)||
-                                 Player.HasStatus(true, StatusID.Devilment) && Player.WillStatusEnd(5f, true,StatusID.Devilment);
-            var silkenFlowEnding = Player.HasStatus(true, StatusID.SilkenFlow) && Player.WillStatusEnd(2.5f, true, StatusID.SilkenFlow);
-            var silkenSymmetryEnding = Player.HasStatus(true, StatusID.SilkenSymmetry) && Player.WillStatusEnd(2.5f, true, StatusID.SilkenSymmetry);
-            var flourishingFlowEnding = Player.HasStatus(true, StatusID.FlourishingFlow) && Player.WillStatusEnd(2.5f, true, StatusID.FlourishingFlow)  ;
-            var flourishingSymmetryEnding = Player.HasStatus(true, StatusID.FlourishingSymmetry)&& Player.WillStatusEnd(2.5f, true, StatusID.FlourishingSymmetry);
-            var anyProcsEnding = silkenFlowEnding || silkenSymmetryEnding || flourishingFlowEnding || flourishingSymmetryEnding || starfallEnding;
+            var starfallEnding = IsStatusEnding(StatusID.FlourishingStarfall, 5) ||
+                                 IsStatusEnding(StatusID.Devilment, 5);
+            var silkenFlowEnding = IsStatusEnding(StatusID.SilkenFlow, 3);
+            var silkenSymmetryEnding = IsStatusEnding(StatusID.SilkenSymmetry, 3);
+            var flourishingFlowEnding = IsStatusEnding(StatusID.FlourishingFlow, 3);
+            var flourishingSymmetryEnding = IsStatusEnding(StatusID.FlourishingSymmetry, 3);
 
-            if (!anyProcsEnding) return SetActToNull(out act);
-
-            if (starfallEnding) return StarfallDancePvE.CanUse(out act);
-            if (silkenSymmetryEnding || flourishingSymmetryEnding)
-                return FountainfallPvE.CanUse(out act);
-            if (silkenFlowEnding || flourishingFlowEnding)
-                return ReverseCascadePvE.CanUse(out act);
-
-
-            return SetActToNull(out act);
+            return DanceDance switch
+            {
+                true when starfallEnding => StarfallDancePvE.CanUse(out act),
+                true when (silkenSymmetryEnding || flourishingSymmetryEnding) => FountainfallPvE.CanUse(out act),
+                true when (silkenFlowEnding || flourishingFlowEnding) => ReverseCascadePvE.CanUse(out act),
+                _ => SetActToNull(out act)
+            };
         }
         #endregion
 
@@ -609,7 +725,7 @@ public sealed class ChurinDnc : DancerRotation
         private bool oGCDHelper(out IAction? act)
         {
             if (IsDancing) return SetActToNull(out act);
-            if (HandleFlourish(out act)) return true;
+            if (TryUseFlourish(out act)) return true;
             if (_shouldRemoveFinishingMove) RemoveFinishingMove();
             if (FanDanceIiiPvE.CanUse(out act)) return true;
             if (ShouldUseFeathers(out act)) return true;
@@ -634,15 +750,15 @@ public sealed class ChurinDnc : DancerRotation
         /// </summary>
         /// <param name="act">The action to be performed, if any.</param>
         /// <returns>True if the Flourish action was performed; otherwise, false.</returns>
-        private bool HandleFlourish(out IAction? act)
+        private bool TryUseFlourish(out IAction? act)
         {
             var burstReady = TechnicalStepPvE.CanUse(out _) && DevilmentPvE.CanUse(out _);
 
-            if (!InCombat || !TechnicalStepPvE.IsEnabled || Player.HasStatus(true, StatusID.ThreefoldFanDance) || burstReady)
+            if ((!InCombat || Player.HasStatus(true, StatusID.ThreefoldFanDance) || burstReady) && !ShouldUseTechStep)
                 ShouldUseFlourish = false;
 
 
-            if (DanceDance || TechnicalStepPvE.Cooldown.ElapsedAfter(67))
+            if ((DanceDance || TechnicalStepPvE.Cooldown.ElapsedAfter(67)) && ShouldUseTechStep)
                 ShouldUseFlourish = true;
 
             return ShouldUseFlourish ? FlourishPvE.CanUse(out act) : SetActToNull(out act);
