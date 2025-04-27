@@ -1,9 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
 using Dalamud.Interface.Colors;
+using ECommons.ExcelServices;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.1", Description = "For High end content use, stay cute my dancer friends. <3")]
+[Rotation("Churin DNC test", CombatType.PvE, GameVersion = "7.2.1", Description = "For High end content use, stay cute my dancer friends. <3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
 public sealed class ChurinDNC : DancerRotation
@@ -16,8 +17,50 @@ public sealed class ChurinDNC : DancerRotation
     [RotationConfig(CombatType.PvE,Name = "Hold Standard Step if no targets in range (Warning, will drift)")]
     private static bool HoldStandardForTargets { get; set;} = true;
 
-    [RotationConfig(CombatType.PvE, Name = "Set Dance Partner Priority)")]
-    private string DancePartnerName { get; set; } = "";
+    [RotationConfig(CombatType.PvE, Name = "Use Opener Pot")]
+    private static bool UseOpenerPot { get; set;} = true;
+
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "First Dance Partner Priority")]
+    private static DancePartnerPrio Prio1 { get; set; } = DancePartnerPrio.SAM;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Second Dance Partner Priority")]
+    private static DancePartnerPrio Prio2 { get; set; } = DancePartnerPrio.PCT;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Third Dance Partner Priority")]
+    private static DancePartnerPrio Prio3 { get; set; } = DancePartnerPrio.RPR;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Fourth Dance Partner Priority")]
+    private static DancePartnerPrio Prio4 { get; set; } = DancePartnerPrio.VPR;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Fifth Dance Partner Priority")]
+    private static DancePartnerPrio Prio5 { get; set; } = DancePartnerPrio.MNK;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Sixth Dance Partner Priority")]
+    private static DancePartnerPrio Prio6 { get; set; } = DancePartnerPrio.NIN;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Seventh Dance Partner Priority")]
+    private static DancePartnerPrio Prio7 { get; set; } = DancePartnerPrio.DRG;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Eighth Dance Partner Priority")]
+    private static DancePartnerPrio Prio8 { get; set; } = DancePartnerPrio.BLM;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Ninth Dance Partner Priority")]
+    private static DancePartnerPrio Prio9 { get; set; } = DancePartnerPrio.RDM;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Tenth Dance Partner Priority")]
+    private static DancePartnerPrio Prio10 { get; set; } = DancePartnerPrio.SMN;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Eleventh Dance Partner Priority")]
+    private static DancePartnerPrio Prio11 { get; set; } = DancePartnerPrio.MCH;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Twelfth Dance Partner Priority")]
+    private static DancePartnerPrio Prio12 { get; set; } = DancePartnerPrio.BRD;
+    [Range(1, 13, ConfigUnitType.None, 1)]
+    [RotationConfig(CombatType.PvE, Name = "Thirteenth Dance Partner Priority")]
+    private static DancePartnerPrio Prio13 { get; set; } = DancePartnerPrio.DNC;
+
+
 
     //[RotationConfig(CombatType.PvE, Name = "Load FRU module?")]
     //private bool LoadFru { get; set; } = false;
@@ -36,6 +79,8 @@ public sealed class ChurinDNC : DancerRotation
         if (StandardStepPvE.CanUse(out var act)) return act;
         // Fallback to executing step GCD action if Standard Step is not used
         if (ExecuteStepGCD(out act)) return act;
+        // Use pot at 1 second if config is enabled
+        if (remainTime <= 1.5 && UseOpenerPot && UseBurstMedicine(out act)) return act;
         // Finish the dance if the conditions are met
         if (remainTime <= 0.54f && FinishTheDance(out act)) return act;
         // If none of the above conditions are met, fallback to the base class method
@@ -50,6 +95,7 @@ public sealed class ChurinDNC : DancerRotation
     // ReSharper disable once InconsistentNaming
     protected override bool EmergencyAbility(IAction? nextGCD, out IAction? act)
     {
+        if (CheckClosedPosition(out act)) return true;
         if (DevilmentAfterFinish(out act)) return true;
         if (FallbackDevilment(out act)) return true;
         return NotDancing(nextGCD, out act) || SetActToNull(out act);
@@ -76,13 +122,16 @@ public sealed class ChurinDNC : DancerRotation
         //CheckDowntime();
         //UpdateFruDowntime();
 
-        return HoldGcd(out act) || base.GeneralGCD(out act);
+        return TryUseClosedPosition(out act) ||
+               HoldGcd(out act) ||
+               base.GeneralGCD(out act);
     }
 
     #endregion
     
     #region Properties
 
+    #region Boolean Properties
     private static bool ShouldUseLastDance { get; set; }
     private static bool ShouldUseTechStep { get; set; }
     public ChurinDNC()
@@ -103,7 +152,25 @@ public sealed class ChurinDNC : DancerRotation
     private static bool StepFinishReady => (Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2) ||
                                            (Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4);
     private static bool AreDanceTargetsInRange => AllHostileTargets.Any(target => target.DistanceToPlayer() <= 15);
+    private static bool IsStatusEnding(StatusID status, float threshold)
+    {
+        if (!Player.HasStatus(true, status)) return false;
 
+        var remaining = Player.StatusTime(true, status);
+        if (remaining <= 0) return false;
+
+        if (StatusDurations.TryGetValue(status, out var maxDuration) &&
+            maxDuration - remaining < GracePeriod)
+        {
+            return false;
+        }
+
+        return remaining <= threshold;
+    }
+
+    #endregion
+
+    #region Other Properties
     private static int StatusTimeConverter(bool useFlag, StatusID status)
     {
         return (int)Math.Round(Player.StatusTime(useFlag, status));
@@ -127,22 +194,9 @@ public sealed class ChurinDNC : DancerRotation
 
     private const float GracePeriod = 0.5f;
 
-    private static bool IsStatusEnding(StatusID status, float threshold)
-        {
-            if (!Player.HasStatus(true, status)) return false;
+    #endregion
 
-            var remaining = Player.StatusTime(true, status);
-            if (remaining <= 0) return false;
-
-            if (StatusDurations.TryGetValue(status, out var maxDuration) &&
-                maxDuration - remaining < GracePeriod)
-            {
-                return false;
-            }
-
-            return remaining <= threshold;
-        }
-
+    #region Status Window Properties
 
     public override void DisplayStatus()
     {
@@ -288,6 +342,7 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.EndTable();
         }
     }
+    #endregion
 
     #endregion
     
@@ -388,25 +443,25 @@ public sealed class ChurinDNC : DancerRotation
 
         private bool TryUseTillana(out IAction? act)
         {
-            if (Esprit <= 30 || IsStatusEnding(StatusID.FlourishingFinish, 3))
+            if (Esprit <= 30 || IsStatusEnding(StatusID.FlourishingFinish, 3.5f))
                 return TillanaPvE.CanUse(out act);
 
             return SetActToNull(out act);
         }
 
-        // csharp
+
         private bool TryUseLastDance(out IAction? act)
         {
             var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) && FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(3);
             var standardReady = StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneCharge(3);
 
             if (Player.HasStatus(true, StatusID.LastDanceReady) &&
-                TechnicalStepPvE.Cooldown.WillHaveOneCharge(15))
+                TechnicalStepPvE.Cooldown.WillHaveOneCharge(15) || DanceDance && Esprit >= 70)
             {
                 ShouldUseLastDance = false;
             }
 
-            if (DanceDance && Esprit < 70 || finishingMoveReady || standardReady || IsStatusEnding(StatusID.LastDanceReady, 3))
+            if (DanceDance && Esprit < 60 || finishingMoveReady || standardReady || IsStatusEnding(StatusID.LastDanceReady, 4))
             {
                 ShouldUseLastDance = true;
             }
@@ -440,12 +495,6 @@ public sealed class ChurinDNC : DancerRotation
         {
             // Check if the proc is active and about to end.
             var starfallEnding = IsStatusEnding(StatusID.FlourishingStarfall, 7);
-            // Check if the player currently has the Starfall proc.
-            var hasStarfall = Player.HasStatus(true, StatusID.FlourishingStarfall);
-
-            // If proc is missing or insufficient Esprit gauge & proc is not ending, do not use Starfall Dance.
-            if (!hasStarfall || Esprit >= 80 && !starfallEnding)
-                return SetActToNull(out act);
 
             // Use Starfall Dance if the proc is about to expire or if dance steps are not ready.
             if (starfallEnding || Esprit < 80)
@@ -622,45 +671,54 @@ public sealed class ChurinDNC : DancerRotation
         /// </summary>
         /// <param name="act">The action to be performed, if any.</param>
         /// <returns>True if the Closed Position action was performed; otherwise, false.</returns>
-        private bool TryUseClosedPosition(out IAction? act)
+        private bool CheckClosedPosition(out IAction? act)
         {
-            // Check if Closed Position can be used
-            if (!CanUseClosedPosition(out act)) return false;
+            if (!ClosedPositionPvE.CanUse(out act) || Player.HasStatus(true, StatusID.ClosedPosition)) return false;
 
-            // Set the dance partner target
-            SetDancePartnerTarget();
-
-            return true;
-        }
-
-        /// <summary>
-        ///     Determines if the Closed Position action can be used.
-        /// </summary>
-        /// <param name="act">The action to be performed, if any.</param>
-        /// <returns>True if the Closed Position action can be used; otherwise, false.</returns>
-        private bool CanUseClosedPosition(out IAction? act)
-        {
-            act = null;
-            return !InCombat && !Player.HasStatus(true, StatusID.ClosedPosition) && ClosedPositionPvE.CanUse(out act);
-        }
-
-        /// <summary>
-        ///     Sets the dance partner target based on the specified dance partner name.
-        /// </summary>
-        private void SetDancePartnerTarget()
-        {
-            // Check if the dance partner name is specified
-            if (string.IsNullOrEmpty(DancePartnerName)) return;
-
-            // Iterate through party members to find the dance partner
-            foreach (var player in PartyMembers)
+            foreach (var friend in PartyMembers)
             {
-                if (player.Name.ToString() != DancePartnerName) continue;
-                // Set the Closed Position target to the dance partner
-                ClosedPositionPvE.Target = new TargetResult(player, [player], player.Position);
+                if (!friend.HasStatus(true, StatusID.ClosedPosition_2026)) continue;
+                if (ClosedPositionPvE.Target.Target != friend) return true;
                 break;
             }
+
+            return false;
         }
+
+        private bool TryUseClosedPosition(out IAction? act)
+        {
+            var hasClosedPosition = Player.HasStatus(true, StatusID.ClosedPosition);
+
+            if (hasClosedPosition || !ClosedPositionPvE.CanUse(out act)) return SetActToNull(out act);
+
+         var dancePartner = SetDancePartner(TargetType.DancePartner);
+            if (dancePartner != null)
+                ClosedPositionPvE.Target = new TargetResult(dancePartner, [dancePartner], dancePartner.Position);
+            return ClosedPositionPvE.CanUse(out act);
+        }
+
+        private static IBattleChara? SetDancePartner(TargetType type)
+        {
+            return type == TargetType.DancePartner ? FindDancePartner() : null;
+
+            IBattleChara? FindDancePartner()
+            {
+                var prios = new[]
+                {
+                    Prio1, Prio2, Prio3, Prio4, Prio5, Prio6, Prio7,
+                    Prio8, Prio9, Prio10, Prio11, Prio12, Prio13
+                };
+
+                return (from prio in prios
+                    from member in PartyMembers
+                    where member.IsJobs((Job)prio) && !member.IsDead &&
+                          (!member.HasStatus(true, StatusID.BrinkOfDeath) || !member.HasStatus(true, StatusID.Weakness))
+                    select member).FirstOrDefault();
+            }
+        }
+
+
+
 
         /// <summary>
         ///     Determines whether the Devilment action can be used after the Technical Finish status is active.
@@ -711,12 +769,12 @@ public sealed class ChurinDNC : DancerRotation
         private bool oGCDHelper(out IAction? act)
         {
             if (IsDancing) return SetActToNull(out act);
-            if (TryUseFlourish(out act)) return true;
-            if (FanDanceIiiPvE.CanUse(out act)) return true;
-            if (TryUseFeathers(out act)) return true;
-            if (FanDanceIvPvE.CanUse(out act, skipAoeCheck: true)) return true;
-            if (TryUseClosedPosition(out act)) return true;
-            return UseClosedPosition(out act) || SetActToNull(out act);
+
+            return TryUseFlourish(out act) ||
+                   FanDanceIiiPvE.CanUse(out act) ||
+                   TryUseFeathers(out act) ||
+                   FanDanceIvPvE.CanUse(out act, skipAoeCheck: true) ||
+                   SetActToNull(out act);
         }
 
 
@@ -763,49 +821,6 @@ public sealed class ChurinDNC : DancerRotation
         }
 
 
-
-        /// <summary>
-        ///     Handles the logic for using the Closed Position action.
-        /// </summary>
-        /// <param name="act">The action to be performed, if any.</param>
-        /// <returns>True if the Closed Position action was performed; otherwise, false.</returns>
-        private bool UseClosedPosition(out IAction? act)
-        {
-            // Check if Closed Position can be used
-            if (!ClosedPositionPvE.CanUse(out act)) return false;
-
-            // Check if the player is in combat and has the Closed Position status
-            if (InCombat && Player.HasStatus(true, StatusID.ClosedPosition))
-                // Check party members for Closed Position status
-                return CheckPartyMembersForClosedPosition();
-
-            // Closed Position action was not performed
-            return false;
-        }
-
-        /// <summary>
-        ///     Checks party members for the Closed Position status and ensures the target is set correctly.
-        /// </summary>
-        /// <returns>
-        ///     True if a party member with the Closed Position status is found and the target is set correctly; otherwise,
-        ///     false.
-        /// </returns>
-        private bool CheckPartyMembersForClosedPosition()
-        {
-            foreach (var friend in PartyMembers)
-            {
-                // Check if the party member has the Closed Position status
-                if (!friend.HasStatus(true, StatusID.ClosedPosition_2026)) continue;
-                // Check if the Closed Position target is not set to this party member
-                if (ClosedPositionPvE.Target.Target != friend) return true;
-                break;
-            }
-
-            // No party member with the Closed Position status was found or the target is already set correctly
-            return false;
-        }
-
-        // Helper method to set act to null and return false.
         private static bool SetActToNull(out IAction? act)
         {
             act = null;
