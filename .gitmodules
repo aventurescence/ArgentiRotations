@@ -1,0 +1,3 @@
+[submodule "ECommons"]
+	path = ECommons
+	url = https://github.com/aventurescence/ECommons.git

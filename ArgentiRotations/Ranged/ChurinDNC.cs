@@ -1,6 +1,9 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
-using ECommons.ExcelServices;
 
 namespace ArgentiRotations.Ranged;
 
@@ -20,45 +23,45 @@ public sealed class ChurinDNC : DancerRotation
     [RotationConfig(CombatType.PvE, Name = "Use Opener Pot")]
     private static bool UseOpenerPot { get; set;} = true;
 
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "First Dance Partner Priority")]
-    private static DancePartnerPrio Prio1 { get; set; } = DancePartnerPrio.SAM;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio0 { get; set; } = DancePartnerJob.SAM;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Second Dance Partner Priority")]
-    private static DancePartnerPrio Prio2 { get; set; } = DancePartnerPrio.PCT;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio1 { get; set; } = DancePartnerJob.PCT;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Third Dance Partner Priority")]
-    private static DancePartnerPrio Prio3 { get; set; } = DancePartnerPrio.RPR;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio2 { get; set; } = DancePartnerJob.RPR;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Fourth Dance Partner Priority")]
-    private static DancePartnerPrio Prio4 { get; set; } = DancePartnerPrio.VPR;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio3 { get; set; } = DancePartnerJob.VPR;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Fifth Dance Partner Priority")]
-    private static DancePartnerPrio Prio5 { get; set; } = DancePartnerPrio.MNK;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio4 { get; set; } = DancePartnerJob.MNK;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Sixth Dance Partner Priority")]
-    private static DancePartnerPrio Prio6 { get; set; } = DancePartnerPrio.NIN;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio5 { get; set; } = DancePartnerJob.NIN;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Seventh Dance Partner Priority")]
-    private static DancePartnerPrio Prio7 { get; set; } = DancePartnerPrio.DRG;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio6 { get; set; } = DancePartnerJob.DRG;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Eighth Dance Partner Priority")]
-    private static DancePartnerPrio Prio8 { get; set; } = DancePartnerPrio.BLM;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio7 { get; set; } = DancePartnerJob.BLM;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Ninth Dance Partner Priority")]
-    private static DancePartnerPrio Prio9 { get; set; } = DancePartnerPrio.RDM;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio8 { get; set; } = DancePartnerJob.RDM;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Tenth Dance Partner Priority")]
-    private static DancePartnerPrio Prio10 { get; set; } = DancePartnerPrio.SMN;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio9 { get; set; } = DancePartnerJob.SMN;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Eleventh Dance Partner Priority")]
-    private static DancePartnerPrio Prio11 { get; set; } = DancePartnerPrio.MCH;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio10 { get; set; } = DancePartnerJob.MCH;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Twelfth Dance Partner Priority")]
-    private static DancePartnerPrio Prio12 { get; set; } = DancePartnerPrio.BRD;
-    [Range(1, 13, ConfigUnitType.None, 1)]
+    private static DancePartnerJob Prio11 { get; set; } = DancePartnerJob.BRD;
+    [Range(0, 12, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Thirteenth Dance Partner Priority")]
-    private static DancePartnerPrio Prio13 { get; set; } = DancePartnerPrio.DNC;
+    private static DancePartnerJob Prio12 { get; set; } = DancePartnerJob.DNC;
 
 
 
@@ -95,7 +98,7 @@ public sealed class ChurinDNC : DancerRotation
     // ReSharper disable once InconsistentNaming
     protected override bool EmergencyAbility(IAction? nextGCD, out IAction? act)
     {
-        if (CheckClosedPosition(out act)) return true;
+        if (TargetClosedPosition(out act)) return true;
         if (DevilmentAfterFinish(out act)) return true;
         if (FallbackDevilment(out act)) return true;
         return NotDancing(nextGCD, out act) || SetActToNull(out act);
@@ -121,9 +124,10 @@ public sealed class ChurinDNC : DancerRotation
         //CheckBoss();
         //CheckDowntime();
         //UpdateFruDowntime();
+        if (TryUseClosedPosition(out act)) return true;
+        if (SwapDancePartner(out act)) return true;
 
-        return TryUseClosedPosition(out act) ||
-               HoldGcd(out act) ||
+        return HoldGcd(out act) ||
                base.GeneralGCD(out act);
     }
 
@@ -192,7 +196,56 @@ public sealed class ChurinDNC : DancerRotation
         { StatusID.FinishingMoveReady, 30 }
     };
 
+    private static List<(string Name, string Job)> GetDancePartnerCandidates()
+    {
+        return PartyMembers
+            .Where(member =>
+                !member.IsDead &&
+                !member.HasStatus(false, StatusID.DamageDown_2911, StatusID.Weakness, StatusID.BrinkOfDeath) &&
+                DancePartnerPrioList.Any(prio => member.IsJobs((Job)prio)))
+            .OrderBy(member => DancePartnerPrioList.FindIndex(prio => member.IsJobs((Job)prio)))
+            .Select(member => (member.Name.TextValue , member.ClassJob.Value.Abbreviation.ToString()))
+            .ToList();
+    }
+
+    private static string CurrentDancePartner =>
+        PartyMembers.FirstOrDefault(member => member.HasStatus(true, StatusID.ClosedPosition_2026))?.Name.TextValue ?? string.Empty;
+
     private const float GracePeriod = 0.5f;
+
+    private enum DancePartnerJob
+    {
+        SAM = Job.SAM,
+        PCT = Job.PCT,
+        RPR = Job.RPR,
+        VPR = Job.VPR,
+        MNK = Job.MNK,
+        NIN = Job.NIN,
+        DRG = Job.DRG,
+        BLM = Job.BLM,
+        RDM = Job.RDM,
+        SMN = Job.SMN,
+        MCH = Job.MCH,
+        BRD = Job.BRD,
+        DNC = Job.DNC,
+    }
+
+    private static List<DancePartnerJob> DancePartnerPrioList =>
+    [
+        Prio0,
+        Prio1,
+        Prio2,
+        Prio3,
+        Prio4,
+        Prio5,
+        Prio6,
+        Prio7,
+        Prio8,
+        Prio9,
+        Prio10,
+        Prio11,
+        Prio12
+    ];
 
     #endregion
 
@@ -204,10 +257,33 @@ public sealed class ChurinDNC : DancerRotation
             ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
         DrawRotationStatus();
         DrawCombatStatus();
+        DrawPartyMembers();
         ImGui.Separator();
         DisplayStatusHelper.EndPaddedChild();
     }
 
+    private static void DrawPartyMembers()
+    {
+        if (ImGui.BeginTable("PartyMembersTable", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        {
+            ImGui.TableSetupColumn("Name");
+            ImGui.TableSetupColumn("Job");
+            ImGui.TableHeadersRow();
+
+            var dancePartnerCandidates = GetDancePartnerCandidates();
+
+            foreach (var (name, job) in dancePartnerCandidates)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextColored(ImGuiColors.ParsedGold, string.IsNullOrEmpty(name) ? "N/A" : name);
+                ImGui.TableNextColumn();
+                ImGui.TextColored(ImGuiColors.ParsedGold, string.IsNullOrEmpty(job) ? "N/A" : job);
+            }
+
+            ImGui.EndTable();
+        }
+    }
     private void DrawRotationStatus()
     {
         var text = "Rotation: " + Name;
@@ -311,33 +387,20 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.TableNextColumn();
             ImGui.Text(ShouldHoldForTechnicalStep().ToString());
 
-            // Row 14: Has Return
-            //ImGui.TableNextRow();
-            //ImGui.TableNextColumn();
-            //.Text("Has Return?");
-            //ImGui.TableNextColumn();
-            //ImGui.Text(HasReturn.ToString());
-
-            // Row 15: Return Ending
-            //ImGui.TableNextRow();
-            //ImGui.TableNextColumn();
-            //ImGui.Text("Return Ending?");
-            //ImGui.TableNextColumn();
-            //ImGui.Text(ReturnEnding.ToString());
-
-            // Row 16: Has Spell in Waiting Return
-            //ImGui.TableNextRow();
-            //ImGui.TableNextColumn();
-            //ImGui.Text("Has Spell in Waiting Return?");
-            //ImGui.TableNextColumn();
-            //ImGui.Text(HasSpellInWaitingReturn.ToString());
-
             // Row 12: Has Dance Targets in Range?
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
             ImGui.Text("Has Dance Targets in Range?");
             ImGui.TableNextColumn();
             ImGui.Text(AreDanceTargetsInRange.ToString());
+
+            //Row 13: Current Dance Partner
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Current Dance Partner");
+            ImGui.TableNextColumn();
+            var displayPartner = string.IsNullOrEmpty(CurrentDancePartner) ? "N/A" : CurrentDancePartner;
+            ImGui.Text(displayPartner);
 
             ImGui.EndTable();
         }
@@ -347,6 +410,120 @@ public sealed class ChurinDNC : DancerRotation
     #endregion
     
     #region Extra Methods
+
+        #region Dance Partner Logic
+
+        private const TargetType ChurinDancePartner = TargetType.DancePartner;
+        private bool TryUseClosedPosition(out IAction? act)
+        {
+            if (Player.HasStatus(true, StatusID.ClosedPosition)) return SetActToNull(out act);
+            return ChurinClosedPositionPvE.CanUse(out act) || SetActToNull(out act);
+        }
+
+        private bool SwapDancePartner(out IAction? act)
+        {
+            if (!Player.HasStatus(true, StatusID.ClosedPosition))
+                return SetActToNull(out act);
+
+            // Find a valid dance partner in one pass
+            var currentPartner = PartyMembers.FirstOrDefault(member =>
+                member.HasStatus(true, StatusID.ClosedPosition_2026));
+
+            if (currentPartner == null || !currentPartner.HasStatus(false, StatusID.DamageDown_2911, StatusID.Weakness, StatusID.BrinkOfDeath) || !currentPartner.IsDead)
+                return SetActToNull(out act);
+
+            // Check cooldown conditions
+            if (StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneCharge(5) ||
+                FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(5))
+
+                return EndingPvE.CanUse(out act);
+
+            return SetActToNull(out act);
+        }
+
+        // ReSharper disable once InconsistentNaming
+        private static IBattleChara? SetDancePartner(IEnumerable<IBattleChara> IGameObjects, TargetType type)
+        {
+            if (type != ChurinDancePartner)
+                return null;
+
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+            if (IGameObjects == null) return null;
+            var partyMembers = new List<IBattleChara>();
+
+            foreach (var obj in IGameObjects)
+            {
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+                if (PartyMembers.Contains(obj) && obj.StatusList != null)
+                {
+                    partyMembers.Add(obj);
+                }
+            }
+
+            foreach (var prio in DancePartnerPrioList)
+            {
+                foreach (var member in partyMembers)
+                {
+                    if (member.IsJobs((Job)prio) && !member.IsDead && !member.HasStatus(false, StatusID.DamageDown_2911,
+                            StatusID.Weakness, StatusID.BrinkOfDeath))
+
+                        return member;
+                }
+            }
+            return null;
+        }
+
+        private bool TargetClosedPosition(out IAction act)
+        {
+            if (!ChurinClosedPositionPvE.CanUse(out act) || Player.HasStatus(true, StatusID.ClosedPosition))
+                return false;
+
+            var target = SetDancePartner(PartyMembers, ChurinDancePartner);
+            if (target == null)
+                return false;
+
+            return ChurinClosedPositionPvE.Target.Target != target;
+        }
+
+        private static void ModifyChurinClosedPositionPvE(ref ActionSetting setting)
+        {
+            setting.IsFriendly = true;
+            setting.TargetType = ChurinDancePartner;
+            setting.TargetStatusProvide =
+            [
+                StatusID.ClosedPosition_2026
+            ];
+            setting.StatusProvide =
+            [
+                StatusID.ClosedPosition
+            ];
+            setting.RotationCheck = (Func<bool>) (() => !IsDancing && !PartyMembers.Any(member => member.HasStatus(true, StatusID.ClosedPosition_2026)));
+        }
+
+
+        private readonly Lazy<IBaseAction> _churinClosedPositionPvECreator = new(() =>
+        {
+            IBaseAction action = new BaseAction(ActionID.ClosedPositionPvE);
+            LoadActionSetting(action);
+            ActionSetting setting = action.Setting;
+            ModifyChurinClosedPositionPvE(ref setting);
+            action.Setting = setting;
+            return action;
+        });
+
+        private static void LoadActionSetting(IBaseAction action)
+        {
+            Lumina.Excel.Sheets.Action action1 = action.Action;
+            if (action1.CanTargetAlly || action1.CanTargetParty)
+                action.Setting.IsFriendly = true;
+            else if (action1.CanTargetHostile)
+                action.Setting.IsFriendly = false;
+            else
+                action.Setting.IsFriendly = action.TargetInfo.EffectRange > 5.0;
+        }
+        private IBaseAction ChurinClosedPositionPvE => _churinClosedPositionPvECreator.Value;
+
+        #endregion
 
         #region Technical Step Logic
         private bool HoldGcd(out IAction? act)
@@ -443,7 +620,11 @@ public sealed class ChurinDNC : DancerRotation
 
         private bool TryUseTillana(out IAction? act)
         {
-            if (Esprit <= 30 || IsStatusEnding(StatusID.FlourishingFinish, 3.5f))
+            var finishingMoveReady = FinishingMovePvE.Cooldown.IsCoolingDown &&
+                                     FinishingMovePvE.Cooldown.WillHaveOneCharge(3);
+            var burstEnding = IsStatusEnding(StatusID.TechnicalFinish, 5) || IsStatusEnding(StatusID.Devilment, 5);
+
+            if (Esprit <= 30 || IsStatusEnding(StatusID.FlourishingFinish, 3.5f) || finishingMoveReady && Esprit <= 10 || burstEnding && Esprit >= 50)
                 return TillanaPvE.CanUse(out act);
 
             return SetActToNull(out act);
@@ -461,7 +642,7 @@ public sealed class ChurinDNC : DancerRotation
                 ShouldUseLastDance = false;
             }
 
-            if (DanceDance && Esprit < 60 || finishingMoveReady || standardReady || IsStatusEnding(StatusID.LastDanceReady, 4))
+            if (DanceDance && Esprit < 50 || finishingMoveReady || standardReady || IsStatusEnding(StatusID.LastDanceReady, 4))
             {
                 ShouldUseLastDance = true;
             }
@@ -524,6 +705,7 @@ public sealed class ChurinDNC : DancerRotation
                    ExecuteStepGCD(out act) ||
                    FinishTheDance(out act) ||
                    ProcHelper(out act) ||
+                   FeatherGCDHelper(out act) ||
                    TechGCD(out act, Player.HasStatus(true, StatusID.Devilment)) ||
                    TryUseTechnicalStep(out act) ||
                    TryUseLastDance(out act) ||
@@ -583,20 +765,26 @@ public sealed class ChurinDNC : DancerRotation
         /// <returns>True if a basic GCD action was performed; otherwise, false.</returns>
         private bool TryUseBasicGcDs(out IAction? act)
         {
-            var hasSilkenProcs = Player.HasStatus(true, StatusID.SilkenFlow) ||
-                                 Player.HasStatus(true, StatusID.SilkenSymmetry);
-            var hasFlourishingProcs = Player.HasStatus(true, StatusID.FlourishingFlow) ||
-                                   Player.HasStatus(true, StatusID.FlourishingSymmetry);
-
-            if (Feathers > 3 && !hasSilkenProcs && hasFlourishingProcs && Esprit > 50)
-                return FountainPvE.CanUse(out act) || CascadePvE.CanUse(out act);
-
             return BloodshowerPvE.CanUse(out act) ||
                    RisingWindmillPvE.CanUse(out act) ||
                    FountainfallPvE.CanUse(out act) ||
                    ReverseCascadePvE.CanUse(out act) ||
                    FountainPvE.CanUse(out act) ||
                    CascadePvE.CanUse(out act);
+        }
+
+        private bool FeatherGCDHelper(out IAction? act)
+        {
+            var hasSilkenProcs = Player.HasStatus(true, StatusID.SilkenFlow) ||
+                                 Player.HasStatus(true, StatusID.SilkenSymmetry);
+            var hasFlourishingProcs = Player.HasStatus(true, StatusID.FlourishingFlow) ||
+                                      Player.HasStatus(true, StatusID.FlourishingSymmetry);
+
+            if (Feathers > 3 && !hasSilkenProcs && hasFlourishingProcs && Esprit < 50 && !DanceDance)
+                return FountainPvE.CanUse(out act) || CascadePvE.CanUse(out act);
+            if (Feathers > 3 && (hasSilkenProcs || hasFlourishingProcs) && Esprit > 50 && !DanceDance)
+                return SaberDancePvE.CanUse(out act);
+            return SetActToNull(out act);
         }
 
         /// <summary>
@@ -647,11 +835,11 @@ public sealed class ChurinDNC : DancerRotation
         {
             var starfallEnding = IsStatusEnding(StatusID.FlourishingStarfall, 7) ||
                                  IsStatusEnding(StatusID.Devilment, 7);
-            var silkenFlowEnding = IsStatusEnding(StatusID.SilkenFlow, 3);
-            var silkenSymmetryEnding = IsStatusEnding(StatusID.SilkenSymmetry, 3);
-            var flourishingFlowEnding = IsStatusEnding(StatusID.FlourishingFlow, 3);
-            var flourishingSymmetryEnding = IsStatusEnding(StatusID.FlourishingSymmetry, 3);
-            var useProc = starfallEnding && DanceDance || silkenFlowEnding || silkenSymmetryEnding ||
+            var silkenFlowEnding = IsStatusEnding(StatusID.SilkenFlow, 3.5f);
+            var silkenSymmetryEnding = IsStatusEnding(StatusID.SilkenSymmetry, 3.5f);
+            var flourishingFlowEnding = IsStatusEnding(StatusID.FlourishingFlow, 3.5f);
+            var flourishingSymmetryEnding = IsStatusEnding(StatusID.FlourishingSymmetry, 3.5f);
+            var useProc = starfallEnding || silkenFlowEnding || silkenSymmetryEnding ||
                           flourishingFlowEnding || flourishingSymmetryEnding;
 
             return useProc switch
@@ -665,61 +853,6 @@ public sealed class ChurinDNC : DancerRotation
         #endregion
 
         #region OGCD Helpers
-
-        /// <summary>
-        ///     Attempts to use the Closed Position action.
-        /// </summary>
-        /// <param name="act">The action to be performed, if any.</param>
-        /// <returns>True if the Closed Position action was performed; otherwise, false.</returns>
-        private bool CheckClosedPosition(out IAction? act)
-        {
-            if (!ClosedPositionPvE.CanUse(out act) || Player.HasStatus(true, StatusID.ClosedPosition)) return false;
-
-            foreach (var friend in PartyMembers)
-            {
-                if (!friend.HasStatus(true, StatusID.ClosedPosition_2026)) continue;
-                if (ClosedPositionPvE.Target.Target != friend) return true;
-                break;
-            }
-
-            return false;
-        }
-
-        private bool TryUseClosedPosition(out IAction? act)
-        {
-            var hasClosedPosition = Player.HasStatus(true, StatusID.ClosedPosition);
-
-            if (hasClosedPosition || !ClosedPositionPvE.CanUse(out act)) return SetActToNull(out act);
-
-         var dancePartner = SetDancePartner(TargetType.DancePartner);
-            if (dancePartner != null)
-                ClosedPositionPvE.Target = new TargetResult(dancePartner, [dancePartner], dancePartner.Position);
-            return ClosedPositionPvE.CanUse(out act);
-        }
-
-        private static IBattleChara? SetDancePartner(TargetType type)
-        {
-            return type == TargetType.DancePartner ? FindDancePartner() : null;
-
-            IBattleChara? FindDancePartner()
-            {
-                var prios = new[]
-                {
-                    Prio1, Prio2, Prio3, Prio4, Prio5, Prio6, Prio7,
-                    Prio8, Prio9, Prio10, Prio11, Prio12, Prio13
-                };
-
-                return (from prio in prios
-                    from member in PartyMembers
-                    where member.IsJobs((Job)prio) && !member.IsDead &&
-                          (!member.HasStatus(true, StatusID.BrinkOfDeath) || !member.HasStatus(true, StatusID.Weakness))
-                    select member).FirstOrDefault();
-            }
-        }
-
-
-
-
         /// <summary>
         ///     Determines whether the Devilment action can be used after the Technical Finish status is active.
         /// </summary>

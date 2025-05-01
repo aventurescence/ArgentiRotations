@@ -2,7 +2,6 @@
     <PropertyGroup>
         <Authors>Aventurine</Authors>
         <TargetFramework>net9.0-windows</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
         <PlatformTarget>x64</PlatformTarget>
         <Platforms>x64</Platforms>
         <Nullable>enable</Nullable>
@@ -55,30 +54,8 @@
             <HintPath>$(DalamudLibPath)Serilog.dll</HintPath>
             <Private>False</Private>
         </Reference>
-        <Using Include="Dalamud.Game.ClientState.JobGauge.Enums"/>
-        <Using Include="Dalamud.Game.ClientState.Objects.Types"/>
-        <Using Include="Dalamud.Interface"/>
-        <Using Include="ImGuiNET"/>
-        <Using Include="Newtonsoft.Json"/>
-        <Using Include="RotationSolver.Basic"/>
-        <Using Include="RotationSolver.Basic.Actions"/>
-        <Using Include="RotationSolver.Basic.Attributes"/>
-        <Using Include="RotationSolver.Basic.Configuration"/>
-        <Using Include="RotationSolver.Basic.Helpers"/>
-        <Using Include="RotationSolver.Basic.Rotations"/>
-        <Using Include="RotationSolver.Basic.Rotations.Basic"/>
-        <Using Include="RotationSolver.Basic.Data"/>
-        <Using Include="RotationSolver.Basic.IPC"/>
-        <Using Include="RotationSolver.Basic.Traits"/>
-        <Using Include="System.Numerics"/>
-        <Using Include="System.Reflection"/>
-        <Using Include="ArgentiRotations.Common"/>
-        <Using Include="System.Runtime.InteropServices"/>
-        <Using Include="FFXIVClientStructs.FFXIV.Client.Game"/>
-        <Using Include="FFXIVClientStructs.FFXIV.Client.Game.Character"/>
-        <Using Include="FFXIVClientStructs.FFXIV.Client.Game.Control"/>
-        <Using Include="FFXIVClientStructs.FFXIV.Client.Game.Object"/>
-        <Using Include="FFXIVClientStructs.FFXIV.Client.System.Framework"/>
-        <Using Include="FFXIVClientStructs.FFXIV.Client.UI.Agent"/>
     </ItemGroup>
+    <PropertyGroup>
+        <ImplicitUsings>true</ImplicitUsings>
+    </PropertyGroup>
 </Project>
