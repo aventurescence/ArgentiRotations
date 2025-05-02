@@ -196,17 +196,55 @@ public sealed class ChurinDNC : DancerRotation
         { StatusID.FinishingMoveReady, 30 }
     };
 
-    private static List<(string Name, string Job)> GetDancePartnerCandidates()
+    /*private static List<(string Name, string Job)> GetDancePartnerCandidates()
     {
-        return PartyMembers
-            .Where(member =>
-                !member.IsDead &&
-                !member.HasStatus(false, StatusID.DamageDown_2911, StatusID.Weakness, StatusID.BrinkOfDeath) &&
-                DancePartnerPrioList.Any(prio => member.IsJobs((Job)prio)))
-            .OrderBy(member => DancePartnerPrioList.FindIndex(prio => member.IsJobs((Job)prio)))
-            .Select(member => (member.Name.TextValue , member.ClassJob.Value.Abbreviation.ToString()))
-            .ToList();
+       var candidatesTemp = new List<(int Order, string Name, string Job)>();
+
+            foreach (var member in PartyMembers)
+            {
+                // Skip members that are dead or have forbidden statuses.
+                if (member.IsDead ||
+                    member.HasStatus(false, StatusID.DamageDown_2911, StatusID.Weakness, StatusID.BrinkOfDeath))
+                {
+                    continue;
+                }
+
+                // Determine the order index from DancePartnerPrioList.
+                var order = int.MaxValue;
+                var currentIndex = 0;
+                var valid = false;
+                foreach (var prio in DancePartnerPrioList)
+                {
+                    if (member.IsJobs((Job)prio))
+                    {
+                        order = currentIndex;
+                        valid = true;
+                        break;
+                    }
+                    currentIndex++;
+                }
+                if (!valid)
+                {
+                    continue;
+                }
+
+                var name = member.Name.TextValue;
+                var job = member.ClassJob.Value.Abbreviation.ToString();
+                candidatesTemp.Add((order, name, job));
+            }
+
+            // Sort candidates by the order index.
+            candidatesTemp.Sort((a, b) => a.Order.CompareTo(b.Order));
+
+            var candidates = new List<(string Name, string Job)>();
+            foreach (var candidate in candidatesTemp)
+            {
+                candidates.Add((candidate.Name, candidate.Job));
+            }
+
+            return candidates;
     }
+    */
 
     private static string CurrentDancePartner =>
         PartyMembers.FirstOrDefault(member => member.HasStatus(true, StatusID.ClosedPosition_2026))?.Name.TextValue ?? string.Empty;
@@ -257,12 +295,12 @@ public sealed class ChurinDNC : DancerRotation
             ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
         DrawRotationStatus();
         DrawCombatStatus();
-        DrawPartyMembers();
+        //DrawPartyMembers();
         ImGui.Separator();
         DisplayStatusHelper.EndPaddedChild();
     }
 
-    private static void DrawPartyMembers()
+    /*private static void DrawPartyMembers()
     {
         if (ImGui.BeginTable("PartyMembersTable", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
         {
@@ -270,9 +308,7 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.TableSetupColumn("Job");
             ImGui.TableHeadersRow();
 
-            var dancePartnerCandidates = GetDancePartnerCandidates();
-
-            foreach (var (name, job) in dancePartnerCandidates)
+            foreach (var (name, job) in GetDancePartnerCandidates())
             {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -284,6 +320,7 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.EndTable();
         }
     }
+    */
     private void DrawRotationStatus()
     {
         var text = "Rotation: " + Name;
@@ -402,6 +439,13 @@ public sealed class ChurinDNC : DancerRotation
             var displayPartner = string.IsNullOrEmpty(CurrentDancePartner) ? "N/A" : CurrentDancePartner;
             ImGui.Text(displayPartner);
 
+            //Row 14: Swap Dance Partner?
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Should Swap Dance Partner?");
+            ImGui.TableNextColumn();
+            ImGui.Text(SwapDancePartner(out _).ToString());
+
             ImGui.EndTable();
         }
     }
@@ -422,23 +466,23 @@ public sealed class ChurinDNC : DancerRotation
 
         private bool SwapDancePartner(out IAction? act)
         {
-            if (!Player.HasStatus(true, StatusID.ClosedPosition))
-                return SetActToNull(out act);
-
-            // Find a valid dance partner in one pass
-            var currentPartner = PartyMembers.FirstOrDefault(member =>
-                member.HasStatus(true, StatusID.ClosedPosition_2026));
-
-            if (currentPartner == null || !currentPartner.HasStatus(false, StatusID.DamageDown_2911, StatusID.Weakness, StatusID.BrinkOfDeath) || !currentPartner.IsDead)
-                return SetActToNull(out act);
-
+            var standardOrFinishingCharge =
+                StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneCharge(5) ||
+                FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(5);
+            if (!Player.HasStatus(true, StatusID.ClosedPosition) || !CheckDancePartnerStatus()) return SetActToNull(out act);
             // Check cooldown conditions
-            if (StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneCharge(5) ||
-                FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(5))
-
-                return EndingPvE.CanUse(out act);
-
+            if (standardOrFinishingCharge && CheckDancePartnerStatus()) return EndingPvE.CanUse(out act);
             return SetActToNull(out act);
+        }
+
+        private static bool CheckDancePartnerStatus()
+        {
+            foreach (var dancePartner in PartyMembers)
+            {
+                if (dancePartner.HasStatus(true, StatusID.ClosedPosition_2026) && dancePartner.HasStatus(false, StatusID.DamageDown_2911, StatusID.Weakness, StatusID.BrinkOfDeath))
+                    return true;
+            }
+            return false;
         }
 
         // ReSharper disable once InconsistentNaming
