@@ -1,15 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-            <TargetFramework>.net9.0-windows7.0</TargetFramework>
+            <TargetFramework>.net9.0-windows</TargetFramework>
             <AssemblyName>$(MSBuildProjectName)</AssemblyName>
             <AssemblyVersion>1.1.1.1</AssemblyVersion>
           </PropertyGroup>
+  
+          <PropertyGroup>
+            <ImplicitUsings>disable</ImplicitUsings>
+          </PropertyGroup>
+  
           <ItemGroup>
             <PackageReference Include="DalamudPackager" Version="12.0.0"/>
-            <PackageReference Include="ECommons" Version="2.0.0.4" />
-            <PackageReference Include="RotationSolverReborn.Basic" Version="7.2.1.0"/>
+            <PackageReference Include="RotationSolverReborn.Basic" Version="7.2.1.6"/>
           </ItemGroup>
+  
           <ItemGroup>
             <Reference Include="Dalamud">
               <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
@@ -54,11 +59,15 @@
             <Using Include="RotationSolver.Basic.Rotations.Basic"/>
             <Using Include="System.Numerics"/>
             <Using Include="System.Reflection"/>
+            <Using Include="ECommons.ExcelServices" />
           </ItemGroup>
           <ItemGroup>
-            <Folder Include="ArgentiRotations\common"/>
+            <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj" />
+          </ItemGroup>
+          <ItemGroup>
+            <Folder Include="ArgentiRotations\Common"/>
             <Folder Include="ArgentiRotations\Ranged"/>
-            <Folder Include="ArgentiRotations\encounter" />
+            <Folder Include="ArgentiRotations\Encounter" />
           </ItemGroup>
           <ItemGroup>
             <None Update="ArgentiRotations.json">

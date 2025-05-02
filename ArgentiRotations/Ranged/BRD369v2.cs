@@ -1,3 +1,5 @@
+using System;
+
 namespace ArgentiRotations.Ranged;
 
 [Rotation("BRD369v2", CombatType.PvE, GameVersion = "7.2",
@@ -9,15 +11,15 @@ public sealed class Brd369V2 : BardRotation
     #region Config Options
     [Range(1, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Wanderer's Minuet Uptime")]
-    public float WandTime { get; set; } = 42;
+    private float WandTime { get; set; } = 42;
 
     [Range(0, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Mage's Ballad Uptime")]
-    public float MageTime { get; set; } = 39;
+    private float MageTime { get; set; } = 39;
 
     [Range(0, 45, ConfigUnitType.Seconds, 1)]
     [RotationConfig(CombatType.PvE, Name = "Army's Paeon Uptime")]
-    public float ArmyTime { get; set; } = 36;
+    private float ArmyTime { get; set; } = 36;
 
     private float WandRemainTime => 45 - WandTime;
     private float MageRemainTime => 45 - MageTime;
@@ -25,14 +27,14 @@ public sealed class Brd369V2 : BardRotation
 
     // New configuration for enabling prepull Heartbreak Shot
     [RotationConfig(CombatType.PvE, Name = "Enable Prepull Heartbreak Shot")]
-    public bool EnablePrepullHeartbreakShot { get; set; } = false;
+    private bool EnablePrepullHeartbreakShot { get; set; } = false;
 
     // Removed RotationConfig attribute for First song to disable changing the option
 
     [RotationConfig(CombatType.PvE, Name = "Potion Timings")]
-    public PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
+    private PotionTimingOption PotionTimings { get; set; } = PotionTimingOption.None;
 
-    public enum PotionTimingOption
+    private enum PotionTimingOption
     {
         None,
         ZeroAndSixMins,
@@ -57,9 +59,7 @@ public sealed class Brd369V2 : BardRotation
     protected override bool GeneralGCD(out IAction? act)
     {
         if (IronJawsPvE.CanUse(out act)) return true;
-        if (IronJawsPvE.CanUse(out act, skipStatusProvideCheck: true) &&
-            (IronJawsPvE.Target.Target?.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []) ??
-             false))
+        if (IronJawsPvE.CanUse(out act, skipStatusProvideCheck: true) && IronJawsPvE.Target.Target.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []))
             if (Player.HasStatus(true, StatusID.BattleVoice, StatusID.RadiantFinale, StatusID.RagingStrikes) &&
                 Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale,
                     StatusID.RagingStrikes))
@@ -86,9 +86,9 @@ public sealed class Brd369V2 : BardRotation
         if (QuickNockPvE.CanUse(out act)) return true;
 
         if (IronJawsPvE.EnoughLevel && HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true &&
-            HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true)
+            HostileTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite))
         {
-            // Do not use WindbitePvE or VenomousBitePvE if both statuses are present and IronJawsPvE has enough level
+            // Do not use WindbitePvE or VenomousBitePvE if both statuses are present and IronJawsPvE has enough levels
         }
         else
         {
@@ -154,11 +154,10 @@ public sealed class Brd369V2 : BardRotation
             UpdateBurstStatus();
             if (_inBurstStatusCount < 1)
                 if (HostileTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true &&
-                    HostileTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true
+                    HostileTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite)
                     && IsLastGCD(true, VenomousBitePvE))
                 {
-                    if ((PotionTimings == PotionTimingOption.ZeroAndSixMins ||
-                         PotionTimings == PotionTimingOption.ZeroFiveAndTenMins) &&
+                    if (PotionTimings is PotionTimingOption.ZeroAndSixMins or PotionTimingOption.ZeroFiveAndTenMins &&
                         UseBurstMedicine(out act)) return true;
 
                     if (WeaponRemain < 1.25 && RadiantFinalePvE.CanUse(out act)) return true;
@@ -341,7 +340,7 @@ public sealed class Brd369V2 : BardRotation
             if (BloodletterPvE.CanUse(out act, usedUp: true)) return true;
         }
 
-        // Prevents Bloodletter bumpcapping when.Mage is the song due to Repetoire procs
+        // Prevents Bloodletter bump capping when.Mage is the song due to Repertoire procs
         if (BloodletterPvE.Cooldown.WillHaveXCharges(2, 7.5f) && Song == Song.Mage && !SongEndAfterGCD(1))
         {
             if (RainOfDeathPvE.CanUse(out act, usedUp: true)) return true;
@@ -356,16 +355,13 @@ public sealed class Brd369V2 : BardRotation
             if (HeartbreakShotPvE.CanUse(out act, usedUp: true))
                 return true;
 
-        // Logic to ensure 4 HeartbreakShots in burst window
-        if (_inBurstStatusCount >= 1 && Song == Song.Wanderer && RagingStrikesPvE.Cooldown.IsCoolingDown &&
-            RagingStrikesPvE.Cooldown.RecastTimeRemainOneCharge <= 45f)
+        // Logic to ensure 4 HeartbreakShots in a burst window
+        if (_inBurstStatusCount >= 1 && Song == Song.Wanderer && RagingStrikesPvE.Cooldown is { IsCoolingDown: true, RecastTimeRemainOneCharge: <= 45f })
             if (HeartbreakShotPvE.Cooldown.WillHaveXCharges(3, 0) && RagingStrikesPvE.Cooldown.WillHaveOneCharge(0))
                 if (HeartbreakShotPvE.CanUse(out act))
                     return true;
 
-        if (BetterBloodletterLogic(out act)) return true;
-
-        return base.AttackAbility(nextGcd, out act);
+        return BetterBloodletterLogic(out act) || base.AttackAbility(nextGcd, out act);
     }
 
     #endregion

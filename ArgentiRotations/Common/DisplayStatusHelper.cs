@@ -1,3 +1,4 @@
+using System;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
@@ -68,7 +69,7 @@ internal static class DisplayStatusHelper
         EndBorderedGroup(new Vector2(3, 2), new Vector2(0, 3));
     }
 
-    public static void EndBorderedGroup(Vector2 minPadding, Vector2 maxPadding = default)
+    private static void EndBorderedGroup(Vector2 minPadding, Vector2 maxPadding = default)
     {
         ImGui.EndGroup();
 
@@ -110,7 +111,7 @@ internal static class DisplayStatusHelper
         ImGui.SetCursorPosX(cursorPosX);
     }
 
-    internal static void DrawItemMiddle(Action drawAction, float wholeWidth, float width, bool leftAlign = true)
+    internal static void DrawItemMiddle(Action? drawAction, float wholeWidth, float width, bool leftAlign = true)
     {
         if (drawAction == null) return;
         var distance = (wholeWidth - width) / 2;
@@ -126,14 +127,13 @@ internal static class DisplayStatusHelper
         ShowTooltip(text);
     }
 
-    public static void ShowTooltip(string? text)
+    private static void ShowTooltip(string? text)
     {
         if (string.IsNullOrEmpty(text)) return;
-        ///ShowTooltip(() => ImGui.Text(text));
         ShowTooltip(() => ImGui.TextColored(ImGuiColors.DalamudGrey2, text));
     }
 
-    public static void ShowTooltip(Action act)
+    private static void ShowTooltip(Action? act)
     {
         if (act == null) return;
 

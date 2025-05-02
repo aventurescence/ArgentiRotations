@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace ArgentiRotations.Encounter;
 
 public abstract class FuturesRewritten : DancerRotation

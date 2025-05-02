@@ -1,3 +1,6 @@
+using System.Runtime.InteropServices;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Serilog;
 
 namespace ArgentiRotations.Common;
@@ -30,7 +33,7 @@ internal unsafe class CustomRotationAg
         /// <summary>
         ///     The instance about this struct.
         /// </summary>
-        internal static Countdown* Instance =>
+        private static Countdown* Instance =>
             (Countdown*)Framework.Instance()->GetUIModule()->GetAgentModule()->GetAgentByInternalId(
                 AgentId.CountDownSettingDialog);
 
@@ -68,34 +71,34 @@ internal unsafe class CustomRotationAg
 
     #region Openers
 
-    internal static int OpenerStep { get; set; }
-    internal static bool OpenerHasFinished { get; set; }
-    internal static bool OpenerHasFailed { get; set; }
+    private static int OpenerStep { get; set; }
+    private static bool OpenerHasFinished { get; set; }
+    private static bool OpenerHasFailed { get; set; }
     internal const float UniversalFailsafeThreshold = 5.0f;
 
     internal static bool OpenerTimeout { get; set; } =
         false; // TODO - make a method that when true, sends a debug log  and then sets the value back to false
 
-    internal static bool TestOpenerAvailable { get; set; } = false;
-    internal static bool OpenerAvailable { get; set; } = false;
-    internal static bool OpenerAvailableNoCountdown { get; set; } = false;
-    internal static bool OpenerAvailableSavage { get; set; } = false;
+    private static bool TestOpenerAvailable { get; set; } = false;
+    private static bool OpenerAvailable { get; set; } = false;
+    private static bool OpenerAvailableNoCountdown { get; set; } = false;
+    private static bool OpenerAvailableSavage { get; set; } = false;
 
-    internal static bool OpenerAvailableUltimate { get; set; } = false;
+    private static bool OpenerAvailableUltimate { get; set; } = false;
 
     // Use a generic handler for determining if an opener is available
     internal static bool IsOpenerAvailable => OpenerAvailable || OpenerAvailableNoCountdown || OpenerAvailableSavage ||
                                               OpenerAvailableUltimate || TestOpenerAvailable;
 
     internal static bool TestStartOpener { get; set; } = false;
-    internal static bool StartOpener { get; set; }
+    private static bool StartOpener { get; set; }
     internal static bool StartOpenerNoCountdown { get; set; } = false;
     internal static bool StartOpenerSavage { get; set; } = false;
     internal static bool StartOpenerUltimate { get; set; } = false;
 
     internal static bool TestOpenerInProgress { get; set; } = false;
-    internal static bool OpenerInProgress { get; set; }
-    internal static bool OpenerInProgressNoCountdown { get; set; }
+    private static bool OpenerInProgress { get; set; }
+    private static bool OpenerInProgressNoCountdown { get; set; }
     internal static bool OpenerInProgressSavage { get; set; } = false;
     internal static bool OpenerInProgressUltimate { get; set; } = false;
 
@@ -112,7 +115,7 @@ internal unsafe class CustomRotationAg
         if (OpenerHasFinished || OpenerHasFailed) ResetOpenerProperties();
     }
 
-    internal static void ResetOpenerProperties()
+    private static void ResetOpenerProperties()
     {
         OpenerInProgress = false;
         OpenerInProgressNoCountdown = false;
@@ -144,7 +147,7 @@ internal unsafe class CustomRotationAg
     ///     Sends a debug level message to the Dalamud log console.
     /// </summary>
     /// <param name="message"></param>
-    internal static void Debug(string message)
+    private static void Debug(string message)
     {
         Log.Debug("{ArgentiLog} {Message}", ArgentiLog, message);
     }
