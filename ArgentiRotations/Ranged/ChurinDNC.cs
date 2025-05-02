@@ -7,7 +7,7 @@ using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin DNC test", CombatType.PvE, GameVersion = "7.2.1", Description = "For High end content use, stay cute my dancer friends. <3")]
+[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.1", Description = "For High end content use, stay cute my dancer friends. <3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
 public sealed class ChurinDNC : DancerRotation
@@ -410,13 +410,6 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.TableNextColumn();
             ImGui.Text($"Ending: {IsStatusEnding(StatusID.FlourishingStarfall, 5)}  Duration: {StatusTimeConverter(true, StatusID.FlourishingStarfall)}");
 
-            // Row 10: Should Hold for Finishing Move
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Should Hold for Finishing Move?");
-            ImGui.TableNextColumn();
-            ImGui.Text(ShouldHoldForFinishingMove().ToString());
-
             // Row 11: Should Hold for Tech Step
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
@@ -573,7 +566,7 @@ public sealed class ChurinDNC : DancerRotation
         private bool HoldGcd(out IAction? act)
         {
             // If technical step conditions require holding GCD attacks, exit early.
-            if (ShouldHoldForTechnicalStep() || ShouldHoldForFinishingMove())
+            if (ShouldHoldForTechnicalStep())
             {
                 return SetActToNull(out act);
             }
@@ -602,14 +595,6 @@ public sealed class ChurinDNC : DancerRotation
             return noTechStatus && techStepSoon && actionsUnavailable && !alreadyDancing && ShouldUseTechStep ;
         }
 
-        private bool ShouldHoldForFinishingMove()
-        {
-            var finishingMoveSoon = FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f);
-            var hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
-            var actionUnavailable = !FinishingMovePvE.CanUse(out _);
-
-            return hasFinishingMove && finishingMoveSoon && actionUnavailable && !IsDancing && !DanceDance;
-        }
 
 
         private bool TryUseTechnicalStep(out IAction? act)
@@ -668,7 +653,7 @@ public sealed class ChurinDNC : DancerRotation
                                      FinishingMovePvE.Cooldown.WillHaveOneCharge(3);
             var burstEnding = IsStatusEnding(StatusID.TechnicalFinish, 5) || IsStatusEnding(StatusID.Devilment, 5);
 
-            if (Esprit <= 30 || IsStatusEnding(StatusID.FlourishingFinish, 3.5f) || finishingMoveReady && Esprit <= 10 || burstEnding && Esprit >= 50)
+            if (Esprit <= 30 || IsStatusEnding(StatusID.FlourishingFinish, 3.5f) || finishingMoveReady && Esprit <= 10 || (burstEnding || !DanceDance) && Esprit >= 50)
                 return TillanaPvE.CanUse(out act);
 
             return SetActToNull(out act);
@@ -848,7 +833,7 @@ public sealed class ChurinDNC : DancerRotation
             var danceReady = StandardStepPvE.CanUse(out _) || TechnicalStepPvE.CanUse(out _) || FinishingMovePvE.CanUse(out _);
 
             // Check if Saber Dance should be used
-            if ((Esprit >= 70 && !(danceCooldown && danceReady)) || (Feathers > 3 & hasProcs && Esprit >= 50) || IsMedicated)
+            if ((Esprit >= 70 && !(danceCooldown && danceReady)) || (Feathers > 3 & hasProcs && Esprit >= 50) || IsMedicated || !DanceDance && Player.HasStatus(true, StatusID.FlourishingFinish) && Esprit >= 50)
                 return SaberDancePvE.CanUse(out act);
 
             return SetActToNull(out act);
@@ -879,10 +864,10 @@ public sealed class ChurinDNC : DancerRotation
         {
             var starfallEnding = IsStatusEnding(StatusID.FlourishingStarfall, 7) ||
                                  IsStatusEnding(StatusID.Devilment, 7);
-            var silkenFlowEnding = IsStatusEnding(StatusID.SilkenFlow, 3.5f);
-            var silkenSymmetryEnding = IsStatusEnding(StatusID.SilkenSymmetry, 3.5f);
-            var flourishingFlowEnding = IsStatusEnding(StatusID.FlourishingFlow, 3.5f);
-            var flourishingSymmetryEnding = IsStatusEnding(StatusID.FlourishingSymmetry, 3.5f);
+            var silkenFlowEnding = IsStatusEnding(StatusID.SilkenFlow, 5);
+            var silkenSymmetryEnding = IsStatusEnding(StatusID.SilkenSymmetry, 5);
+            var flourishingFlowEnding = IsStatusEnding(StatusID.FlourishingFlow, 5);
+            var flourishingSymmetryEnding = IsStatusEnding(StatusID.FlourishingSymmetry, 5);
             var useProc = starfallEnding || silkenFlowEnding || silkenSymmetryEnding ||
                           flourishingFlowEnding || flourishingSymmetryEnding;
 
@@ -989,7 +974,7 @@ public sealed class ChurinDNC : DancerRotation
             var hasEnoughFeathers = Feathers > 3;
             var noThreefoldFanDance = !Player.HasStatus(true, StatusID.ThreefoldFanDance);
 
-            if ((hasDevilment && !ShouldHoldForFinishingMove() || hasEnoughFeathers && hasProcs  && !ShouldHoldForTechnicalStep() || IsMedicated) &&
+            if ((hasDevilment || hasEnoughFeathers && hasProcs  && !ShouldHoldForTechnicalStep() || IsMedicated) &&
                 noThreefoldFanDance)
                 return FanDanceIiPvE.CanUse(out act) ||
                        FanDancePvE.CanUse(out act);
