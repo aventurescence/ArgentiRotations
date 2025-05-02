@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
 
@@ -196,9 +193,9 @@ public sealed class ChurinDNC : DancerRotation
         { StatusID.FinishingMoveReady, 30 }
     };
 
-    /*private static List<(string Name, string Job)> GetDancePartnerCandidates()
+    /*private static List <(string Name, string Job)> GetDancePartnerCandidates()
     {
-       var candidatesTemp = new List<(int Order, string Name, string Job)>();
+       var candidatesTemp = new List <(int Order, string Name, string Job)>();
 
             foreach (var member in PartyMembers)
             {
