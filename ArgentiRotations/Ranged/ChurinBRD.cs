@@ -16,8 +16,8 @@ public sealed class ChurinBRD : BardRotation
         private enum SongTiming
         {
             [Description("Standard 3-3-12 Cycle")] Standard,
-            [Description("Adjusted Standard Cycle")] AdjustedStandard,
-            [Description("3-6-9 Cycle")] Cycle369,
+            [Description("Adjusted Standard Cycle - 2.48 GCD ideal")] AdjustedStandard,
+            [Description("3-6-9 Cycle - 2.49 or 2.5 GCD ideal")] Cycle369,
             [Description("Custom")] Custom
         }
         private enum WandererWeave
@@ -119,9 +119,10 @@ public sealed class ChurinBRD : BardRotation
 
     protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
     {
-        return TryUseBarrage(out act)||
-               TryUseEmpyrealArrow(out act) ||
-               TryUseEmergencyHeartbreakShot(out act) ||
+        if (IsLastAction(ActionID.WindbitePvE) && NoSong && SongTimings == SongTiming.Cycle369) return HeartbreakShotPvE.CanUse(out act);
+
+        return TryUseEmpyrealArrow(out act) ||
+               TryUseBarrage(out act)||
                base.EmergencyAbility(nextGCD, out act);
     }
 
@@ -135,12 +136,14 @@ public sealed class ChurinBRD : BardRotation
 
     protected override bool AttackAbility(IAction nextGcd, out IAction? act)
         {
-            if (IsFirstCycle && InArmys && SongEndAfter((float)(ArmyRemainTime + RecastTime)))
+            if (IsFirstCycle && InArmys)
             {
                 IsFirstCycle = false;
             }
-            return TryUseOpener(out act) ||
-                   TryUseRadiantFinale(out act) ||
+
+            if (WeaponRemain < RecastTime * 0.25 && IsBurst) return SetActToNull(out act);
+
+            return TryUseRadiantFinale(out act) ||
                    TryUseBattleVoice(out act) ||
                    TryUseRagingStrikes(out act) ||
                    TryUsePitchPerfect(out act) ||
@@ -153,6 +156,8 @@ public sealed class ChurinBRD : BardRotation
     #region GCD Logic
     protected override bool GeneralGCD(out IAction? act)
     {
+        if (Player.HasStatus(true,StatusID.Barrage)) return RefulgentArrowPvE.CanUse(out act);
+
         return TryUseDoTs(out act) ||
                TryUseIronJaws(out act) ||
                TryUseApexArrow(out act) ||
@@ -178,7 +183,7 @@ public sealed class ChurinBRD : BardRotation
         if (IronJawsPvE.Target.Target?.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []) ?? false)
         {
             if (InBurst && Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale,
-                    StatusID.RagingStrikes))
+                    StatusID.RagingStrikes) && !BlastArrowPvE.CanUse(out _))
             {
                 return IronJawsPvE.CanUse(out act, skipStatusProvideCheck:true);
             }
@@ -251,8 +256,8 @@ public sealed class ChurinBRD : BardRotation
         {
             if (RefulgentArrowPvE.CanUse(out act, skipComboCheck: true)) return true;
             if (StraightShotPvE.CanUse(out act)) return true;
-            if (BurstShotPvE.CanUse(out act) && !Player.HasStatus(true, StatusID.HawksEye_3861)) return true;
-            if (HeavyShotPvE.CanUse(out act) && !Player.HasStatus(true, StatusID.HawksEye_3861)) return true;
+            if (BurstShotPvE.CanUse(out act) && !Player.HasStatus(true, StatusID.HawksEye_3861) || Player.HasStatus(true, StatusID.ResonantArrowReady)) return true;
+            if (HeavyShotPvE.CanUse(out act) && !Player.HasStatus(true, StatusID.HawksEye_3861) || Player. HasStatus(true, StatusID.ResonantArrowReady)) return true;
 
             return SetActToNull(out act);
         }
@@ -263,24 +268,15 @@ public sealed class ChurinBRD : BardRotation
             private bool TryUseBarrage(out IAction? act)
                 {
                     var hasRagingStrikes = Player.HasStatus(true, StatusID.RagingStrikes);
-                    var willHaveEmpyrealArrowSoon = EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(1);
                     var hasHawksEye = Player.HasStatus(true, StatusID.HawksEye_3861);
                     var empyrealArrowReady = EmpyrealArrowPvE.EnoughLevel && Repertoire == 3;
 
-                    if (!hasRagingStrikes || willHaveEmpyrealArrowSoon || empyrealArrowReady || hasHawksEye)
+                    if (!hasRagingStrikes || empyrealArrowReady || hasHawksEye)
                         return SetActToNull(out act);
 
-                    return BarragePvE.CanUse(out act) || SetActToNull(out act);
+                    return BarragePvE.CanUse(out act) && WeaponRemain > RecastTime * 0.275 || SetActToNull(out act);
                 }
-            private bool TryUseEmergencyHeartbreakShot(out IAction? act)
-            {
-                if (IsLastGCD(ActionID.WindbitePvE) && SongTimings == SongTiming.Cycle369) return HeartbreakShotPvE.CanUse(out act);
 
-                if (!Player.HasStatus(true, StatusID.RagingStrikes))
-                return SetActToNull(out act);
-
-                return HeartbreakShotPvE.CanUse(out act) && WeaponRemain > RecastTime * 0.35 || SetActToNull(out act);
-            }
             private bool TryUseEmpyrealArrow(out IAction? act)
                          {
                              switch (SongTimings)
@@ -313,9 +309,19 @@ public sealed class ChurinBRD : BardRotation
                                      switch (Song)
                                      {
                                          case Song.Wanderer:
-                                             if (Player.HasStatus(true, StatusID.RagingStrikes) ||
-                                                 IsLastAbility(ActionID.RagingStrikesPvE) || RagingStrikesPvE.Cooldown.IsCoolingDown)
-                                                 return EmpyrealArrowPvE.CanUse(out act) && WeaponRemain > RecastTime * 0.5;
+                                             switch (IsFirstCycle)
+                                             {
+                                                case true:
+                                                 if (Player.HasStatus(true, StatusID.RagingStrikes) ||
+                                                     IsLastAbility(ActionID.RagingStrikesPvE) ||
+                                                     RagingStrikesPvE.Cooldown.IsCoolingDown)
+                                                     return EmpyrealArrowPvE.CanUse(out act) &&
+                                                            WeaponRemain > RecastTime * 0.4 && WeaponRemain < RecastTime * 0.95;
+                                                 break;
+                                                case false:
+                                                    if (WeaponRemain > RecastTime * 0.3 && (Player.HasStatus(true,StatusID.RagingStrikes) || RagingStrikesPvE.Cooldown.IsCoolingDown)) return EmpyrealArrowPvE.CanUse(out act);
+                                                    break;
+                                             }
                                              break;
                                          case Song.Mage:
                                              if (SongEndAfter(MageRemainTime) && !IsFirstCycle)
@@ -328,7 +334,7 @@ public sealed class ChurinBRD : BardRotation
                                              }
                                              break;
                                          case Song.Army:
-                                             return EmpyrealArrowPvE.CanUse(out act) && WeaponRemain > RecastTime * 0.25;
+                                             return EmpyrealArrowPvE.CanUse(out act) && WeaponRemain > RecastTime * 0.35;
                                      }
                                      break;
                              }
@@ -347,7 +353,7 @@ public sealed class ChurinBRD : BardRotation
                     {
                         case SongTiming.Standard or SongTiming.AdjustedStandard: if (TheWanderersMinuetPvE.CanUse(out act)) return true;
                             break;
-                        case SongTiming.Cycle369: if (WeaponRemain < RecastTime * 0.5) return TheWanderersMinuetPvE.CanUse(out act);
+                        case SongTiming.Cycle369: if (WeaponRemain < RecastTime * 0.45) return TheWanderersMinuetPvE.CanUse(out act);
                             break;
                         case SongTiming.Custom:
                             switch (WanderersWeave)
@@ -364,7 +370,7 @@ public sealed class ChurinBRD : BardRotation
                     }
                 }
                 if (!IsFirstCycle && InArmys && SongEndAfter(ArmyRemainTime) && (Song != Song.None || Player.HasStatus(true, StatusID.ArmysEthos)))
-                    return TheWanderersMinuetPvE.CanUse(out act) && WeaponRemain > RecastTime * 0.5;
+                    return TheWanderersMinuetPvE.CanUse(out act) && WeaponRemain < RecastTime * 0.5;
 
                 return SetActToNull(out act);
             }
@@ -378,7 +384,7 @@ public sealed class ChurinBRD : BardRotation
                 if ((InWanderers && SongEndAfter(WandRemainTime) && (Repertoire == 0 || !HasHostilesInMaxRange)) ||
                     (InArmys && SongEndAfterGCD(2) && TheWanderersMinuetPvE.Cooldown.IsCoolingDown))
                 {
-                    return MagesBalladPvE.CanUse(out act) && WeaponRemain <= RecastTime * 0.35;
+                    return MagesBalladPvE.CanUse(out act) && WeaponRemain < RecastTime * 0.375;
                 }
 
                 return SetActToNull(out act);
@@ -442,7 +448,7 @@ public sealed class ChurinBRD : BardRotation
                         if (IsFirstCycle && InWanderers && TargetHasDoTs && WeaponRemain < RecastTime * 0.5)
                             return RadiantFinalePvE.CanUse(out act);
                     }
-                        if (!IsFirstCycle && InWanderers && SongTime < 45 - (2 * RecastTime + RecastTime * 0.5))
+                        if (!IsFirstCycle && InWanderers && SongTime < 45 - (RecastTime + RecastTime * 0.55))
                             return RadiantFinalePvE.CanUse(out act);
                         break;
                 }
@@ -480,7 +486,7 @@ public sealed class ChurinBRD : BardRotation
 
             private bool TryUseRagingStrikes(out IAction? act)
             {
-                if (Player.HasStatus(true, StatusID.BattleVoice, StatusID.RadiantFinale) && WeaponRemain < RecastTime * 0.45 ||
+                if (Player.HasStatus(true, StatusID.BattleVoice, StatusID.RadiantFinale) && WeaponRemain < RecastTime * 0.4 ||
                     !RadiantFinalePvE.EnoughLevel || !BattleVoicePvE.EnoughLevel)
                     return RagingStrikesPvE.CanUse(out act);
 
@@ -492,15 +498,16 @@ public sealed class ChurinBRD : BardRotation
             #region Attack Abilities
             private bool TryUseHeartBreakShot(out IAction? act)
             {
-                var willHaveMaxCharges = BloodletterPvE.Cooldown.WillHaveXCharges(BloodletterMax, 3);
+                var willHaveMaxCharges = BloodletterPvE.Cooldown.WillHaveXCharges(BloodletterMax,3);
                 var willHave1ChargeInMages = BloodletterPvE.Cooldown.WillHaveXCharges(1, 7.5f) && InMages;
                 var willHave1ChargeInArmys = BloodletterPvE.Cooldown.WillHaveXCharges(1, 7.5f) && InArmys;
 
-                if (NoSong && IsFirstCycle && EmpyrealArrowPvE.CanUse(out _) ||
+                if (InWanderers && !Player.HasStatus(true, StatusID.RagingStrikes) && !willHaveMaxCharges ||
                     InArmys && SongTime <= 35 && !willHaveMaxCharges ||
-                    InMages && SongEndAfter((float)(MageRemainTime + RecastTime * 0.5))) return SetActToNull(out act);
+                    InMages && SongEndAfter((float)(MageRemainTime + RecastTime * 0.9))
+                    ||!NoSong && (EmpyrealArrowPvE.CanUse(out _) || EmpyrealArrowPvE.Cooldown.WillHaveOneCharge(0.5f))) return SetActToNull(out act);
 
-                if (InBurst || willHaveMaxCharges || willHave1ChargeInMages|| willHave1ChargeInArmys && SongTime > 35 || Player.HasStatus(true,StatusID.Medicated) && WeaponRemain > RecastTime * 0.25)
+                if ((InBurst || willHaveMaxCharges || willHave1ChargeInMages|| willHave1ChargeInArmys && SongTime > 35 || Player.HasStatus(true,StatusID.Medicated)) && WeaponRemain > RecastTime * 0.45)
                     return HeartbreakShotPvE.CanUse(out act, usedUp: true) ||
                            RainOfDeathPvE.CanUse(out act, usedUp: true) ||
                            BloodletterPvE.CanUse(out act, usedUp: true);
@@ -515,7 +522,7 @@ public sealed class ChurinBRD : BardRotation
                if (InBurst || !RadiantFinalePvE.EnoughLevel ||
                    !rFWillHaveCharge && !bVWillHaveCharge && RagingStrikesPvE.Cooldown.IsCoolingDown ||
                    RagingStrikesPvE.Cooldown.IsCoolingDown && !Player.HasStatus(true, StatusID.RagingStrikes))
-                   return SidewinderPvE.CanUse(out act);
+                   return SidewinderPvE.CanUse(out act) && WeaponRemain > RecastTime * 0.375;
 
                return SetActToNull(out act);
             }
@@ -523,32 +530,14 @@ public sealed class ChurinBRD : BardRotation
             {
                 if (Song != Song.Wanderer) return SetActToNull(out act);
 
-                if (SongEndAfter(WandRemainTime) && Repertoire > 0 && WeaponRemain > RecastTime * 0.45 && WeaponRemain < RecastTime * 0.55 || Repertoire == 3 || Repertoire == 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(1) && RadiantFinalePvE.Cooldown.IsCoolingDown)
-                    return PitchPerfectPvE.CanUse(out act, skipAoeCheck:true, skipCastingCheck: true,skipComboCheck:true);
+                if (SongEndAfter(WandRemainTime) && Repertoire > 0 && WeaponRemain > RecastTime * 0.4 && WeaponRemain < RecastTime * 0.5 ||
+                    Repertoire == 3 || Repertoire == 2 && EmpyrealArrowPvE.Cooldown.WillHaveOneChargeGCD(1))
+                    return PitchPerfectPvE.CanUse(out act);
 
                 return SetActToNull(out act);
             }
             #endregion
-            #region Openers
-            private bool TryUseOpener(out IAction? act)
-            {
-                if (!IsFirstCycle) return SetActToNull(out act);
 
-                return SongTimings switch
-                {
-                    SongTiming.Standard or SongTiming.AdjustedStandard or SongTiming.Custom =>
-                        TryUseEmpyrealArrow(out act) || TryUseBattleVoice(out act) || TryUseRadiantFinale(out act) ||
-                        TryUseRagingStrikes(out act) || TryUsePitchPerfect(out act) || TryUseHeartBreakShot(out act) ||
-                        TryUseSideWinder(out act),
-                    SongTiming.Cycle369 => TryUseHeartBreakShot(out act) || TryUseRadiantFinale(out act) ||
-                                           TryUseBattleVoice(out act) || TryUseRagingStrikes(out act) ||
-                                           TryUsePitchPerfect(out act) || TryUseEmpyrealArrow(out act) ||
-                                           TryUseSideWinder(out act),
-                    _ => SetActToNull(out act)
-                };
-            }
-
-            #endregion
         #endregion
         #region Miscellaneous
         private static bool SetActToNull(out IAction? act)
