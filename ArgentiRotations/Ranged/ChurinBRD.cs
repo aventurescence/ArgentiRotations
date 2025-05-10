@@ -208,26 +208,33 @@ public sealed class ChurinBRD : BardRotation
     #region Extra Methods
         #region GCD Skills
 
+        // C#
         private bool TryUseIronJaws(out IAction? act)
-    {
-        if ((CurrentTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == false &&
-             CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == false) ||
-            CurrentTarget?.StatusList == null)
         {
-            return SetActToNull(out act);
-        }
-
-        if (IronJawsPvE.Target.Target?.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []) ?? false)
-        {
-            if (InBurst && Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale,
-                    StatusID.RagingStrikes) && !BlastArrowPvE.CanUse(out _))
+            var target = CurrentTarget;
+            if (target?.StatusList == null)
             {
-                return IronJawsPvE.CanUse(out act, skipStatusProvideCheck:true);
+                return SetActToNull(out act);
             }
-        }
 
-        return IronJawsPvE.CanUse(out act) || SetActToNull(out act);
-    }
+            if (!target.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) &&
+                !target.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite))
+            {
+                return SetActToNull(out act);
+            }
+
+            if (IronJawsPvE.Target.Target?.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []) == true)
+            {
+                if (InBurst &&
+                    Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale, StatusID.RagingStrikes) &&
+                    !BlastArrowPvE.CanUse(out _))
+                {
+                    return IronJawsPvE.CanUse(out act, skipStatusProvideCheck: true);
+                }
+            }
+
+            return IronJawsPvE.CanUse(out act) || SetActToNull(out act);
+        }
 
         private bool TryUseDoTs(out IAction? act)
         {
@@ -435,7 +442,7 @@ public sealed class ChurinBRD : BardRotation
                     {
                         return MagesBalladPvE.CanUse(out act);
                     }
-                        break;
+                    break;
                     case SongTiming.Standard or SongTiming.AdjustedStandard or SongTiming.Custom:
                         if (InWanderers && SongEndAfter(WandRemainTime + LateWeaveWindow) &&
                             (Repertoire == 0 || !HasHostilesInMaxRange) ||
