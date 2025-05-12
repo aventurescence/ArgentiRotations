@@ -181,7 +181,7 @@ public sealed class ChurinDNC : DancerRotation
     protected override IAction? CountDownAction(float remainTime)
     {
         ShouldUseFlourish = false;
-        // If there are 15 or fewer seconds remaining in the countdown 
+        // If there are 15 or fewer seconds remaining in the countdown
         if (remainTime >= 15) return base.CountDownAction(remainTime);
         // Attempt to use Standard Step if applicable
         if (StandardStepPvE.CanUse(out var act)) return act;
