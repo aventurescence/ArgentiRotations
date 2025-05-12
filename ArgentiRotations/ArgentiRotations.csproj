@@ -68,8 +68,6 @@
             <Folder Include="ArgentiRotations\Common"/>
             <Folder Include="ArgentiRotations\Ranged"/>
             <Folder Include="ArgentiRotations\Encounter"/>
-              <Folder Include="ArgentiRotations\Services"/>
-              <Folder Include="Service\" />
           </ItemGroup>
           <ItemGroup>
             <None Update="ArgentiRotations.json">
