@@ -53,6 +53,82 @@ public sealed class ChurinBRD : BardRotation
         private float MageRemainTime => 45 - MageTime;
         private float ArmyRemainTime => 45 - ArmyTime;
 
+        private enum PotionTimings
+        {
+            [Description("None")] None,
+
+            [Description("Opener and Six Minutes")]
+            ZeroSix,
+
+            [Description("Two Minutes and Eight Minutes")]
+            TwoEight,
+
+            [Description("Opener, Five Minutes and Ten Minutes")]
+            ZeroFiveTen,
+
+            [Description("Custom - set values below")]
+            Custom
+        }
+
+        private int FirstPotionTime => PotionTiming switch
+        {
+            PotionTimings.None => 9999,
+            PotionTimings.ZeroSix => 0,
+            PotionTimings.TwoEight => 2,
+            PotionTimings.ZeroFiveTen => 0,
+            PotionTimings.Custom => CustomFirstPotionTime,
+            _ => 9999
+        };
+
+        private int SecondPotionTime => PotionTiming switch
+        {
+            PotionTimings.None => 9999,
+            PotionTimings.ZeroSix => 6,
+            PotionTimings.TwoEight => 8,
+            PotionTimings.ZeroFiveTen => 5,
+            PotionTimings.Custom => CustomSecondPotionTime,
+            _ => 9999
+        };
+
+        private int ThirdPotionTime => PotionTiming switch
+        {
+            PotionTimings.None => 9999,
+            PotionTimings.ZeroSix => 9999,
+            PotionTimings.TwoEight => 9999,
+            PotionTimings.ZeroFiveTen => 10,
+            PotionTimings.Custom => CustomThirdPotionTime,
+            _ => 9999
+        };
+
+        private bool EnableFirstPotion => PotionTiming switch
+        {
+            PotionTimings.None => false,
+            PotionTimings.ZeroSix => true,
+            PotionTimings.TwoEight => true,
+            PotionTimings.ZeroFiveTen => true,
+            PotionTimings.Custom => CustomEnableFirstPotion,
+            _ => false
+        };
+
+        private bool EnableSecondPotion => PotionTiming switch
+        {
+            PotionTimings.None => false,
+            PotionTimings.ZeroSix => true,
+            PotionTimings.TwoEight => true,
+            PotionTimings.ZeroFiveTen => true,
+            PotionTimings.Custom => CustomEnableSecondPotion,
+            _ => false
+        };
+
+        private bool EnableThirdPotion => PotionTiming switch
+        {
+            PotionTimings.None => false,
+            PotionTimings.ZeroSix => false,
+            PotionTimings.TwoEight => false,
+            PotionTimings.ZeroFiveTen => true,
+            PotionTimings.Custom => CustomEnableThirdPotion,
+            _ => false
+        };
         private static double RecastTime => ActionManager.GetAdjustedRecastTime(ActionType.Action, 16495U) / 1000.00;
 
 
@@ -99,23 +175,25 @@ public sealed class ChurinBRD : BardRotation
 
     [RotationConfig(CombatType.PvE, Name = "Opener Wanderer's Minuet Weave Slot? - if Using Custom Song Timings")]
     private WandererWeave WanderersWeave { get; set; } = WandererWeave.Early;
-    [RotationConfig(CombatType.PvE,Name = "Enable First Potion?")]
-    private static bool EnableFirstPotion { get; set; } = true;
+    [RotationConfig(CombatType.PvE, Name = "Potion Presets")]
+    private PotionTimings PotionTiming { get; set; } = PotionTimings.None;
+    [RotationConfig(CombatType.PvE,Name = "Enable First Potion for Custom Potion Timings?")]
+    private static bool CustomEnableFirstPotion { get; set; }
     [Range(0,20, ConfigUnitType.None, 1)]
-    [RotationConfig(CombatType.PvE, Name = "First Potion Usage - enter time in minutes")]
-    private static int FirstPotionUsage { get; set; } = 0;
+    [RotationConfig(CombatType.PvE, Name = "First Potion Usage for custom timings - enter time in minutes")]
+    private static int CustomFirstPotionTime { get; set; } = 0;
 
     [RotationConfig(CombatType.PvE, Name = "Enable Second Potion?")]
-    private static bool EnableSecondPotion { get; set; } = true;
+    private static bool CustomEnableSecondPotion { get; set; } = true;
     [Range(0, 20, ConfigUnitType.None, 1)]
-    [RotationConfig(CombatType.PvE, Name = "Second Potion Usage - enter time in minutes")]
-    private static int SecondPotionUsage { get; set; } = 0;
-
+    [RotationConfig(CombatType.PvE, Name = "Second Potion Usage for custom timings - enter time in minutes")]
+    private static int CustomSecondPotionTime { get; set; } = 0;
     [RotationConfig(CombatType.PvE, Name = "Enable Third Potion?")]
-    private static bool EnableThirdPotion { get; set; } = true;
+    private static bool CustomEnableThirdPotion { get; set; } = true;
     [Range(0, 20, ConfigUnitType.None, 1)]
-    [RotationConfig(CombatType.PvE, Name = "Third Potion Usage - enter time in minutes")]
-    private static int ThirdPotionUsage { get; set; } = 0;
+    [RotationConfig(CombatType.PvE, Name = "Third Potion Usage for custom timings - enter time in minutes")]
+    private static int CustomThirdPotionTime { get; set; } = 0;
+
     #endregion
     #region Countdown Logic
     protected override IAction? CountDownAction(float remainTime)
@@ -613,10 +691,13 @@ public sealed class ChurinBRD : BardRotation
         {
             if (CombatTime <= 0) return SetActToNull(out act);
 
-            var canUsePotion = (EnableFirstPotion && CombatTime >= FirstPotionUsage * 60) ||
-                               (EnableSecondPotion && CombatTime >= SecondPotionUsage * 60 &&
+            var canUsePotion = (EnableFirstPotion && CombatTime >= FirstPotionTime * 60 &&
+                                FirstPotionTime < SecondPotionTime && FirstPotionTime < ThirdPotionTime) ||
+                               (EnableSecondPotion && CombatTime >= SecondPotionTime * 60 &&
+                                SecondPotionTime > FirstPotionTime && SecondPotionTime < ThirdPotionTime &&
                                 (DateTime.Now - _lastPotionUsed).TotalSeconds >= 270) ||
-                               (EnableThirdPotion && CombatTime >= ThirdPotionUsage * 60 &&
+                               (EnableThirdPotion && CombatTime >= ThirdPotionTime * 60 &&
+                                ThirdPotionTime > FirstPotionTime && ThirdPotionTime > SecondPotionTime &&
                                 (DateTime.Now - _lastPotionUsed).TotalSeconds >= 270);
 
             if (canUsePotion)
@@ -751,9 +832,9 @@ public sealed class ChurinBRD : BardRotation
             ImGui.TableNextColumn();
             ImGui.Text("Potion Usage");
             ImGui.TableNextColumn();
-            ImGui.Text($"First: {EnableFirstPotion} at {FirstPotionUsage} minutes");
-            ImGui.Text($"Second: {EnableSecondPotion} at {SecondPotionUsage} minutes");
-            ImGui.Text($"Third: {EnableThirdPotion} at {ThirdPotionUsage} minutes");
+            ImGui.Text($"First: {EnableFirstPotion} at {FirstPotionTime} minutes");
+            ImGui.Text($"Second: {EnableSecondPotion} at {SecondPotionTime} minutes");
+            ImGui.Text($"Third: {EnableThirdPotion} at {ThirdPotionTime} minutes");
             ImGui.Text($"Last potion used at: {_lastPotionUsed}");
 
 
