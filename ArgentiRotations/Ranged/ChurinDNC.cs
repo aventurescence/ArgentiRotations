@@ -541,7 +541,7 @@ public sealed class ChurinDNC : DancerRotation
             {
                 false => SetActToNull(out act),
                 true when waitForStandardTargets || isStandardEnding => DoubleStandardFinishPvE.CanUse(out act),
-                true when waitForTechTargets || isTechnicalEnding => DoubleTechnicalFinishPvE.CanUse(out act),
+                true when waitForTechTargets || isTechnicalEnding => QuadrupleTechnicalFinishPvE.CanUse(out act),
                 _ => SetActToNull(out act)
             };
         }
