@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
-using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace ArgentiRotations.Ranged;
 
@@ -53,9 +52,9 @@ public sealed class ChurinDNC : DancerRotation
     #region Other Properties
 
     private const float DefaultAnimationLock = 0.6f;
-    private static int StatusTimeConverter(bool useFlag, StatusID status)
+    private static int StatusTimeConverter(bool isFromSelf, StatusID status)
     {
-        return (int)Math.Round(Player.StatusTime(useFlag, status));
+        return (int)Math.Round(Player.StatusTime(isFromSelf, status));
     }
 
     private enum PotionTimings
@@ -157,6 +156,7 @@ public sealed class ChurinDNC : DancerRotation
 
     private const float GracePeriod = 0.5f;
 
+
     #endregion
 
     #endregion
@@ -250,7 +250,7 @@ public sealed class ChurinDNC : DancerRotation
     protected override bool GeneralGCD(out IAction? act)
     {
         if (TryUseClosedPosition(out act)) return true;
-        if (TryTechGCD(out act, Player.HasStatus(true, StatusID.Devilment))) return true;
+        if (TryUseTechGCD(out act, Player.HasStatus(true, StatusID.Devilment))) return true;
         return TryHoldGCD(out act) || base.GeneralGCD(out act);
     }
 
@@ -310,7 +310,7 @@ public sealed class ChurinDNC : DancerRotation
                TryUseStandardStep(out act) ||
                ExecuteStepGCD(out act) ||
                TryUseFinishingMove(out act) ||
-               TryFillerGCD(out act);
+               TryUseFillerGCD(out act);
     }
 
     private bool ShouldHoldForTechnicalStep()
@@ -336,11 +336,11 @@ public sealed class ChurinDNC : DancerRotation
     private bool TryFinishTheDance(out IAction? act)
     {
         if (Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2
-            && (HoldStandardForTargets && AreDanceTargetsInRange || !HoldStandardForTargets))
+            && (HoldStandardForTargets && AreDanceTargetsInRange || !HoldStandardForTargets)|| IsStatusEnding(StatusID.StandardStep, 1))
             return DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true);
 
         if (Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4
-            && (HoldTechForTargets && AreDanceTargetsInRange || !HoldTechForTargets))
+            && (HoldTechForTargets && AreDanceTargetsInRange || !HoldTechForTargets)|| IsStatusEnding(StatusID.TechnicalStep, 1))
             return QuadrupleTechnicalFinishPvE.CanUse(out act, skipAoeCheck: true);
 
         return SetActToNull(out act);
@@ -350,17 +350,18 @@ public sealed class ChurinDNC : DancerRotation
 
     #region Burst Logic
 
-    private bool TryTechGCD(out IAction? act, bool burst)
+    private bool TryUseTechGCD(out IAction? act, bool burst)
     {
         if (!burst || IsDancing) return SetActToNull(out act);
 
-        return TryUseTillana(out act) ||
+        return ProcHelper(out act)||
+               TryUseTillana(out act) ||
                TryUseDanceOfTheDawn(out act) ||
                TryUseLastDance(out act) ||
                TryUseFinishingMove(out act) ||
                TryUseStarfallDance(out act) ||
                TryUseSaberDance(out act) ||
-               TryUseBasicGCD(out act) ||
+               TryUseFillerGCD(out act) ||
                SetActToNull(out act);
     }
 
@@ -374,9 +375,9 @@ public sealed class ChurinDNC : DancerRotation
         if (!Player.HasStatus(true, StatusID.FlourishingFinish)) return SetActToNull(out act);
 
         var finishingMoveReady = FinishingMovePvE.Cooldown.IsCoolingDown &&
-                                 FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1, 1);
-        var burstEnding = DanceDance && Player.WillStatusEndGCD(1, 1, true, StatusID.TechnicalFinish, StatusID.Devilment);
-        var tillanaEnding = Player.WillStatusEndGCD(1, 1, true, StatusID.FlourishingFinish);
+                                 FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 1);
+        var burstEnding = DanceDance && IsStatusEnding(StatusID.TechnicalFinish, 2.5f);
+        var tillanaEnding = IsStatusEnding(StatusID.FlourishingFinish, 3);
 
         if (Esprit <= 10 && Player.HasStatus(true, StatusID.FinishingMoveReady) || !finishingMoveReady ||
             tillanaEnding || burstEnding || !DanceDance || FinishingMovePvE.Cooldown.IsCoolingDown)
@@ -388,20 +389,21 @@ public sealed class ChurinDNC : DancerRotation
     private bool TryUseLastDance(out IAction? act)
     {
         if (!Player.HasStatus(true, StatusID.LastDanceReady)) return SetActToNull(out act);
+
         var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) &&
                                  FinishingMovePvE.Cooldown.IsCoolingDown &&
-                                  (FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1, 1) || FinishingMovePvE.Cooldown.HasOneCharge);
+                                  (FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 1) || FinishingMovePvE.Cooldown.HasOneCharge);
         var standardReady = StandardStepPvE.Cooldown.IsCoolingDown &&
-                            StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1, 1);
+                            StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2, 1);
 
 
         if (Player.HasStatus(true, StatusID.LastDanceReady))
         {
-            if (TechnicalStepPvE.Cooldown.WillHaveOneCharge(15) || (DanceDance && Esprit >= 70))
+            if (TechnicalStepPvE.Cooldown.WillHaveOneCharge(15) || DanceDance && Esprit >= 70 && (!finishingMoveReady || standardReady))
             {
                 ShouldUseLastDance = false;
             }
-            else if ((DanceDance && Esprit < 70) || finishingMoveReady || standardReady || Player.WillStatusEndGCD(1, 1, true, StatusID.LastDanceReady) || !DanceDance)
+            else if ((DanceDance && Esprit < 70) || finishingMoveReady || standardReady || IsStatusEnding(StatusID.LastDanceReady, 3) || !DanceDance)
             {
                 ShouldUseLastDance = true;
             }
@@ -416,11 +418,10 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUseFinishingMove(out IAction? act)
     {
-        // First, check if we have the status
-        var hasFinishingMove = Player.HasStatus(true, StatusID.FinishingMoveReady);
-
         // Return early if we don't have the status
-        if (!hasFinishingMove) return SetActToNull(out act);
+        if (!Player.HasStatus(true, StatusID.FinishingMoveReady)) return SetActToNull(out act);
+
+        if (HoldStandardForTargets && !AreDanceTargetsInRange) return SetActToNull(out act);
 
         if (DanceDance && !Player.HasStatus(true, StatusID.LastDanceReady)) return FinishingMovePvE.CanUse(out act);
 
@@ -432,8 +433,7 @@ public sealed class ChurinDNC : DancerRotation
     {
         if (!Player.HasStatus(true, StatusID.FlourishingStarfall)) return SetActToNull(out act);
         // Check if the proc is active and about to end.
-        var starfallEnding = Player.HasStatus(true, StatusID.FlourishingStarfall) &&
-                             Player.WillStatusEndGCD(1, 1, true, StatusID.FlourishingStarfall);
+        var starfallEnding = IsStatusEnding(StatusID.FlourishingStarfall, 7);
 
 
         if (starfallEnding || Esprit < 80)
@@ -453,7 +453,7 @@ public sealed class ChurinDNC : DancerRotation
     /// <returns>True if the Standard Step action was performed; otherwise, false.</returns>
     private bool TryUseStandardStep(out IAction? act)
     {
-        if (IsDancing) return SetActToNull(out act);
+        if (IsDancing || HoldStandardForTargets && !AreDanceTargetsInRange) return SetActToNull(out act);
 
         if (!DanceDance && !Player.HasStatus(true, StatusID.LastDanceReady) ||
             Player.WillStatusEnd(5, true, StatusID.StandardFinish))
@@ -526,18 +526,21 @@ public sealed class ChurinDNC : DancerRotation
     private bool ProcHelper(out IAction? act)
     {
         // Check if any proc is ending soon
-        if (Player.WillStatusEndGCD(1, 1, true, StatusID.FlourishingStarfall))
+        if (IsStatusEnding(StatusID.FlourishingStarfall, 7))
             return StarfallDancePvE.CanUse(out act);
 
-        if (Player.WillStatusEndGCD(1, 1, true, StatusID.SilkenSymmetry, StatusID.FlourishingSymmetry))
+        if (IsStatusEnding(StatusID.LastDanceReady, 3))
+            return LastDancePvE.CanUse(out act);
+
+        if (!DanceDance && (IsStatusEnding(StatusID.SilkenFlow, 3) || IsStatusEnding(StatusID.FlourishingFlow,3)))
             return FountainfallPvE.CanUse(out act);
 
-        return Player.WillStatusEndGCD(1, 1, true, StatusID.SilkenFlow, StatusID.FlourishingFlow)
+        return !DanceDance && (IsStatusEnding(StatusID.SilkenSymmetry,3)|| IsStatusEnding(StatusID.FlourishingSymmetry,3))
             ? ReverseCascadePvE.CanUse(out act)
             : SetActToNull(out act);
     }
 
-    private bool TryFillerGCD(out IAction? act)
+    private bool TryUseFillerGCD(out IAction? act)
     {
         return ProcHelper(out act) ||
                FeatherGCDHelper(out act) ||
@@ -609,13 +612,17 @@ public sealed class ChurinDNC : DancerRotation
     {
         if (CombatTime <= 0) return SetActToNull(out act);
 
-        if ((EnableFirstPotion && CombatTime >= FirstPotionTime * 60 && FirstPotionTime < SecondPotionTime &&
-             FirstPotionTime < ThirdPotionTime) ||
-            (EnableSecondPotion && CombatTime >= SecondPotionTime * 60 && SecondPotionTime > FirstPotionTime &&
-             SecondPotionTime < ThirdPotionTime) ||
-            (EnableThirdPotion && CombatTime >= ThirdPotionTime * 60 && ThirdPotionTime > FirstPotionTime &&
-             ThirdPotionTime > SecondPotionTime))
-            if ((DateTime.Now - _lastPotionUsed).TotalSeconds >= 270)
+        var firstPotionTime = FirstPotionTime * 60;
+        var secondPotionTime = SecondPotionTime * 60;
+        var thirdPotionTime = ThirdPotionTime * 60;
+
+        if ((EnableFirstPotion && CombatTime - firstPotionTime <= 0 && CombatTime < secondPotionTime &&
+             CombatTime < thirdPotionTime) ||
+            (EnableSecondPotion && CombatTime - secondPotionTime <= 0 && secondPotionTime > firstPotionTime &&
+             secondPotionTime < thirdPotionTime) ||
+            (EnableThirdPotion && CombatTime - thirdPotionTime <= 0 && thirdPotionTime > firstPotionTime &&
+             thirdPotionTime > secondPotionTime))
+            if ((DateTime.Now - _lastPotionUsed).TotalSeconds >= 270 && IsLastGCD(ActionID.TechnicalStepPvE) && IsDancing && CompletedSteps == 0)
             {
                 _lastPotionUsed = DateTime.Now;
                 return UseBurstMedicine(out act);
@@ -705,8 +712,7 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.TableNextColumn();
             ImGui.Text("Silken Flow:");
             ImGui.TableNextColumn();
-            ImGui.Text(
-                $"Ending: {IsStatusEnding(StatusID.SilkenFlow, 3)}  Duration: {StatusTimeConverter(true, StatusID.SilkenFlow)}");
+            ImGui.Text($"Ending: {IsStatusEnding(StatusID.SilkenFlow, 3)} Duration {StatusTimeConverter(true,StatusID.SilkenFlow)}");
 
             // Row 6: Silken Symmetry with duration
             ImGui.TableNextRow();
@@ -768,6 +774,15 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.Text("Should Swap Dance Partner?");
             ImGui.TableNextColumn();
             ImGui.Text(SwapDancePartner(out _).ToString());
+
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Potion Usage");
+            ImGui.TableNextColumn();
+            ImGui.Text($"First: {EnableFirstPotion} at {FirstPotionTime} minutes");
+            ImGui.Text($"Second: {EnableSecondPotion} at {SecondPotionTime} minutes");
+            ImGui.Text($"Third: {EnableThirdPotion} at {ThirdPotionTime} minutes");
+            ImGui.Text($"Last potion used at: {_lastPotionUsed}");
 
             ImGui.EndTable();
         }
