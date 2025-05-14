@@ -220,6 +220,7 @@ public sealed class ChurinDNC : DancerRotation
     // ReSharper disable once InconsistentNaming
     protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
     {
+        CheckDancePartnerStatus();
         if (SwapDancePartner(out act)) return true;
         if (TryUsePots(out act)) return true;
         if (TryUseDevilment(out act)) return true;
@@ -236,7 +237,6 @@ public sealed class ChurinDNC : DancerRotation
         if (IsDancing || nextGCD.AnimationLockTime > DefaultAnimationLock) return SetActToNull(out act);
 
         return TryUseFlourish(out act) ||
-               FanDanceIiiPvE.CanUse(out act) ||
                TryUseFeathers(out act) ||
                FanDanceIvPvE.CanUse(out act, skipAoeCheck: true) ||
                base.AttackAbility(nextGCD, out act);
@@ -273,8 +273,8 @@ public sealed class ChurinDNC : DancerRotation
         if (!Player.HasStatus(true, StatusID.ClosedPosition) || !CheckDancePartnerStatus())
             return SetActToNull(out act);
         var standardOrFinishingCharge =
-            (StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneChargeGCD(1, 1)) ||
-            (FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1, 1));
+            (StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2, 1)) ||
+            (FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 1));
 
         // Check cooldown conditions
         if (standardOrFinishingCharge && CheckDancePartnerStatus()) return EndingPvE.CanUse(out act);
@@ -436,7 +436,7 @@ public sealed class ChurinDNC : DancerRotation
         var starfallEnding = IsStatusEnding(StatusID.FlourishingStarfall, 7);
 
 
-        if (starfallEnding || Esprit < 80)
+        if (starfallEnding || Player.HasStatus(true, StatusID.FlourishingStarfall) && Esprit < 80)
             return StarfallDancePvE.CanUse(out act);
 
         return SetActToNull(out act);
@@ -600,6 +600,8 @@ public sealed class ChurinDNC : DancerRotation
         var hasEnoughFeathers = Feathers > 3;
         var noThreefoldFanDance = !Player.HasStatus(true, StatusID.ThreefoldFanDance);
 
+        if (!noThreefoldFanDance) return FanDanceIiiPvE.CanUse(out act);
+
         if ((hasDevilment || (hasEnoughFeathers && hasProcs && !ShouldHoldForTechnicalStep()) || IsMedicated) &&
             noThreefoldFanDance && WeaponRemain > DefaultAnimationLock)
             return FanDanceIiPvE.CanUse(out act) ||
@@ -610,7 +612,7 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUsePots(out IAction? act)
     {
-        if (CombatTime <= 0) return SetActToNull(out act);
+         if(!UseBurstMedicine(out _)) return SetActToNull(out act);
 
         var firstPotionTime = FirstPotionTime * 60;
         var secondPotionTime = SecondPotionTime * 60;
