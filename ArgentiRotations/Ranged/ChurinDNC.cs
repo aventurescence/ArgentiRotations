@@ -262,7 +262,7 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUseClosedPosition(out IAction? act)
     {
-        if (Player.HasStatus(true, StatusID.ClosedPosition) || PartyMembers.Count() > 1)
+        if (Player.HasStatus(true, StatusID.ClosedPosition) || !PartyMembers.Any())
             return SetActToNull(out act);
 
         return ClosedPositionPvE.CanUse(out act);
@@ -336,11 +336,11 @@ public sealed class ChurinDNC : DancerRotation
     private bool TryFinishTheDance(out IAction? act)
     {
         if (Player.HasStatus(true, StatusID.StandardStep) && CompletedSteps == 2
-            && (HoldStandardForTargets && AreDanceTargetsInRange || !HoldStandardForTargets)|| IsStatusEnding(StatusID.StandardStep, 1))
+            && (HoldStandardForTargets && AreDanceTargetsInRange || !HoldStandardForTargets) || IsStatusEnding(StatusID.StandardStep, 1))
             return DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true);
 
         if (Player.HasStatus(true, StatusID.TechnicalStep) && CompletedSteps == 4
-            && (HoldTechForTargets && AreDanceTargetsInRange || !HoldTechForTargets)|| IsStatusEnding(StatusID.TechnicalStep, 1))
+            && (HoldTechForTargets && AreDanceTargetsInRange || !HoldTechForTargets) || IsStatusEnding(StatusID.TechnicalStep, 1))
             return QuadrupleTechnicalFinishPvE.CanUse(out act, skipAoeCheck: true);
 
         return SetActToNull(out act);
@@ -354,7 +354,7 @@ public sealed class ChurinDNC : DancerRotation
     {
         if (!burst || IsDancing) return SetActToNull(out act);
 
-        return ProcHelper(out act)||
+        return ProcHelper(out act) ||
                TryUseTillana(out act) ||
                TryUseDanceOfTheDawn(out act) ||
                TryUseLastDance(out act) ||
@@ -532,10 +532,10 @@ public sealed class ChurinDNC : DancerRotation
         if (IsStatusEnding(StatusID.LastDanceReady, 3))
             return LastDancePvE.CanUse(out act);
 
-        if (!DanceDance && (IsStatusEnding(StatusID.SilkenFlow, 3) || IsStatusEnding(StatusID.FlourishingFlow,3)))
+        if (!DanceDance && (IsStatusEnding(StatusID.SilkenFlow, 3) || IsStatusEnding(StatusID.FlourishingFlow, 3)))
             return FountainfallPvE.CanUse(out act);
 
-        return !DanceDance && (IsStatusEnding(StatusID.SilkenSymmetry,3)|| IsStatusEnding(StatusID.FlourishingSymmetry,3))
+        return !DanceDance && (IsStatusEnding(StatusID.SilkenSymmetry, 3) || IsStatusEnding(StatusID.FlourishingSymmetry, 3))
             ? ReverseCascadePvE.CanUse(out act)
             : SetActToNull(out act);
     }
@@ -612,7 +612,7 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUsePots(out IAction? act)
     {
-         if(!UseBurstMedicine(out _)) return SetActToNull(out act);
+        if (!UseBurstMedicine(out _)) return SetActToNull(out act);
 
         var firstPotionTime = FirstPotionTime * 60;
         var secondPotionTime = SecondPotionTime * 60;
@@ -714,7 +714,7 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.TableNextColumn();
             ImGui.Text("Silken Flow:");
             ImGui.TableNextColumn();
-            ImGui.Text($"Ending: {IsStatusEnding(StatusID.SilkenFlow, 3)} Duration {StatusTimeConverter(true,StatusID.SilkenFlow)}");
+            ImGui.Text($"Ending: {IsStatusEnding(StatusID.SilkenFlow, 3)} Duration {StatusTimeConverter(true, StatusID.SilkenFlow)}");
 
             // Row 6: Silken Symmetry with duration
             ImGui.TableNextRow();
