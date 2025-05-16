@@ -3,7 +3,6 @@ using System.Globalization;
 using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
 namespace ArgentiRotations.Ranged;
 
@@ -14,148 +13,164 @@ namespace ArgentiRotations.Ranged;
 public sealed class ChurinBRD : BardRotation
 {
     #region Properties
-        private enum SongTiming
-        {
-            [Description("Standard 3-3-12 Cycle")] Standard,
-            [Description("Adjusted Standard Cycle - 2.48 GCD ideal")] AdjustedStandard,
-            [Description("3-6-9 Cycle - 2.49 or 2.5 GCD ideal")] Cycle369,
-            [Description("Custom")] Custom
-        }
-        private enum WandererWeave
-        {
-            [Description("Early")] Early,
-            [Description("Late")] Late
-        }
 
-        private float WandTime => SongTimings switch
-        {
-            SongTiming.Standard or SongTiming.AdjustedStandard => 42,
-            SongTiming.Cycle369 => 42,
-            SongTiming.Custom => CustomWandTime,
-            _ => 0
-        };
-        private float MageTime => SongTimings switch
-        {
-            SongTiming.Standard or SongTiming.AdjustedStandard => 42,
-            SongTiming.Cycle369 => 39,
-            SongTiming.Custom => CustomMageTime,
-            _ => 0
-        };
-        private float ArmyTime => SongTimings switch
-        {
-            SongTiming.Standard or SongTiming.AdjustedStandard => 33,
-            SongTiming.Cycle369 => 36,
-            SongTiming.Custom => CustomArmyTime,
-            _ => 0
-        };
-        private DateTime _lastPotionUsed = DateTime.MinValue;
-        private float WandRemainTime => 45 - WandTime;
-        private float MageRemainTime => 45 - MageTime;
-        private float ArmyRemainTime => 45 - ArmyTime;
+    private enum SongTiming
+    {
+        [Description("Standard 3-3-12 Cycle")] Standard,
 
-        private enum PotionTimings
-        {
-            [Description("None")] None,
+        [Description("Adjusted Standard Cycle - 2.48 GCD ideal")]
+        AdjustedStandard,
 
-            [Description("Opener and Six Minutes")]
-            ZeroSix,
+        [Description("3-6-9 Cycle - 2.49 or 2.5 GCD ideal")]
+        Cycle369,
+        [Description("Custom")] Custom
+    }
 
-            [Description("Two Minutes and Eight Minutes")]
-            TwoEight,
+    private enum WandererWeave
+    {
+        [Description("Early")] Early,
+        [Description("Late")] Late
+    }
 
-            [Description("Opener, Five Minutes and Ten Minutes")]
-            ZeroFiveTen,
+    private enum PotionTimings
+    {
+        [Description("None")] None,
 
-            [Description("Custom - set values below")]
-            Custom
-        }
+        [Description("Opener and Six Minutes")]
+        ZeroSix,
 
-        private int FirstPotionTime => PotionTiming switch
-        {
-            PotionTimings.None => 9999,
-            PotionTimings.ZeroSix => 0,
-            PotionTimings.TwoEight => 2,
-            PotionTimings.ZeroFiveTen => 0,
-            PotionTimings.Custom => CustomFirstPotionTime,
-            _ => 9999
-        };
+        [Description("Two Minutes and Eight Minutes")]
+        TwoEight,
 
-        private int SecondPotionTime => PotionTiming switch
-        {
-            PotionTimings.None => 9999,
-            PotionTimings.ZeroSix => 6,
-            PotionTimings.TwoEight => 8,
-            PotionTimings.ZeroFiveTen => 5,
-            PotionTimings.Custom => CustomSecondPotionTime,
-            _ => 9999
-        };
+        [Description("Opener, Five Minutes and Ten Minutes")]
+        ZeroFiveTen,
 
-        private int ThirdPotionTime => PotionTiming switch
-        {
-            PotionTimings.None => 9999,
-            PotionTimings.ZeroSix => 9999,
-            PotionTimings.TwoEight => 9999,
-            PotionTimings.ZeroFiveTen => 10,
-            PotionTimings.Custom => CustomThirdPotionTime,
-            _ => 9999
-        };
+        [Description("Custom - set values below")]
+        Custom
+    }
 
-        private bool EnableFirstPotion => PotionTiming switch
-        {
-            PotionTimings.None => false,
-            PotionTimings.ZeroSix => true,
-            PotionTimings.TwoEight => true,
-            PotionTimings.ZeroFiveTen => true,
-            PotionTimings.Custom => CustomEnableFirstPotion,
-            _ => false
-        };
+    private float WandTime => SongTimings switch
+    {
+        SongTiming.Standard or SongTiming.AdjustedStandard => 42,
+        SongTiming.Cycle369 => 42,
+        SongTiming.Custom => CustomWandTime,
+        _ => 0
+    };
 
-        private bool EnableSecondPotion => PotionTiming switch
-        {
-            PotionTimings.None => false,
-            PotionTimings.ZeroSix => true,
-            PotionTimings.TwoEight => true,
-            PotionTimings.ZeroFiveTen => true,
-            PotionTimings.Custom => CustomEnableSecondPotion,
-            _ => false
-        };
+    private float MageTime => SongTimings switch
+    {
+        SongTiming.Standard or SongTiming.AdjustedStandard => 42,
+        SongTiming.Cycle369 => 39,
+        SongTiming.Custom => CustomMageTime,
+        _ => 0
+    };
 
-        private bool EnableThirdPotion => PotionTiming switch
-        {
-            PotionTimings.None => false,
-            PotionTimings.ZeroSix => false,
-            PotionTimings.TwoEight => false,
-            PotionTimings.ZeroFiveTen => true,
-            PotionTimings.Custom => CustomEnableThirdPotion,
-            _ => false
-        };
-        private static double RecastTime => ActionManager.GetAdjustedRecastTime(ActionType.Action, 16495U) / 1000.00;
+    private float ArmyTime => SongTimings switch
+    {
+        SongTiming.Standard or SongTiming.AdjustedStandard => 33,
+        SongTiming.Cycle369 => 36,
+        SongTiming.Custom => CustomArmyTime,
+        _ => 0
+    };
+
+    private DateTime _lastPotionUsed = DateTime.MinValue;
+    private float WandRemainTime => 45 - WandTime;
+    private float MageRemainTime => 45 - MageTime;
+    private float ArmyRemainTime => 45 - ArmyTime;
 
 
-        private static bool CanLateWeave => WeaponRemain < LateWeaveWindow && EnoughWeaveTime;
 
-        private static bool CanEarlyWeave => WeaponRemain > LateWeaveWindow;
+    private int FirstPotionTime => PotionTiming switch
+    {
+        PotionTimings.None => 9999,
+        PotionTimings.ZeroSix => 0,
+        PotionTimings.TwoEight => 2,
+        PotionTimings.ZeroFiveTen => 0,
+        PotionTimings.Custom => CustomFirstPotionTime,
+        _ => 9999
+    };
 
-        private static float LateWeaveWindow => (float)(RecastTime * 0.45f);
+    private int SecondPotionTime => PotionTiming switch
+    {
+        PotionTimings.None => 9999,
+        PotionTimings.ZeroSix => 6,
+        PotionTimings.TwoEight => 8,
+        PotionTimings.ZeroFiveTen => 5,
+        PotionTimings.Custom => CustomSecondPotionTime,
+        _ => 9999
+    };
 
-        private static bool TargetHasDoTs => CurrentTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true &&
-                                                 CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite);
-        private static bool DoTsEnding => CurrentTarget?.WillStatusEndGCD(1, 0.5f, true, StatusID.Windbite, StatusID.Stormbite,
-            StatusID.VenomousBite, StatusID.CausticBite) ?? false;
+    private int ThirdPotionTime => PotionTiming switch
+    {
+        PotionTimings.None => 9999,
+        PotionTimings.ZeroSix => 9999,
+        PotionTimings.TwoEight => 9999,
+        PotionTimings.ZeroFiveTen => 10,
+        PotionTimings.Custom => CustomThirdPotionTime,
+        _ => 9999
+    };
 
-        private static bool InWanderers => Song == Song.Wanderer;
-        private static bool InMages => Song == Song.Mage;
-        private static bool InArmys => Song == Song.Army;
-        private static bool NoSong => Song == Song.None;
-        private static bool EnoughWeaveTime => WeaponRemain > DefaultAnimationLock;
+    private bool EnableFirstPotion => PotionTiming switch
+    {
+        PotionTimings.None => false,
+        PotionTimings.ZeroSix => true,
+        PotionTimings.TwoEight => true,
+        PotionTimings.ZeroFiveTen => true,
+        PotionTimings.Custom => CustomEnableFirstPotion,
+        _ => false
+    };
 
-        private const float DefaultAnimationLock = 0.6f;
-        private bool InBurst =>  !BattleVoicePvE.EnoughLevel && !RadiantFinalePvE.EnoughLevel && HasRagingStrikes ||
-                                 !RadiantFinalePvE.EnoughLevel && HasRagingStrikes && HasBattleVoice ||
-                                  HasRagingStrikes && HasBattleVoice && HasRadiantFinale;
-        private static bool IsFirstCycle { get; set; }
+    private bool EnableSecondPotion => PotionTiming switch
+    {
+        PotionTimings.None => false,
+        PotionTimings.ZeroSix => true,
+        PotionTimings.TwoEight => true,
+        PotionTimings.ZeroFiveTen => true,
+        PotionTimings.Custom => CustomEnableSecondPotion,
+        _ => false
+    };
 
-        #endregion
+    private bool EnableThirdPotion => PotionTiming switch
+    {
+        PotionTimings.None => false,
+        PotionTimings.ZeroSix => false,
+        PotionTimings.TwoEight => false,
+        PotionTimings.ZeroFiveTen => true,
+        PotionTimings.Custom => CustomEnableThirdPotion,
+        _ => false
+    };
+
+    private static double RecastTime => ActionManager.GetAdjustedRecastTime(ActionType.Action, 16495U) / 1000.00;
+
+    private static bool CanLateWeave => WeaponRemain < LateWeaveWindow && EnoughWeaveTime;
+
+    private static bool CanEarlyWeave => WeaponRemain > LateWeaveWindow;
+
+    private static float LateWeaveWindow => (float)(RecastTime * 0.45f);
+
+    private static bool TargetHasDoTs =>
+        CurrentTarget?.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) == true &&
+        CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite);
+
+    private static bool DoTsEnding => CurrentTarget?.WillStatusEndGCD(1, 0.5f, true, StatusID.Windbite,
+        StatusID.Stormbite,
+        StatusID.VenomousBite, StatusID.CausticBite) ?? false;
+
+    private static bool InWanderers => Song == Song.Wanderer;
+    private static bool InMages => Song == Song.Mage;
+    private static bool InArmys => Song == Song.Army;
+    private static bool NoSong => Song == Song.None;
+    private static bool EnoughWeaveTime => WeaponRemain > DefaultAnimationLock;
+
+    private const float DefaultAnimationLock = 0.6f;
+
+    private bool InBurst => (!BattleVoicePvE.EnoughLevel && !RadiantFinalePvE.EnoughLevel && HasRagingStrikes) ||
+                            (!RadiantFinalePvE.EnoughLevel && HasRagingStrikes && HasBattleVoice) ||
+                            (HasRagingStrikes && HasBattleVoice && HasRadiantFinale);
+
+    private static bool IsFirstCycle { get; set; }
+
+    #endregion
     #region Config Options
 
     [RotationConfig(CombatType.PvE, Name = "Choose Bard Song Timing Preset")]
@@ -178,21 +193,21 @@ public sealed class ChurinBRD : BardRotation
     [RotationConfig(CombatType.PvE, Name = "Potion Presets")]
     private PotionTimings PotionTiming { get; set; } = PotionTimings.None;
     [RotationConfig(CombatType.PvE,Name = "Enable First Potion for Custom Potion Timings?")]
-    private static bool CustomEnableFirstPotion { get; set; }
+    private bool CustomEnableFirstPotion { get; set; }
     [Range(0,20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "First Potion Usage for custom timings - enter time in minutes")]
-    private static int CustomFirstPotionTime { get; set; } = 0;
+    private int CustomFirstPotionTime { get; set; } = 0;
 
     [RotationConfig(CombatType.PvE, Name = "Enable Second Potion?")]
-    private static bool CustomEnableSecondPotion { get; set; } = true;
+    private bool CustomEnableSecondPotion { get; set; } = true;
     [Range(0, 20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Second Potion Usage for custom timings - enter time in minutes")]
-    private static int CustomSecondPotionTime { get; set; } = 0;
+    private int CustomSecondPotionTime { get; set; } = 0;
     [RotationConfig(CombatType.PvE, Name = "Enable Third Potion?")]
-    private static bool CustomEnableThirdPotion { get; set; } = true;
+    private bool CustomEnableThirdPotion { get; set; } = true;
     [Range(0, 20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Third Potion Usage for custom timings - enter time in minutes")]
-    private static int CustomThirdPotionTime { get; set; } = 0;
+    private int CustomThirdPotionTime { get; set; } = 0;
 
     #endregion
     #region Countdown Logic

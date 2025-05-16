@@ -4,8 +4,7 @@ using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.1",
-    Description = "For High end content use, stay cute my dancer friends. <3")]
+[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.1", Description = "For High end content use, stay cute my dancer friends. <3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
 public sealed class ChurinDNC : DancerRotation
@@ -14,10 +13,10 @@ public sealed class ChurinDNC : DancerRotation
 
     #region Boolean Properties
 
-    private static bool ShouldUseLastDance { get; set; } = true;
-    private static bool ShouldUseTechStep { get; set; } = true;
-    private static bool ShouldUseStandardStep { get; set; } = true;
-    private static bool ShouldUseFlourish { get; set; }
+    private bool ShouldUseLastDance { get; set; } = true;
+    private bool ShouldUseTechStep { get; set; } = true;
+    private bool ShouldUseStandardStep { get; set; } = true;
+    private bool ShouldUseFlourish { get; set; }
 
     private static bool DanceDance =>
         Player.HasStatus(true, StatusID.Devilment) && Player.HasStatus(true, StatusID.TechnicalFinish);
@@ -39,7 +38,7 @@ public sealed class ChurinDNC : DancerRotation
         if (remaining <= 0) return false;
 
         if (StatusDurations.TryGetValue(status, out var maxDuration) &&
-            maxDuration - remaining < GracePeriod)
+            maxDuration - remaining > 0)
             return false;
 
         return remaining <= threshold;
@@ -154,9 +153,6 @@ public sealed class ChurinDNC : DancerRotation
         PartyMembers.FirstOrDefault(member => member.HasStatus(true, StatusID.ClosedPosition_2026))?.Name.TextValue ??
         string.Empty;
 
-    private const float GracePeriod = 0.5f;
-
-
     #endregion
 
     #endregion
@@ -164,34 +160,34 @@ public sealed class ChurinDNC : DancerRotation
     #region Config Options
 
     [RotationConfig(CombatType.PvE, Name = "Holds Tech Step if no targets in range (Warning, will drift)")]
-    private static bool HoldTechForTargets { get; set; } = true;
+    private bool HoldTechForTargets { get; set; } = true;
 
     [RotationConfig(CombatType.PvE, Name = "Hold Standard Step if no targets in range (Warning, will drift)")]
-    private static bool HoldStandardForTargets { get; set; } = true;
+    private bool HoldStandardForTargets { get; set; } = true;
 
     [RotationConfig(CombatType.PvE, Name = "Potion Presets")]
     private PotionTimings PotionTiming { get; set; } = PotionTimings.None;
 
     [RotationConfig(CombatType.PvE, Name = "Enable First Potion for Custom Potion Timings?")]
-    private static bool CustomEnableFirstPotion { get; set; } = true;
+    private bool CustomEnableFirstPotion { get; set; } = true;
 
     [Range(0, 20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "First Potion Usage for custom timings - enter time in minutes")]
-    private static int CustomFirstPotionTime { get; set; } = 0;
+    private int CustomFirstPotionTime { get; set; } = 0;
 
     [RotationConfig(CombatType.PvE, Name = "Enable Second Potion?")]
-    private static bool CustomEnableSecondPotion { get; set; } = true;
+    private bool CustomEnableSecondPotion { get; set; } = true;
 
     [Range(0, 20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Second Potion Usage for custom timings - enter time in minutes")]
-    private static int CustomSecondPotionTime { get; set; } = 0;
+    private int CustomSecondPotionTime { get; set; } = 0;
 
     [RotationConfig(CombatType.PvE, Name = "Enable Third Potion?")]
-    private static bool CustomEnableThirdPotion { get; set; } = true;
+    private bool CustomEnableThirdPotion { get; set; } = true;
 
     [Range(0, 20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Third Potion Usage for custom timings - enter time in minutes")]
-    private static int CustomThirdPotionTime { get; set; } = 0;
+    private int CustomThirdPotionTime { get; set; } = 0;
 
     #endregion
 
@@ -390,30 +386,28 @@ public sealed class ChurinDNC : DancerRotation
     {
         if (!Player.HasStatus(true, StatusID.LastDanceReady)) return SetActToNull(out act);
 
-        var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) &&
+        bool finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) &&
                                  FinishingMovePvE.Cooldown.IsCoolingDown &&
                                   (FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 1) || FinishingMovePvE.Cooldown.HasOneCharge);
-        var standardReady = StandardStepPvE.Cooldown.IsCoolingDown &&
+        bool standardReady = StandardStepPvE.Cooldown.IsCoolingDown &&
                             StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2, 1);
-
+        bool techStepWillBeReadySoon = TechnicalStepPvE.Cooldown.WillHaveOneCharge(15);
+        bool burstDanceReady = DanceDance && Esprit >= 70 && (!finishingMoveReady || standardReady);
+        bool shouldForceLastDance = (DanceDance && Esprit < 70) || finishingMoveReady || standardReady || IsStatusEnding(StatusID.LastDanceReady, 3) || !DanceDance;
 
         if (Player.HasStatus(true, StatusID.LastDanceReady))
         {
-            if (TechnicalStepPvE.Cooldown.WillHaveOneCharge(15) || DanceDance && Esprit >= 70 && (!finishingMoveReady || standardReady))
+            if (techStepWillBeReadySoon || burstDanceReady)
             {
                 ShouldUseLastDance = false;
             }
-            else if ((DanceDance && Esprit < 70) || finishingMoveReady || standardReady || IsStatusEnding(StatusID.LastDanceReady, 3) || !DanceDance)
+            else if (shouldForceLastDance)
             {
                 ShouldUseLastDance = true;
             }
         }
 
-        return ShouldUseLastDance switch
-        {
-            false => SetActToNull(out act),
-            true => LastDancePvE.CanUse(out act)
-        };
+        return ShouldUseLastDance ? LastDancePvE.CanUse(out act) : SetActToNull(out act);
     }
 
     private bool TryUseFinishingMove(out IAction? act)
@@ -431,12 +425,13 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUseStarfallDance(out IAction? act)
     {
-        if (!Player.HasStatus(true, StatusID.FlourishingStarfall)) return SetActToNull(out act);
-        // Check if the proc is active and about to end.
+        // Early exit if we don't have the status
+        if (!Player.HasStatus(true, StatusID.FlourishingStarfall))
+            return SetActToNull(out act);
+
+        // Use Starfall Dance if the proc is about to expire or if we have low Esprit
         var starfallEnding = IsStatusEnding(StatusID.FlourishingStarfall, 7);
-
-
-        if (starfallEnding || Player.HasStatus(true, StatusID.FlourishingStarfall) && Esprit < 80)
+        if (starfallEnding || Esprit < 80)
             return StarfallDancePvE.CanUse(out act);
 
         return SetActToNull(out act);
@@ -453,15 +448,19 @@ public sealed class ChurinDNC : DancerRotation
     /// <returns>True if the Standard Step action was performed; otherwise, false.</returns>
     private bool TryUseStandardStep(out IAction? act)
     {
-        if (IsDancing || HoldStandardForTargets && !AreDanceTargetsInRange) return SetActToNull(out act);
+        if (IsDancing || (HoldStandardForTargets && !AreDanceTargetsInRange))
+            return SetActToNull(out act);
 
-        if (!DanceDance && !Player.HasStatus(true, StatusID.LastDanceReady) ||
-            Player.WillStatusEnd(5, true, StatusID.StandardFinish))
+        var notInDanceOrLastDance = !DanceDance && !Player.HasStatus(true, StatusID.LastDanceReady);
+        var standardFinishEndingSoon = Player.WillStatusEnd(5, true, StatusID.StandardFinish);
+        var techStepWillBeReadySoon = TechnicalStepPvE.Cooldown.IsCoolingDown && TechnicalStepPvE.Cooldown.WillHaveOneCharge(15);
+        var techStepHasChargeAndEnabled = TechnicalStepPvE.Cooldown.HasOneCharge && TechnicalStepPvE.IsEnabled;
+
+        if (notInDanceOrLastDance || standardFinishEndingSoon)
         {
             ShouldUseStandardStep = true;
         }
-        else if ((TechnicalStepPvE.Cooldown.IsCoolingDown && TechnicalStepPvE.Cooldown.WillHaveOneCharge(15)) ||
-                 (TechnicalStepPvE.Cooldown.HasOneCharge && TechnicalStepPvE.IsEnabled))
+        else if (techStepWillBeReadySoon || techStepHasChargeAndEnabled)
         {
             ShouldUseStandardStep = false;
         }
@@ -526,7 +525,7 @@ public sealed class ChurinDNC : DancerRotation
     private bool ProcHelper(out IAction? act)
     {
         // Check if any proc is ending soon
-        if (IsStatusEnding(StatusID.FlourishingStarfall, 7))
+        if (DanceDance && IsStatusEnding(StatusID.FlourishingStarfall, 7))
             return StarfallDancePvE.CanUse(out act);
 
         if (IsStatusEnding(StatusID.LastDanceReady, 3))
