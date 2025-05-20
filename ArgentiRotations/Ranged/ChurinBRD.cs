@@ -300,17 +300,10 @@ public sealed class ChurinBRD : BardRotation
     #endregion
     #region Extra Methods
         #region GCD Skills
-
-        // C#
         private bool TryUseIronJaws(out IAction? act)
         {
             var target = CurrentTarget;
-            if (target?.StatusList == null)
-            {
-                return SetActToNull(out act);
-            }
-
-            if (!target.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) &&
+            if (target?.StatusList == null || !target.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) &&
                 !target.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite))
             {
                 return SetActToNull(out act);
@@ -504,6 +497,9 @@ public sealed class ChurinBRD : BardRotation
                                     break;
                                 case WandererWeave.Late:
                                     if (TheWanderersMinuetPvE.CanUse(out act) && CanLateWeave) return true;
+                                    break;
+                                default:
+                                    if (TheWanderersMinuetPvE.CanUse(out act) && CanEarlyWeave) return true;
                                     break;
                             }
 
