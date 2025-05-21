@@ -173,7 +173,7 @@ public sealed class ChurinDNC : DancerRotation
     };
 
     private static IBattleChara? CurrentDancePartner =>
-        PartyMembers.FirstOrDefault(member => member.HasStatus(true, StatusID.ClosedPosition_2026));
+        PartyMembers.FirstOrDefault(member => member.HasStatus(true, StatusID.DancePartner));
 
     #endregion
 
