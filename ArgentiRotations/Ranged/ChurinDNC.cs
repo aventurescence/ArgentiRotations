@@ -445,19 +445,19 @@ public sealed class ChurinDNC : DancerRotation
         debug["Should Hold For Technical Step"] = shouldHoldForTech.ToString();
 
         var standardWillBeAvailableSoon = (StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown) &&
-                                         (StandardStepPvE.Cooldown.WillHaveOneCharge(2) || FinishingMovePvE.Cooldown.WillHaveOneCharge(2)) ||
+                                         (StandardStepPvE.Cooldown.WillHaveOneCharge(0.5f) || FinishingMovePvE.Cooldown.WillHaveOneCharge(0.5f)) ||
                                          StandardStepPvE.Cooldown.HasOneCharge || FinishingMovePvE.Cooldown.HasOneCharge;
 
         debug["Standard Will Be Available Soon"] = standardWillBeAvailableSoon.ToString();
         debug["Standard Cooldown Has One Charge"] = StandardStepPvE.Cooldown.HasOneCharge.ToString();
 
         if (StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown)
-            debug["Will Have One Charge in 3s"] = StandardStepPvE.Cooldown.WillHaveOneCharge(1.5f).ToString();
+            debug["Will Have One Charge in 3s"] = StandardStepPvE.Cooldown.WillHaveOneCharge(0.5f).ToString();
 
         var holdForTarget = HoldStandardForTargets && AreDanceTargetsInRange;
         debug["Hold For Target"] = holdForTarget.ToString();
 
-        var result = !IsDancing && standardWillBeAvailableSoon && !DanceDance &&
+        var result = !IsDancing && standardWillBeAvailableSoon &&
                     (holdForTarget || !HoldStandardForTargets) &&
                     !shouldHoldForTech;
 
@@ -572,9 +572,10 @@ public sealed class ChurinDNC : DancerRotation
         );
 
         if (IsDancing || (HoldStandardForTargets && !AreDanceTargetsInRange) ||
-            Player.HasStatus(true, StatusID.LastDanceReady, StatusID.FinishingMoveReady))
+            Player.HasStatus(true, StatusID.LastDanceReady, StatusID.FinishingMoveReady) || DanceDance)
         {
             var exitReason = IsDancing ? "Is Dancing" :
+                DanceDance ? "Burst Window" :
                 HoldStandardForTargets && !AreDanceTargetsInRange ? "Hold Standard for targets and no targets in range" :
                 Player.HasStatus(true, StatusID.LastDanceReady, StatusID.FinishingMoveReady) ? "Has Last Dance Ready/Finishing Move Ready" : "No valid reason";
 
@@ -663,6 +664,16 @@ public sealed class ChurinDNC : DancerRotation
         var reason = !burst ? "Not in burst phase" : "Currently dancing";
         debug["Early Exit"] = reason;
         return LogMethodResult("TryUseTechGCD", SetActToNull(out act), debug);
+    }
+
+    if ((StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown) &&
+        (StandardStepPvE.Cooldown.WillHaveOneCharge(0.5f) || FinishingMovePvE.Cooldown.WillHaveOneCharge(0.5f)) ||
+        StandardStepPvE.Cooldown.HasOneCharge || FinishingMovePvE.Cooldown.HasOneCharge)
+    {
+        debug["Action"] = "Using Standard Step or Finishing Move - cooldowns ready";
+        var result = StandardStepPvE.CanUse(out act) || FinishingMovePvE.CanUse(out act);
+        debug["Standard Step/ Finishing Move result"] = result.ToString();
+        return LogMethodResult("TryUseFillerGCD", result, debug);
     }
 
     // Try each method in priority order, logging attempts
@@ -894,7 +905,7 @@ public sealed class ChurinDNC : DancerRotation
     var remainingTime = Player.StatusTime(true, StatusID.FlourishingStarfall);
     var willEndSoon = Player.HasStatus(true, StatusID.FlourishingStarfall) && Player.WillStatusEndGCD(2,0.5f, true, StatusID.FlourishingStarfall);
     var hasLowEsprit = Esprit < 80;
-    var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) && FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1, 0.5f) ;
+    var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) && FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f) ;
 
     debug["FlourishingStarfall Remaining"] = remainingTime.ToString("0") + "s";
     debug["Will End Soon (<5s)"] = willEndSoon.ToString();
@@ -1130,7 +1141,7 @@ public sealed class ChurinDNC : DancerRotation
     var debug = CreateDebugInfo();
 
     if ((StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown) &&
-        (StandardStepPvE.Cooldown.WillHaveOneCharge(1.5f) || FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f)) ||
+        (StandardStepPvE.Cooldown.WillHaveOneCharge(0.5f) || FinishingMovePvE.Cooldown.WillHaveOneCharge(0.5f)) ||
         StandardStepPvE.Cooldown.HasOneCharge || FinishingMovePvE.Cooldown.HasOneCharge)
     {
         debug["Action"] = "Using Standard Step or Finishing Move - cooldowns ready";
@@ -1345,7 +1356,7 @@ public sealed class ChurinDNC : DancerRotation
         };
 
         // Check conditions for early exit
-        if (!InCombat || Player.HasStatus(true, StatusID.ThreefoldFanDance) || !ShouldUseTechStep)
+        if (!InCombat || Player.HasStatus(true, StatusID.ThreefoldFanDance))
         {
             debug["Early Exit"] = "Not in combat, has Threefold Fan Dance, or Tech Step not enabled";
             return LogMethodResult("TryUseFlourish", SetActToNull(out act), debug);
@@ -1354,10 +1365,13 @@ public sealed class ChurinDNC : DancerRotation
         // Log burst phase and cooldown conditions
         debug["In Burst Phase (DanceDance)"] = DanceDance.ToString();
         debug["Tech Step Will Have One Charge (60s)"] = TechnicalStepPvE.Cooldown.WillHaveOneCharge(60).ToString();
-        debug["Tech Step Will Have One Charge (50s)"] = TechnicalStepPvE.Cooldown.WillHaveOneCharge(50).ToString();
+        debug["Tech Step Will Have One Charge (50s)"] = TechnicalStepPvE.Cooldown.WillHaveOneCharge(40).ToString();
 
         // Decision logic
-        ShouldUseFlourish = DanceDance || TechnicalStepPvE.Cooldown.WillHaveOneCharge(60) && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(50);
+        ShouldUseFlourish = DanceDance ||
+                            TechnicalStepPvE.Cooldown.WillHaveOneCharge(60) &&
+                            !TechnicalStepPvE.Cooldown.WillHaveOneCharge(40) && TechnicalStepPvE.IsEnabled ||
+                            !TechnicalStepPvE.IsEnabled && FlourishPvE.CanUse(out _);
         debug["Should Use Flourish"] = ShouldUseFlourish.ToString();
 
         // Final result
