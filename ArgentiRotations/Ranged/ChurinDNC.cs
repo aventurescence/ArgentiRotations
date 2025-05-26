@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Globalization;
 using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
-using ECommons.Logging;
 
 namespace ArgentiRotations.Ranged;
 
@@ -29,6 +28,7 @@ public sealed class ChurinDNC : DancerRotation
     #endregion
 
     #region Other Properties
+
     private string CurrentGCDEvaluation { get; set; } = "No GCD Found";
     internal static Dictionary<string, Dictionary<string, string>> GCDMethodDebugInfo { get; } = new();
 
@@ -94,6 +94,8 @@ public sealed class ChurinDNC : DancerRotation
     }
 
     private const float DefaultAnimationLock = 0.6f;
+
+    private bool HasProcs => Player.HasStatus(true, StatusID.SilkenFlow,StatusID.SilkenSymmetry,StatusID.FlourishingFlow, StatusID.FlourishingSymmetry);
 
     private enum PotionTimings
     {
@@ -173,7 +175,7 @@ public sealed class ChurinDNC : DancerRotation
     };
 
     private static IBattleChara? CurrentDancePartner =>
-        PartyMembers.FirstOrDefault(member => member.HasStatus(true, StatusID.ClosedPosition_2026));
+        PartyMembers.FirstOrDefault(member => member.HasStatus(true, StatusID.DancePartner));
 
     #endregion
 
@@ -183,9 +185,13 @@ public sealed class ChurinDNC : DancerRotation
 
     [RotationConfig(CombatType.PvE, Name = "Holds Tech Step if no targets in range (Warning, will drift)")]
     private bool HoldTechForTargets { get; set; } = true;
-
+    [RotationConfig(CombatType.PvE, Name = "Holds Tech Finish if no targets in range (Warning, will drift)")]
+    private bool HoldTechFinishForTargets { get; set; } = true;
     [RotationConfig(CombatType.PvE, Name = "Hold Standard Step if no targets in range (Warning, will drift)")]
     private bool HoldStandardForTargets { get; set; } = true;
+
+    [RotationConfig(CombatType.PvE, Name = "Hold Standard Finish if no targets in range (Warning, will drift)")]
+    private bool HoldStandardFinishForTargets { get; set; } = true;
 
     [RotationConfig(CombatType.PvE, Name = "Potion Presets")]
     private PotionTimings PotionTiming { get; set; } = PotionTimings.None;
@@ -211,8 +217,6 @@ public sealed class ChurinDNC : DancerRotation
     [RotationConfig(CombatType.PvE, Name = "Third Potion Usage for custom timings - enter time in minutes")]
     private int CustomThirdPotionTime { get; set; } = 0;
 
-
-
     #endregion
 
     #region Countdown Logic
@@ -226,7 +230,7 @@ public sealed class ChurinDNC : DancerRotation
         if (TryUseClosedPosition(out var act) ||
             StandardStepPvE.CanUse(out act) ||
             ExecuteStepGCD(out act) || remainTime <= 1 && EnableFirstPotion && FirstPotionTime == 0 && UseBurstMedicine(out act)
-            || remainTime <= 0.54f && DoubleStandardFinishPvE.CanUse(out act))
+            || remainTime <= 0.5f && DoubleStandardFinishPvE.CanUse(out act))
         {
             return act;
         }
@@ -293,8 +297,8 @@ public sealed class ChurinDNC : DancerRotation
         CurrentGCDEvaluation = "Trying: TryHoldGCD";
         if (TryHoldGCD(out act)) return true;
 
-        CurrentGCDEvaluation = "Trying: ProcHelper";
-        if (TryProcHelper(out act)) return true;
+        CurrentGCDEvaluation = "Trying: TryUseProcs";
+        if (TryUseProcs(out act)) return true;
 
         CurrentGCDEvaluation = "Trying: TryUseTechGCD";
         if (TryUseTechGCD(out act, Player.HasStatus(true, StatusID.Devilment))) return true;
@@ -326,18 +330,27 @@ public sealed class ChurinDNC : DancerRotation
             return SetActToNull(out act);
 
         var standardOrFinishingCharge =
-            (StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2, 1)) ||
-            (FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 1));
+            (StandardStepPvE.Cooldown.IsCoolingDown && StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2, 0.5f)) ||
+            (FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 0.5f));
 
         // Check cooldown conditions
-        if (standardOrFinishingCharge && CheckDancePartnerStatus()) return EndingPvE.CanUse(out act);
+        if (standardOrFinishingCharge && CheckDancePartnerStatus())
+        {
+            return EndingPvE.CanUse(out act);
+        }
         return SetActToNull(out act);
     }
 
     private static bool CheckDancePartnerStatus()
     {
-        return CurrentDancePartner != null &&
-               CurrentDancePartner.HasStatus(true, StatusID.Weakness, StatusID.DamageDown, StatusID.BrinkOfDeath, StatusID.DamageDown_2911);
+        if (CurrentDancePartner != null)
+        {
+            return CurrentDancePartner.HasStatus(true, StatusID.Weakness, StatusID.DamageDown, StatusID.BrinkOfDeath,
+                       StatusID.DamageDown_2911) ||
+                   CurrentDancePartner.IsDead;
+
+        }
+        return false;
     }
 
     #endregion
@@ -355,11 +368,20 @@ public sealed class ChurinDNC : DancerRotation
 
         var shouldHoldForStandard = ShouldHoldForStandardStep();
 
-        if (shouldHoldForTech || shouldHoldForStandard)
+        if (shouldHoldForTech)
         {
-            debug["Decision"] = shouldHoldForTech ? "Holding for Technical Step" : "Holding for Standard Step";
+            debug["Decision"] = shouldHoldForTech ? "Holding for Technical Step" : "Not holding for Technical Step";
             var result = base.GeneralGCD(out act);
             debug["base.GeneralGCD Result"] = result.ToString();
+
+            return LogMethodResult("TryHoldGCD", result, debug);
+        }
+
+        if (shouldHoldForStandard)
+        {
+            debug["Decision"] = shouldHoldForStandard ? "Holding for Standard Step" : "Not holding for Standard Step";
+            var result = StandardStepPvE.CanUse(out act) || FinishingMovePvE.CanUse(out act);
+            debug["Standard Step/ Finishing Move result"] = result.ToString();
 
             return LogMethodResult("TryHoldGCD", result, debug);
         }
@@ -414,29 +436,28 @@ public sealed class ChurinDNC : DancerRotation
     {
         var debug = CreateDebugInfo(
             ("Is Dancing", IsDancing),
-            ("Standard Step Cooldown Status", StandardStepPvE.Cooldown.IsCoolingDown),
-            ("Standard Step Cooldown Remaining", StandardStepPvE.Cooldown.IsCoolingDown ? StandardStepPvE.Cooldown.RecastTimeRemainOneCharge.ToString(CultureInfo.CurrentCulture) : "N/A")
+            ("Standard Step Cooldown Status", StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown),
+            ("Standard Step Cooldown Remaining", StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown ? StandardStepPvE.Cooldown.RecastTimeOneChargeRaw.ToString(CultureInfo.CurrentCulture) : "N/A")
         );
 
         // Check if we should hold for Technical Step first
         var shouldHoldForTech = ShouldHoldForTechnicalStep();
         debug["Should Hold For Technical Step"] = shouldHoldForTech.ToString();
 
-        // Fix operator precedence with parentheses and increase window to 3 seconds
-        var standardWillBeAvailableSoon = (StandardStepPvE.Cooldown.IsCoolingDown &&
-                                         StandardStepPvE.Cooldown.WillHaveOneCharge(3.0f)) ||
-                                         StandardStepPvE.Cooldown.HasOneCharge;
+        var standardWillBeAvailableSoon = (StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown) &&
+                                         (StandardStepPvE.Cooldown.WillHaveOneCharge(2) || FinishingMovePvE.Cooldown.WillHaveOneCharge(2)) ||
+                                         StandardStepPvE.Cooldown.HasOneCharge || FinishingMovePvE.Cooldown.HasOneCharge;
 
         debug["Standard Will Be Available Soon"] = standardWillBeAvailableSoon.ToString();
         debug["Standard Cooldown Has One Charge"] = StandardStepPvE.Cooldown.HasOneCharge.ToString();
 
-        if (StandardStepPvE.Cooldown.IsCoolingDown)
-            debug["Will Have One Charge in 3s"] = StandardStepPvE.Cooldown.WillHaveOneCharge(3.0f).ToString();
+        if (StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown)
+            debug["Will Have One Charge in 3s"] = StandardStepPvE.Cooldown.WillHaveOneCharge(1.5f).ToString();
 
         var holdForTarget = HoldStandardForTargets && AreDanceTargetsInRange;
         debug["Hold For Target"] = holdForTarget.ToString();
 
-        var result = !IsDancing && standardWillBeAvailableSoon &&
+        var result = !IsDancing && standardWillBeAvailableSoon && !DanceDance &&
                     (holdForTarget || !HoldStandardForTargets) &&
                     !shouldHoldForTech;
 
@@ -486,7 +507,7 @@ public sealed class ChurinDNC : DancerRotation
             ("Is Dancing", IsDancing)
         );
 
-        if (!Player.HasStatus(true, StatusID.StandardStep) && !Player.HasStatus(true, StatusID.TechnicalStep))
+        if (!Player.HasStatus(true, StatusID.StandardStep, StatusID.TechnicalStep) || !IsDancing)
         {
             debug["Early Exit"] = "No dance in progress";
             return LogMethodResult("TryFinishTheDance", SetActToNull(out act), debug);
@@ -496,7 +517,7 @@ public sealed class ChurinDNC : DancerRotation
         {
             if (Player.HasStatus(true, StatusID.StandardStep))
             {
-                var shouldFinish = CompletedSteps == 2 && (!HoldStandardForTargets || AreDanceTargetsInRange);
+                var shouldFinish = CompletedSteps == 2 && (!HoldStandardFinishForTargets || HoldStandardFinishForTargets && AreDanceTargetsInRange);
                 var aboutToTimeOut = Player.WillStatusEnd(1, true, StatusID.StandardStep);
 
                 debug["Standard: Steps Completed"] = CompletedSteps + "/2";
@@ -516,7 +537,7 @@ public sealed class ChurinDNC : DancerRotation
             if (Player.HasStatus(true, StatusID.TechnicalStep))
             {
                 var shouldFinish = CompletedSteps == 4 &&
-                                   ((HoldTechForTargets && AreDanceTargetsInRange) || !HoldTechForTargets);
+                                   (!HoldTechFinishForTargets || HoldTechFinishForTargets &&AreDanceTargetsInRange);
                 var aboutToTimeOut = Player.WillStatusEnd(1, true, StatusID.TechnicalStep);
 
                 debug["Technical: Steps Completed"] = CompletedSteps + "/4";
@@ -551,11 +572,11 @@ public sealed class ChurinDNC : DancerRotation
         );
 
         if (IsDancing || (HoldStandardForTargets && !AreDanceTargetsInRange) ||
-            Player.HasStatus(true, StatusID.LastDanceReady))
+            Player.HasStatus(true, StatusID.LastDanceReady, StatusID.FinishingMoveReady))
         {
             var exitReason = IsDancing ? "Is Dancing" :
                 HoldStandardForTargets && !AreDanceTargetsInRange ? "Hold Standard for targets and no targets in range" :
-                Player.HasStatus(true, StatusID.LastDanceReady) ? "Has Last Dance Ready" : "No valid reason";
+                Player.HasStatus(true, StatusID.LastDanceReady, StatusID.FinishingMoveReady) ? "Has Last Dance Ready/Finishing Move Ready" : "No valid reason";
 
             debug["Early Exit"] = exitReason;
             return LogMethodResult("TryUseStandardStep", SetActToNull(out act), debug);
@@ -661,7 +682,6 @@ public sealed class ChurinDNC : DancerRotation
         return LogMethodResult("TryUseTechGCD", true, debug);
     }
 
-
     currentAttempt = "TryUseLastDance";
     CurrentGCDEvaluation = "TechGCD: " + currentAttempt;
     if (TryUseLastDance(out act))
@@ -672,7 +692,7 @@ public sealed class ChurinDNC : DancerRotation
 
     currentAttempt = "TryUseFinishingMove";
     CurrentGCDEvaluation = "TechGCD: " + currentAttempt;
-    if (TryUseFinishingMove(out act))
+    if (TryUseFinishingMove(out act) || TryUseStandardStep(out act))
     {
         debug["Successful Method"] = currentAttempt;
         return LogMethodResult("TryUseTechGCD", true, debug);
@@ -706,7 +726,7 @@ public sealed class ChurinDNC : DancerRotation
     return LogMethodResult("TryUseTechGCD", false, debug);
 }
 
-private bool TryUseDanceOfTheDawn(out IAction? act)
+    private bool TryUseDanceOfTheDawn(out IAction? act)
 {
     var debug = CreateDebugInfo(
         ("Current Esprit", Esprit),
@@ -725,7 +745,7 @@ private bool TryUseDanceOfTheDawn(out IAction? act)
     return LogMethodResult("TryUseDanceOfTheDawn", result, debug);
 }
 
-private bool TryUseTillana(out IAction? act)
+    private bool TryUseTillana(out IAction? act)
 {
     var hasFlourishingFinish = Player.HasStatus(true, StatusID.FlourishingFinish);
 
@@ -744,7 +764,7 @@ private bool TryUseTillana(out IAction? act)
     var tillanaEnding = Player.HasStatus(true, StatusID.FlourishingFinish) && Player.WillStatusEnd(3, true, StatusID.FlourishingFinish);
     var hasFinishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady);
     var finishingMoveWillBeReady = FinishingMovePvE.Cooldown.IsCoolingDown &&
-                                 FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 1);
+                                 FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 0.5f);
     var inBurst = DanceDance;
     var burstEnding = inBurst && Player.WillStatusEnd(3, true, StatusID.TechnicalFinish, StatusID.Devilment);
     var finishingMoveCooling = FinishingMovePvE.Cooldown.IsCoolingDown;
@@ -773,17 +793,12 @@ private bool TryUseTillana(out IAction? act)
         decisionReason = "Flourishing Finish ending soon";
         shouldUse = true;
     }
-    else if (burstEnding)
+    else if (burstEnding || !inBurst)
     {
-        decisionReason = "Burst phase ending soon";
+        decisionReason = "Burst phase ending soon or not in burst";
         shouldUse = true;
     }
-    else if (!inBurst)
-    {
-        decisionReason = "Not in burst phase";
-        shouldUse = true;
-    }
-    else if (finishingMoveCooling && Esprit < 30)
+    else if (finishingMoveCooling && Esprit < 50)
     {
         decisionReason = "FinishingMove on cooldown with low Esprit";
         shouldUse = true;
@@ -807,7 +822,7 @@ private bool TryUseTillana(out IAction? act)
     return LogMethodResult("TryUseTillana", result, debug);
 }
 
-private bool TryUseLastDance(out IAction? act)
+    private bool TryUseLastDance(out IAction? act)
 {
     var hasLastDanceReady = Player.HasStatus(true, StatusID.LastDanceReady);
 
@@ -822,24 +837,23 @@ private bool TryUseLastDance(out IAction? act)
     }
 
     var techWillHaveCharge = TechnicalStepPvE.Cooldown.IsCoolingDown && TechnicalStepPvE.Cooldown.WillHaveOneCharge(15) && !TillanaPvE.CanUse(out act) || ShouldHoldForTechnicalStep() || TechnicalStepPvE.CanUse(out _);
-    var inBurst = DanceDance;
-    var espritHighCondition = Esprit >= 60;
-    var notEndingSoonCondition = !Player.WillStatusEnd(3.5f, true, StatusID.LastDanceReady);
+    var espritHighCondition = Esprit >= 70;
+    var ssOrFinishingMoveCooldown = (StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown) && (StandardStepPvE.Cooldown.WillHaveOneChargeGCD(2,0.5f) || FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 0.5f));
 
     debug["Tech Will Have Charge (15s)"] = techWillHaveCharge.ToString();
-    debug["In Dance Burst (DanceDance)"] = inBurst.ToString();
+    debug["In Dance Burst (DanceDance)"] = DanceDance.ToString();
     debug["Esprit >= 60"] = espritHighCondition.ToString();
-    debug["LastDanceReady Not Ending Soon"] = notEndingSoonCondition.ToString();
+    debug["Standard Step/Finishing Move not coming soon"] = ssOrFinishingMoveCooldown.ToString();
 
     string reason;
-    if (techWillHaveCharge || (inBurst && espritHighCondition && notEndingSoonCondition))
+    if (techWillHaveCharge || DanceDance && Esprit > 70 && !ssOrFinishingMoveCooldown)
     {
         reason = techWillHaveCharge
             ? "Tech coming soon"
-            : "In burst with high Esprit and buff not ending soon";
+            : "In burst with high Esprit and Standard/Finishing Move not coming soon";
         ShouldUseLastDance = false;
     }
-    else if (hasLastDanceReady && StandardStepPvE.Cooldown.IsCoolingDown && (!StandardStepPvE.Cooldown.WillHaveOneCharge(5.5f)|| notEndingSoonCondition || inBurst && Esprit < 50))
+    else if (hasLastDanceReady || ssOrFinishingMoveCooldown)
     {
         reason = "Has LastDanceReady and conditions favorable";
         ShouldUseLastDance = true;
@@ -862,7 +876,7 @@ private bool TryUseLastDance(out IAction? act)
     return LogMethodResult("TryUseLastDance", result, debug);
 }
 
-private bool TryUseStarfallDance(out IAction? act)
+    private bool TryUseStarfallDance(out IAction? act)
 {
     var hasStarfallStatus = Player.HasStatus(true, StatusID.FlourishingStarfall);
 
@@ -878,11 +892,12 @@ private bool TryUseStarfallDance(out IAction? act)
 
     // Record remaining time on the buff
     var remainingTime = Player.StatusTime(true, StatusID.FlourishingStarfall);
-    var willEndSoon = Player.HasStatus(true, StatusID.FlourishingStarfall) && Player.WillStatusEnd(7, true, StatusID.FlourishingStarfall);
+    var willEndSoon = Player.HasStatus(true, StatusID.FlourishingStarfall) && Player.WillStatusEndGCD(2,0.5f, true, StatusID.FlourishingStarfall);
     var hasLowEsprit = Esprit < 80;
+    var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) && FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(1, 0.5f) ;
 
-    debug["FlourishingStarfall Remaining"] = remainingTime.ToString("F1") + "s";
-    debug["Will End Soon (<7s)"] = willEndSoon.ToString();
+    debug["FlourishingStarfall Remaining"] = remainingTime.ToString("0") + "s";
+    debug["Will End Soon (<5s)"] = willEndSoon.ToString();
     debug["Current Esprit"] = Esprit.ToString();
     debug["Esprit < 80"] = hasLowEsprit.ToString();
 
@@ -890,15 +905,15 @@ private bool TryUseStarfallDance(out IAction? act)
     string decisionReason;
     bool shouldUse;
 
-    if (willEndSoon)
+    if ((willEndSoon || hasLowEsprit) && !finishingMoveReady)
     {
-        decisionReason = "Status ending soon";
+        decisionReason = "Status ending soon or low Esprit";
         shouldUse = true;
     }
-    else if (hasLowEsprit)
+    else if (finishingMoveReady)
     {
-        decisionReason = "Low Esprit (<80)";
-        shouldUse = true;
+        decisionReason = "Finishing Move Ready";
+        shouldUse = false;
     }
     else
     {
@@ -921,19 +936,11 @@ private bool TryUseStarfallDance(out IAction? act)
     #endregion
 
     #region GCD Skills
-private bool TryUseBasicGCD(out IAction? act)
+    private bool TryUseBasicGCD(out IAction? act)
 {
     var debug = CreateDebugInfo(
         ("Should Hold For Technical Step", ShouldHoldForTechnicalStep())
     );
-
-    if (ShouldHoldForTechnicalStep())
-    {
-        debug["Action"] = "Using base.GeneralGCD - holding for Technical Step";
-        var result = base.GeneralGCD(out act);
-        debug["base.GeneralGCD Result"] = result.ToString();
-        return LogMethodResult("TryUseBasicGCD", result, debug);
-    }
 
     // Try each action in priority order
     if (BloodshowerPvE.CanUse(out act))
@@ -976,7 +983,7 @@ private bool TryUseBasicGCD(out IAction? act)
     return LogMethodResult("TryUseBasicGCD", SetActToNull(out act), debug);
 }
 
-private bool FeatherGCDHelper(out IAction? act)
+    private bool FeatherGCDHelper(out IAction? act)
 {
     var debug = CreateDebugInfo(
         ("Current Feathers", Feathers),
@@ -1028,7 +1035,7 @@ private bool FeatherGCDHelper(out IAction? act)
     return LogMethodResult("FeatherGCDHelper", SetActToNull(out act), debug);
 }
 
-private bool TryUseSaberDance(out IAction? act)
+    private bool TryUseSaberDance(out IAction? act)
 {
     var debug = CreateDebugInfo(
         ("Current Esprit", Esprit),
@@ -1044,136 +1051,148 @@ private bool TryUseSaberDance(out IAction? act)
 
     // Log status checks
     var hasProcs = Player.HasStatus(true, StatusID.SilkenFlow, StatusID.SilkenSymmetry,
-                                  StatusID.FlourishingFlow, StatusID.FlourishingSymmetry) || CascadePvE.CanUse(out _);
+        StatusID.FlourishingFlow, StatusID.FlourishingSymmetry) || CascadePvE.CanUse(out _);
     debug["Has Any Procs"] = hasProcs.ToString();
     if (hasProcs)
     {
-        debug["Silken Flow"] = Player.HasStatus(true, StatusID.SilkenFlow).ToString();
-        debug["Silken Symmetry"] = Player.HasStatus(true, StatusID.SilkenSymmetry).ToString();
-        debug["Flourishing Flow"] = Player.HasStatus(true, StatusID.FlourishingFlow).ToString();
-        debug["Flourishing Symmetry"] = Player.HasStatus(true, StatusID.FlourishingSymmetry).ToString();
+        debug["Silken Flow / Flourishing Flow"] = $"{Player.HasStatus(true, StatusID.SilkenFlow)}/{Player.HasStatus(true, StatusID.FlourishingFlow)}";
+        debug["Silken Symmetry/ Flourishing Symmetry"] = $"{Player.HasStatus(true, StatusID.SilkenSymmetry)}/{Player.HasStatus(true, StatusID.FlourishingSymmetry)}";
     }
 
     var shouldHoldForTech = ShouldHoldForTechnicalStep();
     debug["Should Hold For Technical Step"] = shouldHoldForTech.ToString();
 
-    var techStepSoon = TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(3, 0.5f);
+    var techStepSoon = TechnicalStepPvE.Cooldown.WillHaveOneCharge(5.5f) &&
+                       !TechnicalFinishPvE.Cooldown.HasOneCharge;
     debug["Tech Step Coming Soon"] = techStepSoon.ToString();
 
     // Calculate burst condition
-    var espritOutOfBurst = Esprit >= 50 && !shouldHoldForTech && !hasProcs && techStepSoon;
+    var espritOutOfBurst = Esprit >= 50 && techStepSoon && !hasProcs;
     debug["Esprit Out Of Burst Condition Met"] = espritOutOfBurst.ToString();
 
     // Check for priority abilities
     var hasLastDanceReady = Player.HasStatus(true, StatusID.LastDanceReady);
     debug["Has Last Dance Ready"] = hasLastDanceReady.ToString();
-    var lastDanceEnding =  Player.WillStatusEnd(3.5f, true, StatusID.LastDanceReady);
-    debug["Last Dance Ready Ending Soon"] = lastDanceEnding.ToString();
     var hasStarfall = Player.HasStatus(true, StatusID.FlourishingStarfall);
-    var starfallEnding = Player.HasStatus(true, StatusID.FlourishingStarfall) && Player.WillStatusEnd(3.5f, true, StatusID.FlourishingStarfall);
+    var starfallEnding = hasStarfall && Player.HasStatus(true, StatusID.FlourishingStarfall) &&
+                         Player.WillStatusEndGCD(2, 0.5f, true, StatusID.FlourishingStarfall);
     debug["Flourishing Starfall Ending Soon"] = starfallEnding.ToString();
-    var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) && FinishingMovePvE.Cooldown.WillHaveOneCharge(3.5f);
+    var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) &&
+                             (FinishingMovePvE.Cooldown.IsCoolingDown || StandardStepPvE.Cooldown.IsCoolingDown) &&
+                             FinishingMovePvE.Cooldown.WillHaveOneChargeGCD(2, 0.5f);
     debug["Finishing Move Ready Soon"] = finishingMoveReady.ToString();
 
     // Get initial result
     var saberDanceCanUse = SaberDancePvE.CanUse(out act);
     debug["SaberDancePvE.CanUse Result"] = saberDanceCanUse.ToString();
-
     // Decision logic
-    string decisionReason;
-    bool shouldUse;
-
-    if (!saberDanceCanUse)
+    if (saberDanceCanUse)
     {
-        return LogMethodResult("TryUseSaberDance", false, debug);
+        string decisionReason;
+        bool shouldUse;
+        switch (DanceDance)
+        {
+            case true when hasLastDanceReady && finishingMoveReady || hasStarfall && starfallEnding:
+                decisionReason = "In burst but saving for higher priority abilities";
+                shouldUse = false;
+                act = null;
+                break;
+            case true when Esprit >= 50:
+                decisionReason = "In burst with sufficient Esprit && no priority abilities";
+                shouldUse = true;
+                break;
+            case false when espritOutOfBurst:
+                decisionReason = "Not in burst, Tech Step coming soon";
+                shouldUse = true;
+                break;
+            case false when Esprit >= 70:
+                decisionReason = "Not in burst, high Esprit";
+                shouldUse = true;
+                break;
+            default:
+                decisionReason = "No condition matched";
+                shouldUse = false;
+                act = null;
+                break;
+        }
+
+        debug["Decision Reason"] = decisionReason;
+        debug["Should Use Saber Dance"] = shouldUse.ToString();
+
+        return LogMethodResult("TryUseSaberDance", shouldUse, debug);
     }
 
-    switch (DanceDance)
-    {
-        case true when hasLastDanceReady &&lastDanceEnding || hasStarfall && starfallEnding || finishingMoveReady:
-            decisionReason = "In burst but saving for higher priority abilities";
-            shouldUse = false;
-            act = null;
-            break;
-        case true when Esprit >= 50 && (hasLastDanceReady && !lastDanceEnding || hasStarfall && !starfallEnding || !finishingMoveReady):
-            decisionReason = "In burst with sufficient Esprit && no priority abilities";
-            shouldUse = true;
-            break;
-        case false when espritOutOfBurst:
-            decisionReason = "Not in burst, Tech Step coming soon";
-            shouldUse = true;
-            break;
-        case false when Esprit >= 70:
-            decisionReason = "Not in burst, high Esprit";
-            shouldUse = true;
-            break;
-        default:
-            decisionReason = "No condition matched";
-            shouldUse = false;
-            act = null;
-            break;
-    }
-
-    debug["Decision Reason"] = decisionReason;
-    debug["Should Use Saber Dance"] = shouldUse.ToString();
-
-    return LogMethodResult("TryUseSaberDance", shouldUse, debug);
+    return false;
 }
 
-private bool TryProcHelper(out IAction? act)
-{
-    var debug = CreateDebugInfo(
-        ("In Burst Phase", DanceDance)
-    );
-
-    // Check status for each important proc
-    var hasStarfall = Player.HasStatus(true, StatusID.FlourishingStarfall);
-    debug["Has Flourishing Starfall"] = hasStarfall.ToString();
-
-    var hasLastDanceReady = Player.HasStatus(true, StatusID.LastDanceReady);
-    debug["Has Last Dance Ready"] = hasLastDanceReady.ToString();
-
-    // Check if any proc is ending soon
-    var starfallEnding = Player.WillStatusEnd(5, true, StatusID.FlourishingStarfall);
-    debug["Flourishing Starfall Ending Soon"] = starfallEnding.ToString();
-
-    var lastDanceEnding = Player.WillStatusEnd(5, true, StatusID.LastDanceReady);
-    debug["Last Dance Ready Ending Soon"] = lastDanceEnding.ToString();
-
-    // Decision logic
-    string decisionReason;
-    bool result;
-
-    if (DanceDance && hasStarfall && starfallEnding)
-    {
-        decisionReason = "In burst and Flourishing Starfall ending soon";
-        result = TryUseStarfallDance(out act);
-        debug["TryUseStarfallDance Result"] = result.ToString();
-    }
-    else if (hasLastDanceReady && lastDanceEnding)
-    {
-        decisionReason = "Last Dance Ready ending soon";
-        result = TryUseLastDance(out act);
-        debug["TryUseLastDance Result"] = result.ToString();
-    }
-    else
-    {
-        decisionReason = "No procs ending soon";
-        result = SetActToNull(out act);
-    }
-
-    debug["Decision Reason"] = decisionReason;
-    return LogMethodResult("ProcHelper", result, debug);
-}
-
-private bool TryUseFillerGCD(out IAction? act)
+    private bool TryUseFillerGCD(out IAction? act)
 {
     var debug = CreateDebugInfo();
 
+    if ((StandardStepPvE.Cooldown.IsCoolingDown || FinishingMovePvE.Cooldown.IsCoolingDown) &&
+        (StandardStepPvE.Cooldown.WillHaveOneCharge(1.5f) || FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f)) ||
+        StandardStepPvE.Cooldown.HasOneCharge || FinishingMovePvE.Cooldown.HasOneCharge)
+    {
+        debug["Action"] = "Using Standard Step or Finishing Move - cooldowns ready";
+        var result = StandardStepPvE.CanUse(out act) || FinishingMovePvE.CanUse(out act);
+        debug["Standard Step/ Finishing Move result"] = result.ToString();
+        return LogMethodResult("TryUseFillerGCD", result, debug);
+    }
+
+    if (ShouldHoldForTechnicalStep() || ShouldHoldForStandardStep())
+    {
+        debug["Action"] = "Holding for Technical or Standard Step";
+        var result = TechnicalStepPvE.CanUse(out act) || FinishingMovePvE.CanUse(out act) ||
+                     StandardStepPvE.CanUse(out act);
+        debug["TryHoldGCD Result"] = result.ToString();
+        return LogMethodResult("TryUseBasicGCD", result, debug);
+    }
+
+    if (DanceDance && Esprit >= 50 && FinishingMovePvE.Cooldown.IsCoolingDown && !FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f))
+    {
+        debug ["Action"] = "Using SaberDance - in burst phase with enough Esprit";
+        var result = SaberDancePvE.CanUse(out act);
+        debug["TryUseSaberDance Result"] = result.ToString();
+        return LogMethodResult("TryUseBasicGCD", result, debug);
+    }
+
+
     // Try each method in priority order, logging attempts
-    var currentAttempt = "FeatherGCDHelper";
+    var currentAttempt = "TryUseProcs";
     CurrentGCDEvaluation = "Filler GCD: " + currentAttempt;
     debug["Attempting"] = currentAttempt;
+    if (TryUseProcs(out act))
+    {
+        debug["Successful Method"] = currentAttempt;
+        return LogMethodResult("TryUseFillerGCD", true, debug);
+    }
+
+    currentAttempt = "FeatherGCDHelper";
+    CurrentGCDEvaluation = "Filler GCD: " + currentAttempt;
+    debug["Attempting"] = currentAttempt;
+    if (FeatherGCDHelper(out act))
+    {
+        debug["Successful Method"] = currentAttempt;
+        return LogMethodResult("TryUseFillerGCD", true, debug);
+    }
+
+    currentAttempt = "TryUseFinishingMove";
+    CurrentGCDEvaluation = "Filler GCD: " + currentAttempt;
+    debug["Attempting"] = currentAttempt;
+    if (TryUseFinishingMove(out act))
+    {
+        debug["Successful Method"] = currentAttempt;
+        return LogMethodResult("TryUseFillerGCD", true, debug);
+    }
+
+    currentAttempt = "TryUseStandardStep";
+    CurrentGCDEvaluation = "Filler GCD: " + currentAttempt;
+    debug["Attempting"] = currentAttempt;
+    if (TryUseStandardStep(out act))
+    {
+        debug["Successful Method"] = currentAttempt;
+        return LogMethodResult("TryUseFillerGCD", true, debug);
+    }
 
     currentAttempt = "TryUseFeatherGCD";
     if (FeatherGCDHelper(out act))
@@ -1213,6 +1232,82 @@ private bool TryUseFillerGCD(out IAction? act)
     debug["Result"] = "No valid filler action found";
     return LogMethodResult("TryUseFillerGCD", false, debug);
 }
+
+    private bool TryUseProcs(out IAction? act)
+    {
+        if (DanceDance || ShouldHoldForTechnicalStep() || !ShouldUseTechStep) return SetActToNull(out act);
+
+        var gcdsUntilTechStep = 0;
+        if (TechnicalStepPvE.Cooldown.IsCoolingDown)
+        {
+            if (TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(1, 0.5f))
+            {
+                gcdsUntilTechStep = 1;
+            }
+            else if (TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(2, 0.5f))
+            {
+                gcdsUntilTechStep = 2;
+            }
+            else if (TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(3, 0.5f))
+            {
+                gcdsUntilTechStep = 3;
+            }
+            else if (TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(4, 0.5f))
+            {
+                gcdsUntilTechStep = 4;
+            }
+            else if (TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(5,0.5f))
+            {
+                gcdsUntilTechStep = 5;
+            }
+            else
+            {
+                gcdsUntilTechStep = 0;
+            }
+        }
+
+        if (gcdsUntilTechStep > 0)
+        {
+            switch (gcdsUntilTechStep)
+            {
+                case 5:
+                case 4:
+                    if (!HasProcs || HasProcs && Esprit < 90)
+                        return TryUseBasicGCD(out act);
+                    if (Esprit >= 90)
+                        return SaberDancePvE.CanUse(out act);
+                    break;
+                case 3:
+                    return (HasProcs && Esprit < 90) switch
+                    {
+                        false => FountainPvE.CanUse(out act) || CascadePvE.CanUse(out act) || SaberDancePvE.CanUse(out act),
+                        true => TryUseBasicGCD(out act)
+                    };
+                case 2:
+                    if (Esprit >= 90)
+                        return SaberDancePvE.CanUse(out act);
+                    if (HasProcs && Esprit < 90)
+                        return TryUseBasicGCD(out act);
+                    if (FountainPvE.CanUse(out act) && Esprit < 90 && !HasProcs)
+                        return true;
+                    break;
+                case 1:
+                    switch (HasProcs)
+                    {
+                        case true when Esprit < 90:
+                            return TryUseBasicGCD(out act);
+                        case false when Esprit < 90 && FountainPvE.CanUse(out act):
+                            return true;
+                        case false when Esprit >= 50 && !FountainPvE.CanUse(out _):
+                            return SaberDancePvE.CanUse(out act);
+                        case false when Esprit < 50 && !FountainPvE.CanUse(out _):
+                            return LastDancePvE.CanUse(out act);
+                    }
+                    break;
+            }
+        }
+        return SetActToNull(out act);
+    }
 
     #endregion
 
@@ -1258,11 +1353,11 @@ private bool TryUseFillerGCD(out IAction? act)
 
         // Log burst phase and cooldown conditions
         debug["In Burst Phase (DanceDance)"] = DanceDance.ToString();
-        debug["Tech Step Cooldown Elapsed after 67"] = TechnicalStepPvE.Cooldown.ElapsedAfter(67).ToString();
-        debug["Tech Step Cooldown Will Have One Charge (30s)"] = TechnicalStepPvE.Cooldown.WillHaveOneCharge(30).ToString();
+        debug["Tech Step Will Have One Charge (60s)"] = TechnicalStepPvE.Cooldown.WillHaveOneCharge(60).ToString();
+        debug["Tech Step Will Have One Charge (50s)"] = TechnicalStepPvE.Cooldown.WillHaveOneCharge(50).ToString();
 
         // Decision logic
-        ShouldUseFlourish = DanceDance || TechnicalStepPvE.Cooldown.ElapsedAfter(67) && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(30);
+        ShouldUseFlourish = DanceDance || TechnicalStepPvE.Cooldown.WillHaveOneCharge(60) && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(50);
         debug["Should Use Flourish"] = ShouldUseFlourish.ToString();
 
         // Final result
@@ -1282,24 +1377,23 @@ private bool TryUseFillerGCD(out IAction? act)
     /// <returns>True if a feather action was performed; otherwise, false.</returns>
     private bool TryUseFeathers(out IAction? act)
     {
-        var hasProcs = Player.HasStatus(true, StatusID.SilkenFlow) ||
-                       Player.HasStatus(true, StatusID.SilkenSymmetry) ||
-                       Player.HasStatus(true, StatusID.FlourishingFlow) ||
-                       Player.HasStatus(true, StatusID.FlourishingSymmetry);
-        var hasDevilment = Player.HasStatus(true, StatusID.Devilment);
         var hasEnoughFeathers = Feathers > 3;
         var hasThreefoldFanDance = Player.HasStatus(true, StatusID.ThreefoldFanDance);
-        var hasFourfoldFanDance = Player.HasStatus (true, StatusID.FourfoldFanDance);
+        var hasFourfoldFanDance = Player.HasStatus(true, StatusID.FourfoldFanDance);
 
-        if (hasThreefoldFanDance && WeaponRemain > DefaultAnimationLock) return FanDanceIiiPvE.CanUse(out act);
+        if (Feathers == 4 && HasProcs)
+        {
+            if (hasThreefoldFanDance) return FanDanceIiiPvE.CanUse(out act);
+            if (FanDanceIiPvE.CanUse(out act) || FanDancePvE.CanUse(out act)) return true;
+        }
 
-        if (hasFourfoldFanDance && WeaponRemain > DefaultAnimationLock) return FanDanceIvPvE.CanUse(out act);
-
-        if ((hasDevilment || (hasEnoughFeathers && hasProcs && !ShouldHoldForTechnicalStep()) || IsMedicated) &&
-            !hasThreefoldFanDance && WeaponRemain > DefaultAnimationLock)
+        if (hasFourfoldFanDance) return FanDanceIvPvE.CanUse(out act);
+        if (hasThreefoldFanDance) return FanDanceIiiPvE.CanUse(out act);
+        if (DanceDance || (hasEnoughFeathers && HasProcs && !ShouldHoldForTechnicalStep()) || IsMedicated)
+        {
             return FanDanceIiPvE.CanUse(out act) ||
                    FanDancePvE.CanUse(out act);
-
+        }
         return SetActToNull(out act);
     }
 
