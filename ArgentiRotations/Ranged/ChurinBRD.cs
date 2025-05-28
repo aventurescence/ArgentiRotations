@@ -302,9 +302,7 @@ public sealed class ChurinBRD : BardRotation
         #region GCD Skills
         private bool TryUseIronJaws(out IAction? act)
         {
-            var target = CurrentTarget;
-            if (target?.StatusList == null || !target.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) &&
-                !target.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite))
+            if (CurrentTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) == true)
             {
                 return SetActToNull(out act);
             }
@@ -324,21 +322,16 @@ public sealed class ChurinBRD : BardRotation
 
         private bool TryUseDoTs(out IAction? act)
         {
-            if (CurrentTarget?.StatusList == null) return SetActToNull(out act);
+            if (IronJawsPvE.EnoughLevel && CurrentTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite) == true
+            && CurrentTarget?.HasStatus(true, StatusID.Windbite,
+                    StatusID.Stormbite) == true)
+            {
+                return SetActToNull(out act);
+            }
 
-        if (IronJawsPvE.EnoughLevel && CurrentTarget.HasStatus(true, StatusID.Windbite, StatusID.Stormbite) &&
-            CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite))
-        {
-            // Do not use WindbitePvE or VenomousBitePvE if both statuses are present and IronJawsPvE has enough level
-        }
-        else
-        {
             if (WindbitePvE.CanUse(out act, skipTTKCheck: true, skipAoeCheck: true)) return true;
-            if (VenomousBitePvE.CanUse(out act, skipTTKCheck: true, skipAoeCheck: true)) return true;
+            return VenomousBitePvE.CanUse(out act, skipTTKCheck: true, skipAoeCheck: true) || SetActToNull(out act);
         }
-
-        return SetActToNull(out act);
-    }
 
         private bool TryUseApexArrow(out IAction? act)
             {
