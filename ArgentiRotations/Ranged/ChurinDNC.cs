@@ -4,7 +4,7 @@ using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.1", Description = "For High end content use, stay cute my dancer friends. <3")]
+[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.5", Description = "For High end content use, stay cute my dancer friends. <3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinDNC.cs")]
 [Api(4)]
 public sealed class ChurinDNC : DancerRotation

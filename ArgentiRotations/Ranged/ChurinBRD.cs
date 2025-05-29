@@ -6,7 +6,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin BRD", CombatType.PvE, GameVersion = "7.2.1",
+[Rotation("Churin BRD", CombatType.PvE, GameVersion = "7.2.5",
     Description = "For max level high-end content use only :3")]
 [SourceCode(Path = "ArgentiRotations/Ranged/ChurinBRD.cs")]
 [Api(4)]
@@ -302,7 +302,7 @@ public sealed class ChurinBRD : BardRotation
         #region GCD Skills
         private bool TryUseIronJaws(out IAction? act)
         {
-            if (CurrentTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) == true)
+            if (!CurrentTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) == true)
             {
                 return SetActToNull(out act);
             }
@@ -313,7 +313,7 @@ public sealed class ChurinBRD : BardRotation
                     Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale, StatusID.RagingStrikes) &&
                     !BlastArrowPvE.CanUse(out _))
                 {
-                    return IronJawsPvE.CanUse(out act, skipStatusProvideCheck: true);
+                    return IronJawsPvE.CanUse(out act, skipStatusProvideCheck: true, skipAoeCheck:true);
                 }
             }
 
@@ -443,7 +443,11 @@ public sealed class ChurinBRD : BardRotation
                                                      return EmpyrealArrowPvE.CanUse(out act) && EnoughWeaveTime;
                                                  break;
                                                 case false:
-                                                    if (EnoughWeaveTime) return EmpyrealArrowPvE.CanUse(out act);
+                                                    if (EnoughWeaveTime &&
+                                                        !RagingStrikesPvE.Cooldown.IsCoolingDown &&
+                                                        !RagingStrikesPvE.Cooldown.WillHaveOneCharge(1.5f) ||
+                                                        !RagingStrikesPvE.Cooldown.HasOneCharge)
+                                                        return EmpyrealArrowPvE.CanUse(out act);
                                                     break;
                                              }
                                              break;
@@ -847,6 +851,12 @@ public sealed class ChurinBRD : BardRotation
             ImGui.Text($"Second: {EnableSecondPotion} at {SecondPotionTime} minutes");
             ImGui.Text($"Third: {EnableThirdPotion} at {ThirdPotionTime} minutes");
             ImGui.Text($"Last potion used at: {_lastPotionUsed}");
+
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text("Target Has DoTs?");
+            ImGui.TableNextColumn();
+            ImGui.Text(TargetHasDoTs ? "Yes" : "No");
 
 
             ImGui.EndTable();
