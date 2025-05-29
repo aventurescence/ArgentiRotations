@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/downloads/aventurescence/ArgentiRotations/latest/total?style=flat-square" alt="GitHub Downloads (latest release)" />
   <img src="https://img.shields.io/github/downloads/aventurescence/ArgentiRotations/total?style=flat-square" alt="GitHub Downloads (all releases)" />
-</p>>
+</p>
 
 ## Supported Rotations
 
