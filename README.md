@@ -2,20 +2,20 @@
 
 ![Banner](assets/ArgentiRotations.png)
 
-<div style="text-align: center;">
+<p align="center">
   <img src="https://img.shields.io/github/downloads/aventurescence/ArgentiRotations/latest/total?style=flat-square" alt="GitHub Downloads (latest release)" />
   <img src="https://img.shields.io/github/downloads/aventurescence/ArgentiRotations/total?style=flat-square" alt="GitHub Downloads (all releases)" />
-</div>
+</p>>
 
 ## Supported Rotations
 
 ### ChurinDNC
 
-<div style="text-align: center;">
+<p align="center">
   <img src="assets/Separator.png" width="100"/>
   <img src="assets/Dancer.png" alt="ChurinDNC" />
   <img src="assets/Separator.png" width="100" />
-</div>
+</p>
 
 #### Features:
 * Technical Step: Uses Technical Step on cooldown and holds the GCD appropriately.
@@ -25,11 +25,11 @@
 
 ### ChurinBRD
 
-<div style="text-align: center;">
+<p align="center">
 <img src="assets/Separator.png" width="100" />
   <img src="assets/Bard.png" alt="ChurinDNC" />
 <img src="assets/Separator.png" width="100" />
-</div>
+</p>
 
 #### Features:
 * Rotation Presets: Uses songs and transitions at the configured times appropriate to the selected preset.
