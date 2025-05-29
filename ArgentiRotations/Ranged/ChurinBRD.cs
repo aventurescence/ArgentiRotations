@@ -192,8 +192,9 @@ public sealed class ChurinBRD : BardRotation
     private WandererWeave WanderersWeave { get; set; } = WandererWeave.Early;
     [RotationConfig(CombatType.PvE, Name = "Potion Presets")]
     private PotionTimings PotionTiming { get; set; } = PotionTimings.None;
-    [RotationConfig(CombatType.PvE,Name = "Enable First Potion for Custom Potion Timings?")]
-    private bool CustomEnableFirstPotion { get; set; }
+
+    [RotationConfig(CombatType.PvE, Name = "Enable First Potion for Custom Potion Timings?")]
+    private bool CustomEnableFirstPotion { get; set; } = true;
     [Range(0,20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "First Potion Usage for custom timings - enter time in minutes")]
     private int CustomFirstPotionTime { get; set; } = 0;
@@ -302,7 +303,7 @@ public sealed class ChurinBRD : BardRotation
         #region GCD Skills
         private bool TryUseIronJaws(out IAction? act)
         {
-            if (!CurrentTarget?.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) == true)
+            if (CurrentTarget != null && !CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite))
             {
                 return SetActToNull(out act);
             }
