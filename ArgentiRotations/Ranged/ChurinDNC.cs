@@ -190,7 +190,13 @@ public sealed class ChurinDNC : DancerRotation
     /// Override the method for handling attack abilities
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
-        if (IsDancing || WeaponRemain <= DefaultAnimationLock || ShouldHoldForStandardStep() || ShouldHoldForTechnicalStep()) return SetActToNull(out act);
+        if (IsDancing ||
+            WeaponRemain <= DefaultAnimationLock ||
+            ShouldHoldForStandardStep() ||
+            ShouldHoldForTechnicalStep())
+        {
+            return SetActToNull(out act);
+        }
 
         return TryUseFlourish(out act) ||
                TryUseFeathers(out act) ||
