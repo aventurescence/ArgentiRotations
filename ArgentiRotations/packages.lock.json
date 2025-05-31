@@ -17,8 +17,8 @@
       "RotationSolverReborn.Basic": {
         "type": "Direct",
         "requested": "[*-*, )",
-        "resolved": "7.2.5.11",
-        "contentHash": "VE90oSIuYhNqTK4bxo97MXs2z58FKU6+fIl5gVgQpEYTHA5czDk986EA8MYGCBdPXENOg/3ctDo4apIBopXEOA==",
+        "resolved": "7.2.5.19",
+        "contentHash": "rirox7ckRwYgRXZZ4rBaQ66HkwbFdR2UmSXD4tdqDaVPDTxGY1x8BoDnrVEQod7XBmLXYuUQgwA2QHkRyHIUSg==",
         "dependencies": {
           "Svg": "3.4.7",
           "System.Drawing.Common": "9.0.5"
@@ -50,9 +50,6 @@
         "dependencies": {
           "Microsoft.Win32.SystemEvents": "9.0.5"
         }
-      },
-      "ecommons": {
-        "type": "Project"
       }
     }
   }
