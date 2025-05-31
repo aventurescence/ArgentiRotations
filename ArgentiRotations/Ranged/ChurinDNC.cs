@@ -2,6 +2,7 @@ using System.ComponentModel;
 using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
 
+
 namespace ArgentiRotations.Ranged;
 
 [Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.5", Description = "For High end content use, stay cute my dancer friends. <3")]
@@ -12,9 +13,9 @@ public sealed class ChurinDNC : DancerRotation
     #region Properties
 
     #region Boolean Properties
-    private static bool ShouldUseLastDance { get; set; } = true;
+    private bool ShouldUseLastDance { get; set; } = true;
     private bool ShouldUseTechStep => TechnicalStepPvE.IsEnabled;
-    private static bool ShouldUseStandardStep { get; set; }
+    private bool ShouldUseStandardStep { get; set; }
     private static bool ShouldUseFlourish { get; set; }
 
     private static bool DanceDance => Player.HasStatus(true, StatusID.Devilment, StatusID.TechnicalFinish );
@@ -189,7 +190,7 @@ public sealed class ChurinDNC : DancerRotation
     /// Override the method for handling attack abilities
     protected override bool AttackAbility(IAction nextGCD, out IAction? act)
     {
-        if (IsDancing || nextGCD.AnimationLockTime > DefaultAnimationLock || ShouldHoldForTechnicalStep() || ShouldHoldForStandardStep()) return SetActToNull(out act);
+        if (IsDancing || WeaponRemain <= DefaultAnimationLock || ShouldHoldForStandardStep() || ShouldHoldForTechnicalStep()) return SetActToNull(out act);
 
         return TryUseFlourish(out act) ||
                TryUseFeathers(out act) ||
@@ -579,16 +580,15 @@ public sealed class ChurinDNC : DancerRotation
             return TryHoldGCD(out act) || SetActToNull(out act);
         }
 
-        // Try each action in priority order
-    return BloodshowerPvE.CanUse(out act) ||
-           RisingWindmillPvE.CanUse(out act) ||
-           FountainfallPvE.CanUse(out act) ||
-           ReverseCascadePvE.CanUse(out act) ||
-           BladeshowerPvE.CanUse(out act) ||
-           WindmillPvE.CanUse(out act) ||
-           FountainPvE.CanUse(out act) ||
-           CascadePvE.CanUse(out act) ||
-           base.GeneralGCD(out act);
+        return  BloodshowerPvE.CanUse(out act) ||
+                FountainfallPvE.CanUse(out act) ||
+                RisingWindmillPvE.CanUse(out act) ||
+                ReverseCascadePvE.CanUse(out act) ||
+                BladeshowerPvE.CanUse(out act) ||
+                FountainPvE.CanUse(out act) ||
+                WindmillPvE.CanUse(out act) ||
+                CascadePvE.CanUse(out act) ||
+                base.GeneralGCD(out act);
     }
 
     private bool FeatherGCDHelper(out IAction? act)
