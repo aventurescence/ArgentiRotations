@@ -29,10 +29,6 @@
             <Using Include="RotationSolver.Basic.Rotations.Basic"/>
             <Using Include="System.Numerics"/>
             <Using Include="System.Reflection"/>
-            <Using Include="ECommons.ExcelServices" />
-          </ItemGroup>
-          <ItemGroup>
-            <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj" />
           </ItemGroup>
           <ItemGroup>
             <Folder Include="ArgentiRotations\Common"/>
