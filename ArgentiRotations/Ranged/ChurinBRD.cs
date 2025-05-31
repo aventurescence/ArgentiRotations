@@ -303,7 +303,7 @@ public sealed class ChurinBRD : BardRotation
         #region GCD Skills
         private bool TryUseIronJaws(out IAction? act)
         {
-            if (CurrentTarget != null && !CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) ||  CurrentTarget?.StatusList == null)
+            if (CurrentTarget == null || !CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) ||  CurrentTarget.StatusList == null)
             {
                 return SetActToNull(out act);
             }
