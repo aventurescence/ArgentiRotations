@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+/*using ArgentiRotations.Encounter.StateMachine;
 
-namespace ArgentiRotations.Encounter;
+namespace ArgentiRotations.Encounter.Ultimates.FuturesRewritten;
 
-public abstract class FuturesRewritten : DancerRotation
+public abstract class FuturesRewritten
 {
     #region FRU Phases
 
@@ -147,3 +147,46 @@ public abstract class FuturesRewritten : DancerRotation
 
     #endregion
 }
+
+public static class FuturesRewrittenStateMachine
+{
+    public static List<Phase> Build()
+    {
+        var builder = new ArgentiStateMachineBuilder();
+
+        // Fatebreaker Phase
+        builder.BeginPhase("Fatebreaker")
+            // Add mechanics here as needed, e.g.:
+            // .AddMechanic("MechanicName", timeInSeconds)
+            .AddDowntime(0f, 49.2f) // UtopianSky
+            .EndPhase();
+
+        // Usurper Phase
+        builder.BeginPhase("Usurper")
+            .AddDowntime(0f, 40.1f) // DiamondDust
+            .AddDowntime(40.1f, 32.1f) // LightRampant (starts after DiamondDust)
+            .EndPhase();
+
+        // Adds Phase
+        builder.BeginPhase("Adds")
+            .AddDowntime(0f, 14.3f) // GaiaTransition
+            .EndPhase();
+
+        // Gaia Phase
+        builder.BeginPhase("Gaia")
+            .AddDowntime(0f, 43.9f) // UltimateRelativity
+            .EndPhase();
+
+        // LesRoomates Phase
+        builder.BeginPhase("LesRoomates")
+            .AddDowntime(0f, 52.8f) // CrystalizeTime
+            .EndPhase();
+
+        // Pandora Phase
+        builder.BeginPhase("Pandora")
+            .EndPhase();
+
+        return builder.Build();
+    }
+}*/
+

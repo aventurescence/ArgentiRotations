@@ -17,8 +17,8 @@
       "RotationSolverReborn.Basic": {
         "type": "Direct",
         "requested": "[*-*, )",
-        "resolved": "7.2.5.19",
-        "contentHash": "rirox7ckRwYgRXZZ4rBaQ66HkwbFdR2UmSXD4tdqDaVPDTxGY1x8BoDnrVEQod7XBmLXYuUQgwA2QHkRyHIUSg==",
+        "resolved": "7.2.5.30",
+        "contentHash": "ii9TaTr2nkO6vBYIFzwcS+HGH9VOl5Mhphrk7FYG+1TZ45bQc3kiI4Rpl5Z7kfbSwypyGcDPd4Yv+RmQKHTOuw==",
         "dependencies": {
           "Svg": "3.4.7",
           "System.Drawing.Common": "9.0.5"

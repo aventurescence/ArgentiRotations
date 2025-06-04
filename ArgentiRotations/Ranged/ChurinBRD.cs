@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using ArgentiRotations.Common;
+using Dalamud.Game.ClientState.Statuses;
 using Dalamud.Interface.Colors;
 using FFXIVClientStructs.FFXIV.Client.Game;
 
@@ -303,7 +304,7 @@ public sealed class ChurinBRD : BardRotation
         #region GCD Skills
         private bool TryUseIronJaws(out IAction? act)
         {
-            if (CurrentTarget == null || !CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) ||  CurrentTarget.StatusList == null)
+            if (CurrentTarget != null && !CurrentTarget.HasStatus(true, StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite) && CurrentTarget.StatusList != null)
             {
                 return SetActToNull(out act);
             }
