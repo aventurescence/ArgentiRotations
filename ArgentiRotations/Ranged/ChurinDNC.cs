@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ArgentiRotations.Common;
+using ArgentiRotations.Encounter.StateMachine;
 using Dalamud.Interface.Colors;
 
 
@@ -24,9 +25,9 @@ public sealed class ChurinDNC : DancerRotation
     private static bool HasProcs => Player.HasStatus(true, StatusID.SilkenFlow,StatusID.SilkenSymmetry,StatusID.FlourishingFlow, StatusID.FlourishingSymmetry);
 
 
-    private bool FirstPotionUsed { get; set; }
-    private bool SecondPotionUsed { get; set; }
-    private bool ThirdPotionUsed { get; set; }
+    private bool FirstPotionUsed { get; set; } = false;
+    private bool SecondPotionUsed { get; set; } = false;
+    private bool ThirdPotionUsed { get; set; } = false;
     private static bool OddMinutePotion(int potionTime) => potionTime % 2 == 1;
     private static bool EvenMinutePotion(int potionTime) => potionTime % 2 == 0;
 
@@ -36,14 +37,15 @@ public sealed class ChurinDNC : DancerRotation
             return false;
         var num1 = (int) Math.Floor(CombatTime / 60.0);
         var num2 = (int) Math.Floor(CombatTime % 60.0);
-        return num1 % 2 == 1 && num2 < 15;
-    }
+        return num1 % 2 == 1 && num2 < 15;    }
     #endregion
 
     #region Other Properties
 
     private const float DefaultAnimationLock = 0.6f;
     private DateTime _lastPotionUsed = DateTime.MinValue;
+    // StateMachine for encounter tracking
+    private ArgentiStateMachine? StateMachine { get; set; }
 
     private enum PotionTimings
     {
@@ -148,14 +150,14 @@ public sealed class ChurinDNC : DancerRotation
     [RotationConfig(CombatType.PvE, Name = "First Potion Usage for custom timings - enter time in minutes")]
     private int CustomFirstPotionTime { get; set; } = 0;
 
-    [RotationConfig(CombatType.PvE, Name = "Enable Second Potion?")]
+    [RotationConfig(CombatType.PvE, Name = "Enable Second Potion for Custom Potion Timings?")]
     private bool CustomEnableSecondPotion { get; set; } = true;
 
     [Range(0, 20, ConfigUnitType.None, 1)]
     [RotationConfig(CombatType.PvE, Name = "Second Potion Usage for custom timings - enter time in minutes")]
     private int CustomSecondPotionTime { get; set; } = 0;
 
-    [RotationConfig(CombatType.PvE, Name = "Enable Third Potion?")]
+    [RotationConfig(CombatType.PvE, Name = "Enable Third Potion for Custom Potion Timings?")]
     private bool CustomEnableThirdPotion { get; set; } = true;
 
     [Range(0, 20, ConfigUnitType.None, 1)]
@@ -317,13 +319,8 @@ public sealed class ChurinDNC : DancerRotation
 
         if (ShouldHoldForStandardStep())
         {
-            if (!Player.HasStatus(true, StatusID.FinishingMoveReady))
-                return TryUseStandardStep(out act);
-
-            if (Player.HasStatus(true, StatusID.FinishingMoveReady))
-            {
-                return TryUseFinishingMove(out act);
-            }
+                return TryUseStandardStep(out act) ||
+                       TryUseFinishingMove(out act);
         }
 
         return SetActToNull(out act);
@@ -339,12 +336,9 @@ public sealed class ChurinDNC : DancerRotation
         var techWillHaveOneCharge = TechnicalStepPvE.Cooldown is { IsCoolingDown: true, RecastTimeRemainOneCharge: < 1 } ||
                                    TechnicalStepPvE.Cooldown.HasOneCharge;
         var holdForTarget = HoldTechForTargets && AreDanceTargetsInRange;
-        var hasTechFinish = Player.HasStatus(true, StatusID.TechnicalFinish);
 
-        var result = techWillHaveOneCharge &&
-                    ShouldUseTechStep &&
-                    (holdForTarget || !HoldTechForTargets) &&
-                    !IsDancing && !hasTechFinish;
+        var result = techWillHaveOneCharge && ShouldUseTechStep &&
+                     (holdForTarget || !HoldTechForTargets) && (!HasTechnicalFinish || !HasTechnicalStep);
 
         return result;
     }
@@ -370,7 +364,8 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUseTechnicalStep(out IAction? act)
     {
-        if (!InCombat || (HoldTechForTargets && !AreDanceTargetsInRange) || IsDancing || !ShouldUseTechStep || TechnicalStepPvE.Cooldown.IsCoolingDown && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(2.5f))
+        if (!InCombat || (HoldTechForTargets && !AreDanceTargetsInRange) ||
+        IsDancing || !ShouldUseTechStep)
         {
             return SetActToNull(out act);
         }
@@ -416,39 +411,29 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUseStandardStep(out IAction? act)
     {
-        IAction? standardStep = null;
-        var result = RotationExtensions.DebugMethod( _ =>
+        var earlyExit = IsDancing || (HoldStandardForTargets && !AreDanceTargetsInRange) || DanceDance;
+
+        if (earlyExit)
         {
-            var earlyExit = IsDancing || (HoldStandardForTargets && !AreDanceTargetsInRange) || DanceDance;
+            return SetActToNull(out act);
+        }
 
-            if (earlyExit)
-            {
-                return SetActToNull(out standardStep);
-            }
+        var techStepWillBeReadySoon = (TechnicalStepPvE.Cooldown.IsCoolingDown &&
+                                       TechnicalStepPvE.Cooldown.WillHaveOneCharge(5) ||
+                                       TechnicalStepPvE.Cooldown.HasOneCharge) && ShouldUseTechStep;
 
-            var techStepWillBeReadySoon = (TechnicalStepPvE.Cooldown.IsCoolingDown &&
-                                           TechnicalStepPvE.Cooldown.WillHaveOneCharge(5) ||
-                                           TechnicalStepPvE.Cooldown.HasOneCharge) && ShouldUseTechStep;
+        if (techStepWillBeReadySoon)
+        {
+            ShouldUseStandardStep = false;
+        }
+        else if (!Player.WillStatusEnd(0, true, StatusID.StandardFinish) ||
+                 !Player.HasStatus(true, StatusID.StandardFinish))
+        {
+            ShouldUseStandardStep = true;
+        }
 
-            if (techStepWillBeReadySoon)
-            {
-                ShouldUseStandardStep = false;
-            }
-            else if (!Player.WillStatusEnd(0, true, StatusID.StandardFinish) ||
-                     !Player.HasStatus(true, StatusID.StandardFinish))
-            {
-                ShouldUseStandardStep = true;
-            }
+        return ShouldUseStandardStep ? StandardStepPvE.CanUse(out act) : SetActToNull(out act);
 
-            RotationDebugManager.AddExtraDebugInfo("TryUseStandardStep", "Early Exit Condition Met",
-                $" {earlyExit}");
-            RotationDebugManager.AddExtraDebugInfo("TryUseStandardStep", "Tech Step Will Be Ready Soon", $"{techStepWillBeReadySoon}");
-
-            return ShouldUseStandardStep ? StandardStepPvE.CanUse(out standardStep) : SetActToNull(out standardStep);
-        }, out standardStep);
-
-        act = standardStep;
-        return result;
     }
 
     private bool TryUseFinishingMove(out IAction? act)
@@ -475,9 +460,9 @@ public sealed class ChurinDNC : DancerRotation
             return SetActToNull(out act);
         }
 
-        if (ShouldHoldForTechnicalStep() || ShouldHoldForStandardStep())
+        if (ShouldHoldForStandardStep())
         {
-            return TryHoldGCD(out act) || SetActToNull(out act);
+            return TryHoldGCD(out act);
         }
 
         return TryUseDanceOfTheDawn(out act) ||
@@ -516,8 +501,7 @@ public sealed class ChurinDNC : DancerRotation
         if (Esprit <= 30 && (hasFinishingMoveReady && !finishingMoveWillBeReady || !hasFinishingMoveReady)) return true;
         if (hasFinishingMoveReady && finishingMoveWillBeReady && Esprit >= 40 && !tillanaEnding && !burstEnding) return false;
         if (tillanaEnding) return true;
-        if (burstEnding && Esprit < 50) return true;
-        if (!DanceDance && Esprit < 50) return true;
+        if ((burstEnding || !DanceDance) && Esprit < 50) return true;
         if (finishingMoveCooling && Esprit < 50 && ((HasFlourishingStarfall && !starfallDanceEnding)|| !HasFlourishingStarfall)) return true;
     }
     return SetActToNull(out act);
@@ -557,11 +541,11 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUseStarfallDance(out IAction? act)
 {
-    var hasStarfallStatus = Player.HasStatus(true, StatusID.FlourishingStarfall);
-    if (!hasStarfallStatus)
+    if (!HasFlourishingStarfall)
     {
         return SetActToNull(out act);
     }
+
     var willEndSoon = Player.HasStatus(true, StatusID.FlourishingStarfall) && Player.WillStatusEndGCD(2,0.5f, true, StatusID.FlourishingStarfall);
     var hasLowEsprit = Esprit < 80;
     var finishingMoveReady = Player.HasStatus(true, StatusID.FinishingMoveReady) && FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(1.5f) ;
@@ -585,7 +569,7 @@ public sealed class ChurinDNC : DancerRotation
     {
         if (ShouldHoldForStandardStep() || ShouldHoldForTechnicalStep())
         {
-            return TryHoldGCD(out act) || SetActToNull(out act);
+            return TryHoldGCD(out act);
         }
         return TryUseTillana(out act) ||
                TryUseProcs(out act) ||
@@ -599,7 +583,7 @@ public sealed class ChurinDNC : DancerRotation
     {
         if (ShouldHoldForStandardStep() || ShouldHoldForTechnicalStep())
         {
-            return TryHoldGCD(out act) || SetActToNull(out act);
+            return TryHoldGCD(out act);
         }
 
         return  BloodshowerPvE.CanUse(out act) ||
@@ -678,7 +662,6 @@ public sealed class ChurinDNC : DancerRotation
         {
             case true when hasLastDanceReady && finishingMoveReady && Esprit < 70 || hasStarfall && starfallEnding:
                 shouldUse = false;
-                act = null;
                 break;
             case true when Esprit >= 50:
             case false when espritOutOfBurst:
@@ -688,7 +671,6 @@ public sealed class ChurinDNC : DancerRotation
                 break;
             default:
                 shouldUse = false;
-                act = null;
                 break;
         }
 
@@ -848,14 +830,14 @@ public sealed class ChurinDNC : DancerRotation
 
     private bool TryUsePots(out IAction? act)
     {
-        if (HasTechnicalStep && IsDancing)
+        if (HasTechnicalStep && IsDancing && (CompletedSteps == 0 || CompletedSteps == 4))
         {
             if (EvenMinutePotion(FirstPotionTime) && IsWithinFirst15SecondsOfEvenMinute()) return FirstPot(out act);
             if (EvenMinutePotion(SecondPotionTime) && IsWithinFirst15SecondsOfEvenMinute()) return SecondPot(out act);
             if (EvenMinutePotion(ThirdPotionTime) && IsWithinFirst15SecondsOfEvenMinute()) return ThirdPot(out act);
         }
 
-        if (HasStandardStep && IsDancing || Player.HasStatus(true, StatusID.FinishingMoveReady))
+        if (HasStandardStep && IsDancing || Player.HasStatus(true, StatusID.FinishingMoveReady) && FinishingMovePvE.Cooldown.IsCoolingDown && FinishingMovePvE.Cooldown.WillHaveOneCharge(2.5f))
         {
             if (OddMinutePotion(FirstPotionTime) && IsWithinFirst15SecondsOfOddMinute()) return FirstPot(out act);
             if (OddMinutePotion(SecondPotionTime) && IsWithinFirst15SecondsOfOddMinute()) return SecondPot(out act);
@@ -943,8 +925,6 @@ public sealed class ChurinDNC : DancerRotation
     #endregion
 
     #region Status Window Override
-
-
     private void DrawRotationStatus()
     {
         var text = "Rotation: " + Name;
@@ -965,8 +945,6 @@ public sealed class ChurinDNC : DancerRotation
         }
         ImGui.EndGroup();
     }
-
-
     private void DrawCombatStatusText()
     {
         try
@@ -993,13 +971,13 @@ public sealed class ChurinDNC : DancerRotation
             ImGui.Text("In Burst:"); ImGui.NextColumn();
             ImGui.Text(DanceDance.ToString()); ImGui.NextColumn();
 
-            ImGui.Text ("Should Hold For Tech Step?"); ImGui.NextColumn();
+            ImGui.Text("Should Hold For Tech Step?"); ImGui.NextColumn();
             ImGui.Text(ShouldHoldForTechnicalStep().ToString()); ImGui.NextColumn();
 
-            ImGui.Text ("Should Hold For Standard Step?"); ImGui.NextColumn();
+            ImGui.Text("Should Hold For Standard Step?"); ImGui.NextColumn();
             ImGui.Text(ShouldHoldForStandardStep().ToString()); ImGui.NextColumn();
 
-            ImGui.Text ("Is Dancing:"); ImGui.NextColumn();
+            ImGui.Text("Is Dancing:"); ImGui.NextColumn();
             ImGui.Text(IsDancing.ToString()); ImGui.NextColumn();
 
             // Reset columns
@@ -1009,6 +987,23 @@ public sealed class ChurinDNC : DancerRotation
         {
             ImGui.TextColored(ImGuiColors.DalamudRed, "Error displaying combat status");
         }
+    }
+    private void DrawStateMachineStatus()
+    {
+        // Registry-based approach: check all available territory IDs to find current territory
+        var availableTerritoryIds = new ushort[] { 1263, 1122, 1238 }; // M8S, FRU, M7S
+
+        foreach (var territoryId in availableTerritoryIds)
+        {
+            if (IsInTerritory(territoryId))
+            {
+                StateMachineUI.DrawStateMachineStatus(StateMachine, territoryId);
+                return;
+            }
+        }
+
+        // Display "Territory not supported" message when not in any registered territory
+        ImGui.TextColored(ImGuiColors.DalamudOrange, "Territory not supported");
     }
 
     public override void DisplayStatus()
@@ -1022,6 +1017,7 @@ public sealed class ChurinDNC : DancerRotation
                 RotationDebugManager.IsDebugTableVisible = debugVisible;
             DrawRotationStatus();
             DrawCombatStatus();
+            DrawStateMachineStatus();
             RotationDebugManager.DrawGCDMethodDebugTable();
             DisplayStatusHelper.EndPaddedChild();
         }
