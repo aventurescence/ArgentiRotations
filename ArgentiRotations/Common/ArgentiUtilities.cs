@@ -5,7 +5,7 @@ using Serilog;
 
 namespace ArgentiRotations.Common;
 
-internal unsafe class CustomRotationAg
+internal unsafe class ArgentiUtilities
 {
     #region CountDown
 
