@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using ArgentiRotations.Common;
+
 namespace ArgentiRotations.Ranged;
 
 [Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.5", Description = "For High end content use, stay cute my dancer friends. <3")]
@@ -15,7 +15,6 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool ShouldUseTechStep => TechnicalStepPvE.IsEnabled;
     private bool ShouldUseStarfallDance { get; set; }
     private bool ShouldUseSaberDance { get; set; }
-    private bool ShouldUseFinishingMove { get; set; }
     private bool ShouldUseTillana { get; set; }
     private bool ShouldUseStandardStep { get; set;}
     private bool ShouldUseFlourish { get; set;}
@@ -40,8 +39,8 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool HoldStandardStepForTargets => HoldStandardForTargets && AreDanceTargetsInRange;
     private bool ShouldHoldForTechStep => ShouldUseTechStep && (HoldTechStepForTargets || !HoldTechForTargets) && !IsDancing && !TillanaPvE.CanUse(out _) &&
                                           (TechnicalStepPvE.Cooldown.HasOneCharge || TechnicalStepIn(1.5f));
-    private bool ShouldHoldForStandard => StandardStepPvE.IsEnabled && !HasLastDanceReady &&(HoldStandardStepForTargets || !HoldStandardForTargets) && !IsDancing && !ShouldHoldForTechStep
-                                          && (StandardStepPvE.Cooldown.HasOneCharge || StandardStepIn(1.5f));
+    private bool ShouldHoldForStandard => StandardStepPvE.IsEnabled && !HasLastDanceReady && (HoldStandardStepForTargets || !HoldStandardForTargets) && !IsDancing && !ShouldHoldForTechStep
+                                          && (StandardStepPvE.Cooldown.HasOneCharge || StandardStepIn(1.5f) && (DanceDance && Esprit < 70 || !DanceDance && Esprit < 70));
     private bool StandardStepIn(float remainTime)
     {
         return StandardStepPvE.Cooldown is { HasOneCharge: false, IsCoolingDown: true } &&
@@ -92,14 +91,6 @@ public sealed partial class ChurinDNC : DancerRotation
         PotionTimings.Custom => CustomEnableThirdPotion,
         _ => false
     };
-
-    private static bool IsWithinFirst15SecondsOfOddMinute()
-    {
-        if (CombatTime <= 0.0)
-            return false;
-        var num1 = (int) Math.Floor(CombatTime / 60.0);
-        var num2 = (int) Math.Floor(CombatTime % 60.0);
-        return num1 % 2 == 1 && num2 < 15;    }
     #endregion
     #endregion
     #region Other Properties
@@ -369,7 +360,7 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool TryUseTechGCD(out IAction? act, bool burst)
     {
         if (!burst || IsDancing) return SetActToNull(out act);
-        if (ShouldHoldForStandard) return TryHoldGCD(out act);
+        if (ShouldHoldForStandard) return StandardStepPvE.CanUse(out act);
 
         return TryUseDanceOfTheDawn(out act) ||
                TryUseTillana(out act) ||
@@ -421,7 +412,7 @@ public sealed partial class ChurinDNC : DancerRotation
         {
             ShouldUseStarfallDance = false;
         }
-        else if (!HasLastDanceReady || !HasFinishingMove || Esprit < 70 || DevilmentPvE.Cooldown.RecastTimeElapsed > 5)
+        else if ((!HasLastDanceReady || !HasFinishingMove) && Esprit < 70 || DevilmentPvE.Cooldown.RecastTimeElapsed > 5)
         {
             ShouldUseStarfallDance = true;
         }
@@ -433,7 +424,8 @@ public sealed partial class ChurinDNC : DancerRotation
     #region GCD Skills
     private bool TryUseFillerGCD(out IAction? act)
     {
-        if (ShouldHoldForStandard || ShouldHoldForTechStep) return TryHoldGCD(out act);
+        if (ShouldHoldForStandard) return StandardStepPvE.CanUse(out act);
+        if (ShouldHoldForTechStep) return TechnicalStepPvE.CanUse(out act);
 
         return TryUseTillana(out act) ||
                TryUseProcs(out act) ||
@@ -445,7 +437,9 @@ public sealed partial class ChurinDNC : DancerRotation
     }
     private bool TryUseBasicGCD(out IAction? act)
     {
-        if (ShouldHoldForStandard || ShouldHoldForTechStep) return TryHoldGCD(out act);
+        if (ShouldHoldForStandard) return StandardStepPvE.CanUse(out act);
+        if (ShouldHoldForTechStep) return TechnicalStepPvE.CanUse(out act);
+        if (DanceDance && Esprit >= 50 && (!HasLastDanceReady || HasLastDanceReady && !HasFinishingMove)) return SaberDancePvE.CanUse(out act);
 
         return  BloodshowerPvE.CanUse(out act) ||
                 FountainfallPvE.CanUse(out act) ||
@@ -491,7 +485,7 @@ public sealed partial class ChurinDNC : DancerRotation
         {
             ShouldUseSaberDance = false;
         }
-        else if (DanceDance && (!HasLastDanceReady || !HasFinishingMove) || IsMedicated ||
+        else if (DanceDance && (!HasLastDanceReady || !HasFinishingMove) && Esprit >= 50|| IsMedicated ||
                  !DanceDance && Esprit >= 70)
         {
             ShouldUseSaberDance = true;
@@ -602,17 +596,17 @@ public sealed partial class ChurinDNC : DancerRotation
     /// <returns>True if the Flourish action was performed; otherwise, false.</returns>
     private bool TryUseFlourish(out IAction? act)
     {
-        if (!InCombat || HasThreefoldFanDance) return SetActToNull(out act);
+        if (!InCombat || HasThreefoldFanDance || !FlourishPvE.IsEnabled) return SetActToNull(out act);
 
-        // Check if Flourish can be used based on the current status and conditions
-        if (InCombat && (DanceDance || !TechnicalStepPvE.IsEnabled && !TechnicalStepIn(30)|| !DanceDance && !TechnicalStepIn(45)))
-        {
-            ShouldUseFlourish = true;
-        }
-        else if (!DanceDance && TechnicalStepPvE.IsEnabled && TechnicalStepPvE.Cooldown.HasOneCharge && !DevilmentPvE.Cooldown.IsCoolingDown && FlourishPvE.Cooldown.HasOneCharge ||
-                 !FlourishPvE.IsEnabled)
+        if (!DanceDance && TechnicalStepPvE.Cooldown.HasOneCharge ||
+            !DanceDance && TechnicalStepIn(40) || ShouldHoldForTechStep)
         {
             ShouldUseFlourish = false;
+        }
+        else if (DanceDance || !DanceDance && (!ShouldUseTechStep && !TechnicalStepPvE.Cooldown.HasOneCharge ||
+                 !ShouldUseTechStep && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(30)))
+        {
+            ShouldUseFlourish = true;
         }
 
         return ShouldUseFlourish ? FlourishPvE.CanUse(out act) : SetActToNull(out act);

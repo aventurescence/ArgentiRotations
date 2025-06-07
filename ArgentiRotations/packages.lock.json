@@ -16,7 +16,7 @@
       },
       "RotationSolverReborn.Basic": {
         "type": "Direct",
-        "requested": "[7.2.5.47, )",
+        "requested": "[*-*, )",
         "resolved": "7.2.5.47",
         "contentHash": "fcVv85klFlKkf8LoDAmoe7Xxy5Ta5toWnLx6pQDT199ywrND95vBhOW0yoUO2/z3+SGSqGQklhrO53baAcUDZw==",
         "dependencies": {
