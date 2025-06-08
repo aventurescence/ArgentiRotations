@@ -59,8 +59,16 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool SecondPotionUsed { get; set; }
     private bool ThirdPotionUsed { get; set; }
 
-    private static bool OddMinutePotion(int potionTime) => potionTime % 2 == 1;
-    private static bool EvenMinutePotion(int potionTime) => potionTime % 2 == 0;
+    private static bool IsOdd(int potionTime) => potionTime % 2 == 1;
+    private static bool IsEven(int potionTime) => potionTime % 2 == 0;
+
+    private static bool EvenPotionCondition =>
+        IsLastGCD(ActionID.TechnicalStepPvE) || HasTechnicalStep && IsDancing && CompletedSteps is 0 or 3 or 4 || HasTechnicalStep;
+
+    private bool OddPotionCondition =>
+        FlourishPvE.Cooldown is { IsCoolingDown: true, RecastTimeElapsed: >= 50 } || FlourishPvE.Cooldown.IsCoolingDown && FlourishPvE.Cooldown.WillHaveOneCharge(5);
+
+    private static bool OpenerPotionCondition => Countdown.TimeRemaining <= 1;
 
     private bool EnableFirstPotion => PotionTiming switch
     {
@@ -96,8 +104,7 @@ public sealed partial class ChurinDNC : DancerRotation
     #region Other Properties
 
     private const float DefaultAnimationLock = 0.6f;
-
-    private DateTime _lastPotionUsed = DateTime.MinValue;
+    private float LastPotionUsed { get; set;}
 
     private enum PotionTimings
     {
@@ -200,7 +207,7 @@ public sealed partial class ChurinDNC : DancerRotation
         if (TryUseClosedPosition(out var act) ||
             StandardStepPvE.CanUse(out act) ||
             ExecuteStepGCD(out act) ||
-            remainTime <= 1 && EnableFirstPotion && FirstPotionTime == 0 && UseBurstMedicine(out act) ||
+            TryUsePots(out act) ||
             remainTime <= OpenerFinishTime && DoubleStandardFinishPvE.CanUse(out act))
         {
             return act;
@@ -215,6 +222,7 @@ public sealed partial class ChurinDNC : DancerRotation
     /// Override the method for handling emergency abilities
     protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
     {
+        ResetPotionUse();
         if (TryUsePots(out act)) return true;
         if (SwapDancePartner(out act)) return true;
         if (TryUseClosedPosition(out act)) return true;
@@ -241,7 +249,7 @@ public sealed partial class ChurinDNC : DancerRotation
     /// Override the method for handling general Global Cooldown (GCD) actions
     protected override bool GeneralGCD(out IAction? act)
     {
-        UpdatePotionUse();
+        ResetPotionUse();
         if (IsDancing) return TryFinishTheDance(out act);
         if (TryHoldGCD(out act)) return true;
         if (TryUseProcs(out act)) return true;
@@ -360,6 +368,7 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool TryUseTechGCD(out IAction? act, bool burst)
     {
         if (!burst || IsDancing) return SetActToNull(out act);
+        if (Esprit >= 90 || Esprit >= 50 && (!HasFinishingMove || !HasStarfall)) return SaberDancePvE.CanUse(out act);
         if (ShouldHoldForStandard) return StandardStepPvE.CanUse(out act);
 
         return TryUseDanceOfTheDawn(out act) ||
@@ -440,6 +449,8 @@ public sealed partial class ChurinDNC : DancerRotation
         if (ShouldHoldForStandard) return StandardStepPvE.CanUse(out act);
         if (ShouldHoldForTechStep) return TechnicalStepPvE.CanUse(out act);
         if (DanceDance && Esprit >= 50 && (!HasLastDanceReady || HasLastDanceReady && !HasFinishingMove)) return SaberDancePvE.CanUse(out act);
+        if (DanceDance && IsLastGCD(ActionID.FinishingMovePvE, ActionID.StandardFinishPvE) &&
+            Esprit < 50 && !HasStarfall) return LastDancePvE.CanUse(out act);
 
         return  BloodshowerPvE.CanUse(out act) ||
                 FountainfallPvE.CanUse(out act) ||
@@ -480,7 +491,7 @@ public sealed partial class ChurinDNC : DancerRotation
     {
         if (Esprit < 50) return SetActToNull(out act);
 
-        if (DanceDance && HasLastDanceReady && StandardStepIn(5) && HasFinishingMove ||
+        if (DanceDance && HasLastDanceReady && HasFinishingMove && Esprit < 70 && !FinishingMovePvE.Cooldown.HasOneCharge ||
             !DanceDance && Esprit < 70)
         {
             ShouldUseSaberDance = false;
@@ -638,91 +649,100 @@ public sealed partial class ChurinDNC : DancerRotation
         }
         return SetActToNull(out act);
     }
+    #endregion
 
+    #region Potions
     private bool TryUsePots(out IAction? act)
     {
-        if (HasTechnicalStep && IsDancing && CompletedSteps is 0 or 4)
-        {
-            if (EvenMinutePotion(FirstPotionTime)) return FirstPot(out act);
-            if (EvenMinutePotion(SecondPotionTime)) return SecondPot(out act);
-            if (EvenMinutePotion(ThirdPotionTime)) return ThirdPot(out act);
-        }
-
-        if (FlourishPvE.Cooldown is { IsCoolingDown: true, HasOneCharge: false } && FlourishPvE.Cooldown.WillHaveOneCharge(3) || StandardStepIn(10))
-        {
-            if (OddMinutePotion(FirstPotionTime)) return FirstPot(out act);
-            if (OddMinutePotion(SecondPotionTime)) return SecondPot(out act);
-            if (OddMinutePotion(ThirdPotionTime)) return ThirdPot(out act);
-        }
+        UpdatePotions();
+        if (!FirstPotionUsed && FirstPot(out act)) return true;
+        if (!SecondPotionUsed && SecondPot(out act)) return true;
+        if (!ThirdPotionUsed && ThirdPot(out act)) return true;
         return SetActToNull(out act);
+    }
+
+    private void UpdatePotions()
+    {
+        if (IsMedicated)
+        {
+            if (CombatTime >= FirstPotionTime * 60)
+            {
+                FirstPotionUsed = true;
+                LastPotionUsed = CombatTime;
+            }
+
+            if (CombatTime >= SecondPotionTime * 60)
+            {
+                SecondPotionUsed = true;
+                LastPotionUsed = CombatTime;
+            }
+            if (CombatTime >= ThirdPotionTime * 60)
+            {
+                ThirdPotionUsed = true;
+                LastPotionUsed = CombatTime;
+            }
+        }
     }
 
     private bool FirstPot(out IAction? act)
     {
-        if (FirstPotionUsed) return SetActToNull(out act);
         var firstPotionTime = FirstPotionTime * 60;
-
-        switch (EnableFirstPotion)
+        return EnableFirstPotion switch
         {
-            case false:
-                return SetActToNull(out act);
-            case true when CombatTime >= firstPotionTime - 5 ||
-                           firstPotionTime == 0:
-                _lastPotionUsed = DateTime.Now;
-                FirstPotionUsed = true;
-                return UseBurstMedicine(out act);
-            default:
-                return SetActToNull(out act);
-        }
+            false => SetActToNull(out act),
+            true when (CombatTime >= firstPotionTime ||
+                      firstPotionTime == 0) &&
+                      (EvenPotionCondition && IsEven(FirstPotionTime) ||
+                       OddPotionCondition && IsOdd(FirstPotionTime) ||
+                       OpenerPotionCondition && firstPotionTime == 0) && UseBurstMedicine(out act, false) => true,
+            _ => SetActToNull(out act)
+        };
     }
 
     private bool SecondPot(out IAction? act)
     {
-        if (SecondPotionUsed)  return SetActToNull(out act);
         var secondPotionTime = SecondPotionTime * 60;
-        switch (EnableSecondPotion)
+
+        return EnableSecondPotion switch
         {
-            case false:
-                return SetActToNull(out act);
-            case true when CombatTime >= secondPotionTime - 5 &&
-                           (DateTime.Now - _lastPotionUsed).TotalSeconds >= 270:
-                _lastPotionUsed = DateTime.Now;
-                SecondPotionUsed = true;
-                return UseBurstMedicine(out act);
-            default:
-                return SetActToNull(out act);
-        }
+            false => SetActToNull(out act),
+            true when (CombatTime >= secondPotionTime ||
+                      CombatTime <= secondPotionTime + 60) &&
+                      (EvenPotionCondition && IsEven(SecondPotionTime) ||
+                       OddPotionCondition && IsOdd(SecondPotionTime)) && UseBurstMedicine(out act) => true,
+            _ => SetActToNull(out act)
+        };
     }
 
     private bool ThirdPot(out IAction? act)
     {
-        if (ThirdPotionUsed) return SetActToNull(out act);
         var thirdPotionTime = ThirdPotionTime * 60;
-        switch (EnableThirdPotion)
+
+        return EnableThirdPotion switch
         {
-            case false:
-                return SetActToNull(out act);
-            case true when CombatTime >= thirdPotionTime - 5 &&
-                           (DateTime.Now - _lastPotionUsed).TotalSeconds >= 270:
-                ThirdPotionUsed = true;
-                _lastPotionUsed = DateTime.Now;
-                return UseBurstMedicine(out act);
-            default:
-                return SetActToNull(out act);
-        }
+            false => SetActToNull(out act),
+            true when (CombatTime >= thirdPotionTime ||
+                      CombatTime <= thirdPotionTime + 60) &&
+                       (EvenPotionCondition && IsEven(ThirdPotionTime) ||
+                        OddPotionCondition && IsOdd(ThirdPotionTime)) && UseBurstMedicine(out act) => true,
+            _ => SetActToNull(out act)
+        };
     }
 
-    private void UpdatePotionUse()
+    private void ResetPotionUse()
     {
-        if (CombatTime == 0 || !InCombat)
+        if ((CombatTime == 0 || !InCombat) && FirstPotionTime != 0 && UseBurstMedicine(out _))
         {
             FirstPotionUsed = false;
             SecondPotionUsed = false;
             ThirdPotionUsed = false;
-            _lastPotionUsed = DateTime.MinValue;
+            LastPotionUsed = CombatTime;
         }
     }
 
+    #endregion
+
+    #region Miscellaneous Methods
 
     private static bool SetActToNull(out IAction? act)
     {
@@ -732,5 +752,7 @@ public sealed partial class ChurinDNC : DancerRotation
 
     #endregion
 
+
     #endregion
+
 }
