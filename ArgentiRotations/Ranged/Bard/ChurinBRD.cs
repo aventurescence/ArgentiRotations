@@ -8,10 +8,10 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 namespace ArgentiRotations.Ranged;
 
 [Rotation("Churin BRD", CombatType.PvE, GameVersion = "7.2.5",
-    Description = "For max level high-end content use only :3")]
-[SourceCode(Path = "ArgentiRotations/Ranged/ChurinBRD.cs")]
+    Description = "Anyway, here's Wonderwall")]
+[SourceCode(Path = "ArgentiRotations/Ranged/Bard/ChurinBRD.cs")]
 [Api(4)]
-public sealed class ChurinBRD : BardRotation
+public sealed partial class ChurinBRD : BardRotation
 {
     #region Properties
 
@@ -72,74 +72,39 @@ public sealed class ChurinBRD : BardRotation
         SongTiming.Cycle369 => 36,
         SongTiming.Custom => CustomArmyTime,
         _ => 0
-    };
-
-    private DateTime _lastPotionUsed = DateTime.MinValue;
-    private float WandRemainTime => 45 - WandTime;
+    };    private float WandRemainTime => 45 - WandTime;
     private float MageRemainTime => 45 - MageTime;
     private float ArmyRemainTime => 45 - ArmyTime;
 
-
-
-    private int FirstPotionTime => PotionTiming switch
+    #region Potions
+    private readonly List<(int Time, bool Enabled, bool Used)> _potions = [];
+    private void InitializePotions()
     {
-        PotionTimings.None => 9999,
-        PotionTimings.ZeroSix => 0,
-        PotionTimings.TwoEight => 2,
-        PotionTimings.ZeroFiveTen => 0,
-        PotionTimings.Custom => CustomFirstPotionTime,
-        _ => 9999
-    };
+        _potions.Clear();
+        switch (PotionTiming)
+        {
+            case PotionTimings.ZeroSix:
+                _potions.Add((0, true, false));
+                _potions.Add((6, true, false));
+                break;
+            case PotionTimings.TwoEight:
+                _potions.Add((2, true, false));
+                _potions.Add((8, true, false));
+                break;
+            case PotionTimings.ZeroFiveTen:
+                _potions.Add((0, true, false));
+                _potions.Add((5, true, false));
+                _potions.Add((10, true, false));
+                break;
+            case PotionTimings.Custom:
+                if (CustomEnableFirstPotion) _potions.Add((CustomFirstPotionTime, true, false));
+                if (CustomEnableSecondPotion) _potions.Add((CustomSecondPotionTime, true, false));
+                if (CustomEnableThirdPotion) _potions.Add((CustomThirdPotionTime, true, false));
+                break;
+        }
+    }
+    #endregion
 
-    private int SecondPotionTime => PotionTiming switch
-    {
-        PotionTimings.None => 9999,
-        PotionTimings.ZeroSix => 6,
-        PotionTimings.TwoEight => 8,
-        PotionTimings.ZeroFiveTen => 5,
-        PotionTimings.Custom => CustomSecondPotionTime,
-        _ => 9999
-    };
-
-    private int ThirdPotionTime => PotionTiming switch
-    {
-        PotionTimings.None => 9999,
-        PotionTimings.ZeroSix => 9999,
-        PotionTimings.TwoEight => 9999,
-        PotionTimings.ZeroFiveTen => 10,
-        PotionTimings.Custom => CustomThirdPotionTime,
-        _ => 9999
-    };
-
-    private bool EnableFirstPotion => PotionTiming switch
-    {
-        PotionTimings.None => false,
-        PotionTimings.ZeroSix => true,
-        PotionTimings.TwoEight => true,
-        PotionTimings.ZeroFiveTen => true,
-        PotionTimings.Custom => CustomEnableFirstPotion,
-        _ => false
-    };
-
-    private bool EnableSecondPotion => PotionTiming switch
-    {
-        PotionTimings.None => false,
-        PotionTimings.ZeroSix => true,
-        PotionTimings.TwoEight => true,
-        PotionTimings.ZeroFiveTen => true,
-        PotionTimings.Custom => CustomEnableSecondPotion,
-        _ => false
-    };
-
-    private bool EnableThirdPotion => PotionTiming switch
-    {
-        PotionTimings.None => false,
-        PotionTimings.ZeroSix => false,
-        PotionTimings.TwoEight => false,
-        PotionTimings.ZeroFiveTen => true,
-        PotionTimings.Custom => CustomEnableThirdPotion,
-        _ => false
-    };
 
     private static double RecastTime => ActionManager.GetAdjustedRecastTime(ActionType.Action, 16495U) / 1000.00;
 
@@ -221,14 +186,14 @@ public sealed class ChurinBRD : BardRotation
             SongTiming.AdjustedStandard when remainTime <= 0 && HeartbreakShotPvE.CanUse(out var act) => act,
             SongTiming.Standard or SongTiming.Custom or SongTiming.Cycle369 when remainTime <= 0.01 && WindbitePvE.CanUse(out var act) => act,
             _ => base.CountDownAction(remainTime)
-        };
-    }
+        };    }
 
-    #endregion
-    #region oGCD Logic
-
+#endregion
+#region oGCD Logic
+    
     protected override bool EmergencyAbility(IAction nextGCD, out IAction? act)
     {
+        UpdatePotions();
         if (IsLastAction(ActionID.WindbitePvE) && NoSong && SongTimings == SongTiming.Cycle369) return HeartbreakShotPvE.CanUse(out act);
         if (TryUsePots(out act))
             switch (IsFirstCycle)
@@ -309,7 +274,7 @@ public sealed class ChurinBRD : BardRotation
                 return SetActToNull(out act);
             }
 
-            if (IronJawsPvE.Target.Target?.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []) == true)
+            if (IronJawsPvE.Target.Target?.StatusList != null && IronJawsPvE.Target.Target?.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []) == true)
             {
                 if (InBurst &&
                     Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale, StatusID.RagingStrikes) &&
@@ -702,168 +667,70 @@ public sealed class ChurinBRD : BardRotation
         {
             act = null;
             return false;
+        }        private bool TryUsePots(out IAction? act)
+        {
+            act = null;
+            if (Player.HasStatus(true, StatusID.Medicated)) return false;
+
+            for (var i = 0; i < _potions.Count; i++)
+            {
+                var (time, enabled, used) = _potions[i];
+                if (!enabled || used) continue;
+
+                var potionTimeInSeconds = time * 60;
+                var isOpenerPotion = potionTimeInSeconds == 0;
+                var isEvenMinutePotion = time % 2 == 0;
+
+                var canUse = (isOpenerPotion && Countdown.TimeRemaining <= 1.5f) ||
+                             (!isOpenerPotion && CombatTime >= potionTimeInSeconds && CombatTime < potionTimeInSeconds + 10);
+
+                if (!canUse) continue;
+
+                // For BRD, we use different conditions than DNC
+                // Even minute potions: Use during burst phases (RadiantFinale + BattleVoice)
+                // Odd minute potions: Use during good windows based on song timing
+                var condition = (isEvenMinutePotion ? (HasRadiantFinale && HasBattleVoice) : true) || isOpenerPotion;
+
+                if (condition && UseBurstMedicine(out act, false))
+                {
+                    _potions[i] = (time, enabled, true);
+                    return true;
+                }
+            }
+            return false;
         }
 
-        private bool TryUsePots(out IAction? act)
+        private PotionTimings _lastPotionTiming;
+        private int _lastFirst, _lastSecond, _lastThird;
+
+        private void UpdatePotions()
         {
-            if (CombatTime <= 0) return SetActToNull(out act);
-
-            var canUsePotion = (EnableFirstPotion && CombatTime >= FirstPotionTime * 60 &&
-                                FirstPotionTime < SecondPotionTime && FirstPotionTime < ThirdPotionTime) ||
-                               (EnableSecondPotion && CombatTime >= SecondPotionTime * 60 &&
-                                SecondPotionTime > FirstPotionTime && SecondPotionTime < ThirdPotionTime &&
-                                (DateTime.Now - _lastPotionUsed).TotalSeconds >= 270) ||
-                               (EnableThirdPotion && CombatTime >= ThirdPotionTime * 60 &&
-                                ThirdPotionTime > FirstPotionTime && ThirdPotionTime > SecondPotionTime &&
-                                (DateTime.Now - _lastPotionUsed).TotalSeconds >= 270);
-
-            if (canUsePotion)
+            if (_lastPotionTiming != PotionTiming ||
+                _lastFirst != CustomFirstPotionTime ||
+                _lastSecond != CustomSecondPotionTime ||
+                _lastThird != CustomThirdPotionTime)
             {
-                _lastPotionUsed = DateTime.Now;
-                return UseBurstMedicine(out act);
-            }
+                var oldPotions = new List<(int Time, bool Enabled, bool Used)>(_potions);
 
-            return SetActToNull(out act);
+                InitializePotions();
+
+                // Merge used state if in combat
+                if (InCombat)
+                {
+                    for (var i = 0; i < _potions.Count; i++)
+                    {
+                        var (time, enabled, _) = _potions[i];
+                        var old = oldPotions.FirstOrDefault(p => p.Time == time);
+                        if (old.Time == time)
+                            _potions[i] = (time, enabled, old.Used);
+                    }
+                }
+
+                _lastPotionTiming = PotionTiming;                _lastFirst = CustomFirstPotionTime;
+                _lastSecond = CustomSecondPotionTime;
+                _lastThird = CustomThirdPotionTime;
+            }
         }
         #endregion
-    #endregion
-    #region Status Window Override
-
-    public override void DisplayStatus()
-    {
-        DisplayStatusHelper.BeginPaddedChild("The CustomRotation's status window", true,
-            ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
-        DrawRotationStatus();
-        DrawCombatStatus();
-        ImGui.Separator();
-        DisplayStatusHelper.EndPaddedChild();
-    }
-    private void DrawRotationStatus()
-    {
-        var text = "Rotation: " + Name;
-        var textSize = ImGui.CalcTextSize(text).X;
-        DisplayStatusHelper.DrawItemMiddle(() =>
-        {
-            ImGui.TextColored(ImGuiColors.HealerGreen, text);
-            DisplayStatusHelper.HoveredTooltip(Description);
-        }, ImGui.GetWindowWidth(), textSize);
-    }
-    private void DrawCombatStatus()
-    {
-        var tableSize = ImGui.GetContentRegionAvail().X;
-        DisplayStatusHelper.DrawItemMiddle(() =>
-        {
-            ImGui.BeginGroup();
-            DrawCombatStatusText();
-            ImGui.EndGroup();
-        }, ImGui.GetWindowWidth(), tableSize);
-    }
-    private void DrawCombatStatusText()
-    {
-        if (ImGui.BeginTable("CombatStatusTable", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
-        {
-            ImGui.TableSetupColumn("Label");
-            ImGui.TableSetupColumn("Value");
-            ImGui.TableHeadersRow();
-
-            // Row 1: Current Preset
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Current Song Timing Preset");
-            ImGui.TableNextColumn();
-            ImGui.Text(SongTimings.ToString());
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Current Song");
-            ImGui.TableNextColumn();
-            ImGui.Text(Song.ToString());
-
-            // Row 2: Wanderer's Minuet Uptime
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Wanderer's Minuet Uptime & Remaining Time");
-            ImGui.TableNextColumn();
-            ImGui.Text($"Preset Time: {WandTime} seconds");
-            ImGui.Text($"Remaining Time: {WandRemainTime} seconds");
-
-            // Row 3: Mage's Ballad Uptime
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Mage's Ballad Uptime & Remaining Time");
-            ImGui.TableNextColumn();
-            ImGui.Text($"Preset Time: {MageTime} seconds");
-            ImGui.Text($"Remaining Time: {MageRemainTime} seconds");
-
-            // Row 4: Army's Paeon Uptime
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Army's Paeon Uptime & Remaining Time");
-            ImGui.TableNextColumn();
-            ImGui.Text($"Preset Time: {ArmyTime} seconds");
-            ImGui.Text($"Remaining Time: {ArmyRemainTime} seconds");
-
-            // Row 5: Is First Cycle?
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Is First Cycle?");
-            ImGui.TableNextColumn();
-            ImGui.Text(IsFirstCycle ? "Yes" : "No");
-
-            // Row 6: Target Has DoTs?
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Target Has DoTs?");
-            ImGui.TableNextColumn();
-            ImGui.Text(TargetHasDoTs ? "Yes" : "No");
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Adjusted Recast Time");
-            ImGui.TableNextColumn();
-            ImGui.Text(RecastTime.ToString(CultureInfo.CurrentCulture));
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Time until the next GCD");
-            ImGui.TableNextColumn();
-            ImGui.Text(NextAbilityToNextGCD.ToString(CultureInfo.CurrentCulture));
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Recast Time remaining for Empyreal Arrow");
-            ImGui.TableNextColumn();
-            ImGui.Text(EmpyrealArrowPvE.Cooldown.RecastTimeRemainOneCharge.ToString(CultureInfo.CurrentCulture));
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Enough Weave Time");
-            ImGui.Text("Can Early Weave");
-            ImGui.Text("Can Late Weave");
-            ImGui.TableNextColumn();
-            ImGui.Text(EnoughWeaveTime ? "Yes " : "No ");
-            ImGui.Text(CanEarlyWeave ? "Yes " : "No ");
-            ImGui.Text(CanLateWeave ? "Yes " : "No ");
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Potion Usage");
-            ImGui.TableNextColumn();
-            ImGui.Text($"First: {EnableFirstPotion} at {FirstPotionTime} minutes");
-            ImGui.Text($"Second: {EnableSecondPotion} at {SecondPotionTime} minutes");
-            ImGui.Text($"Third: {EnableThirdPotion} at {ThirdPotionTime} minutes");
-            ImGui.Text($"Last potion used at: {_lastPotionUsed}");
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.Text("Target Has DoTs?");
-            ImGui.TableNextColumn();
-            ImGui.Text(TargetHasDoTs ? "Yes" : "No");
-
-
-            ImGui.EndTable();
-        }
-    }
-
     #endregion
 }

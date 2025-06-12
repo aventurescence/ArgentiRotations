@@ -1,27 +1,14 @@
 ﻿using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
+using Dalamud.Utility;
 
 namespace ArgentiRotations.Ranged;
 
 public sealed partial class ChurinDNC
 {
     #region Fields
-    private Vector4[] _oddPotionColors = [];
-    private Vector4[] _enablePotionColors = [];
-    private Vector4[] _usedPotionColors = [];
-    private Vector4[] _conditionColors = [];
     private Vector4[] _shouldUseConditions = [];
     private Vector4[] _statusConditions = [];
-    private Vector4[] _timeColors = [];
-    private Vector4[] _oddPotionConditionColors = [];
-    private Vector4[] _evenPotionConditionColors = [];
-    private bool[] _isOddPotions = [];
-    private bool[] _timeConditions = [];
-    private bool[] _conditionValues = [];
-    private bool[] _isOddConditionsList = [];
-    private bool[] _isEvenConditionsList = [];
-
-
 
     #endregion
     #region Status Window Override
@@ -36,14 +23,79 @@ public sealed partial class ChurinDNC
         }, ImGui.GetWindowWidth(), textSize);
     }
 
-    private void DrawCombatStatus()
+    private void DrawCombatStatusHeader()
+    {
+        try
+        {
+            InitializeColorData();
+            ImGui.BeginGroup();
+            if (ImGui.CollapsingHeader("Combat Status Details", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                var gcdsUntilTech = 0;
+                for (uint i = 1; i <= 30; i++)
+                {
+                    if (TechnicalStepPvE.Cooldown.IsCoolingDown && TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(i, 0.5f))
+                    {
+                        gcdsUntilTech = (int)i;
+                        break;
+                    }
+                }
+                ImGui.Columns(2, "GCDsUntilTechStep", false);
+                ImGui.Text("GCDs Until Tech Step:");
+                ImGui.NextColumn();
+                ImGui.Text(gcdsUntilTech.ToString());
+                ImGui.NextColumn();
+
+                var elapsed = TechnicalStepPvE.Cooldown.HasOneCharge ||!TechnicalStepPvE.Cooldown.IsCoolingDown
+                    ? 120f
+                    : TechnicalStepPvE.Cooldown.RecastTimeElapsed + WeaponRemain;
+                var diff = TechnicalStepCooldown - elapsed;
+
+                var color = diff switch
+                {
+                    >= 120 and > 80 => ImGuiColors.DalamudRed,
+                    <= 80 and > 40 => ImGuiColors.DalamudYellow,
+                    _ => ImGuiColors.HealerGreen
+                };
+
+                ImGui.TextColored(ImGuiColors.ParsedGold, "Tech Step Recast Time:");
+                ImGui.NextColumn();
+                ImGui.TextColored(ImGuiColors.ParsedGold,$"{TechnicalStepCooldown:F1} seconds");
+                ImGui.NextColumn();
+
+                ImGui.TextColored(ImGuiColors.HealerGreen, "Tech Step Elapsed Time:");
+                ImGui.NextColumn();
+                ImGui.TextColored(ImGuiColors.HealerGreen,$"{elapsed:F1} seconds");
+                ImGui.NextColumn();
+
+                ImGui.TextColored(color, "Time until Tech Step:");
+                ImGui.NextColumn();
+                ImGui.TextColored(color,$"{diff:F1} seconds");
+                ImGui.NextColumn();
+
+                ImGui.TextColored(ImGuiColors.ParsedGold, "Technical Step Will Have One Charge in 0.5s");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[8], TechnicalStepPvE.Cooldown.WillHaveOneCharge( 0.5f).ToString());
+                ImGui.NextColumn();
+
+                ImGui.Columns(1);
+                DrawCombatStatusText();
+            }
+            ImGui.EndGroup();
+        }
+        catch (Exception)
+        {
+            ImGui.TextColored(ImGuiColors.DalamudRed, "Error displaying combat status");
+        }
+    }
+
+    private void DrawPotionStatusHeader()
     {
         ImGui.BeginGroup();
-        if (ImGui.CollapsingHeader("Combat Status Details", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader("Potion Status", ImGuiTreeNodeFlags.DefaultOpen))
         {
-            DrawCombatStatusText();
+            DrawPotionStatusText();
         }
-
         ImGui.EndGroup();
     }
 
@@ -52,142 +104,183 @@ public sealed partial class ChurinDNC
         try
         {
             InitializeColorData();
-            if (ImGui.TreeNode("Should Use Booleans"))
+            if (ImGui.TreeNode("Rotation Booleans"))
             {
                 ImGui.Columns(2, "CombatStatusColumns", false);
 
                 // Column headers
-                ImGui.Text("Status"); ImGui.NextColumn();
-                ImGui.Text("Value"); ImGui.NextColumn();
+                ImGui.Text("Condition");
+                ImGui.NextColumn();
+                ImGui.Text("Value");
+                ImGui.NextColumn();
                 ImGui.Separator();
 
-                ImGui.TextColored(_shouldUseConditions[0],"Should Use Tech Step?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[0],ShouldUseTechStep.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[0], "Should Use Tech Step?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[0], ShouldUseTechStep.ToString());
+                ImGui.NextColumn();
 
-                ImGui.TextColored(_shouldUseConditions[1],"Should Use Standard Step?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[1],ShouldUseStandardStep.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[1], "Should Use Standard Step?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[1], ShouldUseStandardStep.ToString());
+                ImGui.NextColumn();
 
-                ImGui.TextColored(_shouldUseConditions[2],"Should Use Saber Dance?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[2],ShouldUseSaberDance.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[2], "Can Use Saber Dance?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[2], TryUseSaberDance(out _).ToString());
+                ImGui.NextColumn();
 
-                ImGui.TextColored(_shouldUseConditions[3],"Should Use Starfall Dance?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[3],ShouldUseStarfallDance.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[3], "Should Use Starfall Dance?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[3], TryUseStarfallDance(out _).ToString());
+                ImGui.NextColumn();
 
-                ImGui.TextColored(_shouldUseConditions[4],"Should Use Last Dance?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[4],ShouldUseLastDance.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[4], "Should Use Last Dance?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[4], TryUseLastDance(out _).ToString());
+                ImGui.NextColumn();
 
-                ImGui.TextColored(_shouldUseConditions[5],"Should Use Flourish?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[5],ShouldUseFlourish.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[5], "Should Use Flourish?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[5], TryUseFlourish(out _).ToString());
+                ImGui.NextColumn();
 
-                ImGui.TextColored(_shouldUseConditions[6],"Should Hold For Tech Step?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[6],ShouldHoldForTechStep.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[6], "Should Hold For Tech Step?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[6], CanUseTechnicalStep.ToString());
+                ImGui.NextColumn();
 
-                ImGui.TextColored(_shouldUseConditions[7],"Should Hold For Standard Step?"); ImGui.NextColumn();
-                ImGui.TextColored(_shouldUseConditions[7],ShouldHoldForStandard.ToString()); ImGui.NextColumn();
-
-                ImGui.TextColored(_statusConditions[0],"In Burst:"); ImGui.NextColumn();
-                ImGui.TextColored(_statusConditions[0],DanceDance.ToString()); ImGui.NextColumn();
-
-                ImGui.TextColored(_statusConditions[1],"Is Dancing:"); ImGui.NextColumn();
-                ImGui.TextColored(_statusConditions[1],IsDancing.ToString()); ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[7], "Should Hold For Standard Step?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[7], CanUseStandardStep.ToString());
+                ImGui.NextColumn();
 
                 // Reset columns
                 ImGui.Columns(1);
                 ImGui.TreePop();
             }
-
-            if (ImGui.TreeNode("Potion Status"))
+            if (ImGui.TreeNode("Status Booleans"))
             {
-                var text = "Combat Time: " + CombatTime.ToString("F");
-                var textSize = ImGui.CalcTextSize(text).X;
-                DisplayStatusHelper.DrawItemMiddle(() => { ImGui.TextColored(ImGuiColors.ParsedPink, text); },
-                    ImGui.GetWindowWidth(), textSize);
-                var text2 = "Last Potion Used:" + LastPotionUsed.ToString("F1");
-                var textSize2 = ImGui.CalcTextSize(text2).X;
-                DisplayStatusHelper.DrawItemMiddle(() => { ImGui.TextColored(ImGuiColors.ParsedPink, text2); },
-                    ImGui.GetWindowWidth(), textSize2);
-                var text3 = "Can Use Potion: " + UseBurstMedicine(out _);
-                var textSize3 = ImGui.CalcTextSize(text3).X;
-                DisplayStatusHelper.DrawItemMiddle(() => { ImGui.TextColored(ImGuiColors.ParsedPink, text3); },
-                    ImGui.GetWindowWidth(), textSize3);
-                // First Potion
-                if (ImGui.TreeNode($"First Potion Status:{FirstPot(out _).ToString()}"))
-                {
-                    ImGui.Columns(2, "FirstPotionColumns", false);
-                    ImGui.Text("Condition"); ImGui.NextColumn();
-                    ImGui.Text("Value"); ImGui.NextColumn();
-                    ImGui.Separator();
-                    ImGui.TextColored(_enablePotionColors[0], "First Potion Enabled"); ImGui.NextColumn();
-                    ImGui.TextColored(_enablePotionColors[0], EnableFirstPotion.ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_usedPotionColors[0], "First Potion Used"); ImGui.NextColumn();
-                    ImGui.TextColored(_usedPotionColors[0], FirstPotionUsed.ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_oddPotionColors[0], "First Potion Timing"); ImGui.NextColumn();
-                    ImGui.TextColored(_oddPotionColors[0], IsOdd(FirstPotionTime) ? "Odd :" : "Even :"); ImGui.SameLine();
-                    ImGui.TextColored(ImGuiColors.ParsedOrange, $"{FirstPotionTime * 60} seconds");ImGui.NextColumn();
-                    ImGui.TextColored(_timeColors[0], "Is Time Condition Met:"); ImGui.NextColumn();
-                    ImGui.TextColored(_timeColors[0], _timeConditions[0].ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_conditionColors[0], "Condition:"); ImGui.NextColumn();
-                    ImGui.TextColored(_conditionColors[0], _isOddPotions[0].ToString()); ImGui.NextColumn();
-                    DrawParityConditions(IsOdd(FirstPotionTime), _oddPotionConditionColors, _evenPotionConditionColors,
-                        _isOddConditionsList, _isEvenConditionsList);
-                    ImGui.Columns(1);
-                    ImGui.TreePop();
-                }
+                ImGui.Columns(2, "StatusColumns", false);
+                ImGui.Text("Status");
+                ImGui.NextColumn();
+                ImGui.Text("Value");
+                ImGui.NextColumn();
+                ImGui.Separator();
 
-                // Second Potion
-                if (ImGui.TreeNode($"Second Potion Status:{SecondPot(out _).ToString()}"))
-                {
-                    ImGui.Columns(2, "SecondPotionColumns", false);
-                    ImGui.Text("Condition"); ImGui.NextColumn();
-                    ImGui.Text("Value"); ImGui.NextColumn();
-                    ImGui.Separator();
-                    ImGui.TextColored(_enablePotionColors[1], "Second Potion Enabled"); ImGui.NextColumn();
-                    ImGui.TextColored(_enablePotionColors[1], EnableSecondPotion.ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_usedPotionColors[1], "Second Potion Used"); ImGui.NextColumn();
-                    ImGui.TextColored(_usedPotionColors[1], SecondPotionUsed.ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_oddPotionColors[1], "Second Potion Timing"); ImGui.NextColumn();
-                    ImGui.TextColored(_oddPotionColors[1], IsOdd(SecondPotionTime) ? "Odd :" : "Even :"); ImGui.SameLine();
-                    ImGui.TextColored(ImGuiColors.ParsedOrange, $"{SecondPotionTime * 60} seconds");ImGui.NextColumn();
-                    ImGui.TextColored(_timeColors[1], "Is Time Condition Met:"); ImGui.NextColumn();
-                    ImGui.TextColored(_timeColors[1], _timeConditions[1].ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_conditionColors[1], "Condition:"); ImGui.NextColumn();
-                    ImGui.TextColored(_conditionColors[1], _isOddPotions[1].ToString()); ImGui.NextColumn();
-                    DrawParityConditions(IsOdd(SecondPotionTime), _oddPotionConditionColors, _evenPotionConditionColors,
-                        _isOddConditionsList, _isEvenConditionsList);
-                    ImGui.Columns(1);
-                    ImGui.TreePop();
-                }
+                ImGui.TextColored(_statusConditions[0], "Has Tillana:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[0], HasTillana.ToString());
+                ImGui.NextColumn();
 
-                // Third Potion
-                if (ImGui.TreeNode($"Third Potion Status:{ThirdPot(out _).ToString()}"))
-                {
-                    ImGui.Columns(2, "ThirdPotionColumns", false);
-                    ImGui.Text("Condition"); ImGui.NextColumn();
-                    ImGui.Text("Value"); ImGui.NextColumn();
-                    ImGui.Separator();
-                    ImGui.TextColored(_enablePotionColors[2], "Third Potion Enabled"); ImGui.NextColumn();
-                    ImGui.TextColored(_enablePotionColors[2], EnableThirdPotion.ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_usedPotionColors[2], "Third Potion Used"); ImGui.NextColumn();
-                    ImGui.TextColored(_usedPotionColors[2], ThirdPotionUsed.ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_oddPotionColors[2], "Third Potion Timing"); ImGui.NextColumn();
-                    ImGui.TextColored(_oddPotionColors[2], IsOdd(ThirdPotionTime) ? "Odd :" : "Even :"); ImGui.SameLine();
-                    ImGui.TextColored(ImGuiColors.ParsedOrange, $"{ThirdPotionTime * 60} seconds");ImGui.NextColumn();
-                    ImGui.TextColored(_timeColors[2], "Is Time Condition Met:"); ImGui.NextColumn();
-                    ImGui.TextColored(_timeColors[2], _timeConditions[2].ToString()); ImGui.NextColumn();
-                    ImGui.TextColored(_conditionColors[2], "Condition:"); ImGui.NextColumn();
-                    ImGui.TextColored(_conditionColors[2], _isOddPotions[2].ToString()); ImGui.NextColumn();
-                    DrawParityConditions(IsOdd(ThirdPotionTime), _oddPotionConditionColors, _evenPotionConditionColors,
-                        _isOddConditionsList, _isEvenConditionsList);
-                    ImGui.Columns(1);
-                    ImGui.TreePop();
-                }
+                ImGui.TextColored(_statusConditions[1], "Has Last Dance:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[1], HasLastDance.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[2], "Has Starfall:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[2], HasStarfall.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[3], "Has Finishing Move:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[3], HasFinishingMove.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[4], "Has Any Proc");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[4], HasAnyProc.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[5], "Has Fourfold Fan Dance:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[5], HasFourfoldFanDance.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[6], "Has Threefold Fan Dance:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[6], HasThreefoldFanDance.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[7], "In Burst:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[7], IsBurstPhase.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[8], "Is Dancing:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[8], IsDancing.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_statusConditions[9], "Is Medicated:");
+                ImGui.NextColumn();
+                ImGui.TextColored(_statusConditions[9], IsMedicated.ToString());
+                ImGui.NextColumn();
+
+
+                // Reset columns
+                ImGui.Columns(1);
                 ImGui.TreePop();
             }
-            ImGui.TreePop();
         }
         catch (Exception)
         {
             ImGui.TextColored(ImGuiColors.DalamudRed, "Error displaying combat status");
+        }
+    }
+
+    private void DrawPotionStatusText()
+    {
+        try
+        {
+            if (ImGui.BeginTable("PotionStatusTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+            {
+                ImGui.TableSetupColumn("Potion");
+                ImGui.TableSetupColumn("Enabled");
+                ImGui.TableSetupColumn("Used");
+                ImGui.TableSetupColumn("Can Use");
+                ImGui.TableSetupColumn("Condition");
+                ImGui.TableHeadersRow();
+
+                var trueColor = ImGuiColors.HealerGreen;
+                var falseColor = ImGuiColors.DalamudRed;
+
+                for (var i = 0; i < _potions.Count; i++)
+                {
+                    var (time, enabled, used) = _potions[i];
+                    var potionTimeInSeconds = time * 60;
+                    var isOpenerPotion = potionTimeInSeconds == 0;
+                    var isEvenMinutePotion = time % 2 == 0;
+
+                    var canUse = (isOpenerPotion && Countdown.TimeRemaining <= 1.5f) ||
+                                 (!isOpenerPotion && CombatTime >= potionTimeInSeconds &&
+                                  CombatTime < potionTimeInSeconds + 10);
+
+                    var condition = (isEvenMinutePotion ? InTwoMinuteWindow : InOddMinuteWindow) || isOpenerPotion;
+
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.Text($"Potion {i + 1}");
+
+                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TextColored(GetColor(enabled, trueColor, falseColor), enabled.ToString());
+
+                    ImGui.TableSetColumnIndex(2);
+                    ImGui.TextColored(GetColor(used, trueColor, falseColor), used.ToString());
+
+                    ImGui.TableSetColumnIndex(3);
+                    ImGui.TextColored(GetColor(canUse, trueColor, falseColor), canUse.ToString());
+
+                    ImGui.TableSetColumnIndex(4);
+                    ImGui.TextColored(GetColor(condition, trueColor, falseColor), condition.ToString());
+                }
+                ImGui.EndTable();
+            }
+        }
+        catch (Exception ex)
+        {
+            ImGui.TextColored(ImGuiColors.DalamudRed, $"Error displaying potion status: {ex.Message}");
         }
     }
 
@@ -197,12 +290,9 @@ public sealed partial class ChurinDNC
         {
             DisplayStatusHelper.BeginPaddedChild("ChurinDNC Status", true,
                 ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
-            var debugVisible = RotationDebugManager.IsDebugTableVisible;
-            if (ImGui.Checkbox("Enable Debug Table", ref debugVisible))
-                RotationDebugManager.IsDebugTableVisible = debugVisible;
             DrawRotationStatus();
-            DrawCombatStatus();
-            RotationDebugManager.DrawGCDMethodDebugTable();
+            DrawCombatStatusHeader();
+            DrawPotionStatusHeader();
             DisplayStatusHelper.EndPaddedChild();
         }
         catch (Exception ex)
@@ -212,79 +302,28 @@ public sealed partial class ChurinDNC
     }
 
     #endregion
-
     #region Status Window Helper Methods
 
     private static Vector4 GetColor(bool condition, Vector4 trueColor, Vector4 falseColor)
         => condition ? trueColor : falseColor;
     private void InitializeColorData()
     {
-        var potionTimes = new[] { FirstPotionTime, SecondPotionTime, ThirdPotionTime };
-        var enablePotions = new[] { EnableFirstPotion, EnableSecondPotion, EnableThirdPotion };
-        var usedPotions = new[] { FirstPotionUsed, SecondPotionUsed, ThirdPotionUsed };
-        var shouldUseConditions = new [] { ShouldUseTechStep, ShouldUseStandardStep, ShouldUseSaberDance,
-            ShouldUseStarfallDance, ShouldUseLastDance, ShouldUseFlourish, ShouldHoldForTechStep, ShouldHoldForStandard };
-        var statusConditions = new[] { DanceDance, IsDancing };
-        var oddPotionConditionList = new[]
-            { FlourishPvE.Cooldown is { IsCoolingDown: true, RecastTimeElapsed: >= 50 }, FlourishPvE.Cooldown.IsCoolingDown && FlourishPvE.Cooldown.WillHaveOneCharge(5) };
-        var evenPotionConditionList = new[]
-            { IsLastGCD(ActionID.TechnicalStepPvE), HasTechnicalStep && IsDancing && CompletedSteps is 0 or 3 or 4, HasTechnicalStep };
+        var shouldUseConditions = new[]
+        {
+            ShouldUseTechStep, ShouldUseStandardStep, TryUseSaberDance(out _), TryUseStarfallDance(out _),
+            TryUseLastDance(out _), TryUseFlourish(out _), CanUseTechnicalStep, CanUseStandardStep, TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(1,0.5f)
+        };
 
-        _oddPotionColors = potionTimes.Select(IsOdd)
-            .Select(isOdd => GetColor(isOdd, ImGuiColors.HealerGreen, ImGuiColors.TankBlue)).ToArray();
-        _enablePotionColors = enablePotions
-            .Select(enabled => GetColor(enabled, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
-        _usedPotionColors = usedPotions
-            .Select(used => GetColor(used, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
+        var statusConditions = new[]
+        {
+            HasTillana, HasLastDance, HasStarfall, HasFinishingMove, HasAnyProc, HasFourfoldFanDance, HasThreefoldFanDance,
+            IsBurstPhase, IsDancing, IsMedicated
+        };
+
         _shouldUseConditions = shouldUseConditions
             .Select(condition => GetColor(condition, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
         _statusConditions = statusConditions
             .Select(condition => GetColor(condition, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
-        _oddPotionConditionColors = oddPotionConditionList
-            .Select(condition => GetColor(condition, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
-        _evenPotionConditionColors = evenPotionConditionList
-            .Select(condition => GetColor(condition, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
-
-        var oddPotionCondition = OddPotionCondition;
-        var evenPotionCondition = EvenPotionCondition;
-
-        _isOddPotions = potionTimes.Select(IsOdd).ToArray();
-        _isOddConditionsList = oddPotionConditionList.Select(condition => condition).ToArray();
-        _isEvenConditionsList = evenPotionConditionList.Select(condition => condition).ToArray();
-        _conditionValues = _isOddPotions.Select(isOdd => isOdd ? oddPotionCondition : evenPotionCondition).ToArray();
-        _conditionColors = _conditionValues
-            .Select(val => GetColor(val, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
-
-        var combatTimes = new[] { FirstPotionTime * 60, SecondPotionTime * 60, ThirdPotionTime * 60 };
-        _timeConditions =
-        [
-            CombatTime >= combatTimes[0] || combatTimes[0] == 0,
-            CombatTime >= combatTimes[1] && CombatTime <= combatTimes[1] + 10,
-            CombatTime >= combatTimes[2] && CombatTime <= combatTimes[2] + 10
-        ];
-        _timeColors = _timeConditions.Select(val => GetColor(val, ImGuiColors.HealerGreen, ImGuiColors.DalamudRed)).ToArray();
-    }
-
-    private static void DrawParityConditions(bool isOdd, Vector4[] oddColors, Vector4[] evenColors,bool[] oddList, bool[] evenList)
-    {
-        if (isOdd)
-        {
-            ImGui.TextColored(oddColors[0], "Flourish Recast Elapsed is more than 50 seconds"); ImGui.NextColumn();
-            ImGui.TextColored(oddColors[0], oddList[0].ToString()); ImGui.NextColumn();
-            ImGui.TextColored(oddColors[1], "Flourish Will Have One Charge in  5 seconds"); ImGui.NextColumn();
-            ImGui.TextColored(oddColors[1], oddList[1].ToString());
-        }
-        else
-        {
-            ImGui.TextColored(evenColors[0], "Last GCD was Technical Step"); ImGui.NextColumn();
-            ImGui.TextColored(evenColors[0], evenList[0].ToString()); ImGui.NextColumn();
-            ImGui.TextColored(evenColors[1], "Has Technical Step and Is Dancing and Completed Steps is 0, 3, or 4"); ImGui.NextColumn();
-            ImGui.TextColored(evenColors[1], evenList[1].ToString()); ImGui.NextColumn();
-            ImGui.TextColored(evenColors[2], "Has Technical Step"); ImGui.NextColumn();
-            ImGui.TextColored(evenColors[2], evenList[2].ToString());
-        }
-
-        ImGui.NextColumn();
     }
 
     #endregion
