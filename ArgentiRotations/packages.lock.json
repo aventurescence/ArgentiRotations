@@ -17,7 +17,7 @@
       "RotationSolverReborn.Basic": {
         "type": "Direct",
         "requested": "[*-*, )",
-        "resolved": "7.2.5.67",
+        "resolved": "7.2.5.72",
         "contentHash": "81wVkK1zSU0oWjQogrHQBslAg7lFBvpS12DEh1tf+ZGGHZLB0KSnx1cHL2lB3GnoLXHO4JDivddg9NDPb0JU1Q==",
         "dependencies": {
           "Svg": "3.4.7",
