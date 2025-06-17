@@ -243,6 +243,57 @@ public sealed partial class ChurinBRD
                 }
                 ImGui.EndTable();
             }
+
+            // Additional tracked statuses
+            if (ImGui.TreeNode("Tracked Statuses"))
+            {
+                ImGui.Columns(2, "TrackedStatusesColumns", false);
+                ImGui.Text("Status");
+                ImGui.NextColumn();
+                ImGui.Text("Value");
+                ImGui.NextColumn();
+                ImGui.Separator();
+
+                ImGui.Text("Has Raging Strikes");
+                ImGui.NextColumn();
+                ImGui.Text(HasRagingStrikes.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Battle Voice");
+                ImGui.NextColumn();
+                ImGui.Text(HasBattleVoice.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Radiant Finale");
+                ImGui.NextColumn();
+                ImGui.Text(HasRadiantFinale.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("In Wanderer's Minuet");
+                ImGui.NextColumn();
+                ImGui.Text(InWanderers.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("In Mage's Ballad");
+                ImGui.NextColumn();
+                ImGui.Text(InMages.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("In Army's Paeon");
+                ImGui.NextColumn();
+                ImGui.Text(InArmys.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Barrage");
+                ImGui.NextColumn();
+                ImGui.Text(HasBarrage.ToString());
+                ImGui.NextColumn();
+
+                ImGui.NextColumn();
+
+                ImGui.Columns(1);
+                ImGui.TreePop();
+            }
         }
         catch (Exception ex)
         {

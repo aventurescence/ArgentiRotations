@@ -234,13 +234,12 @@ public sealed partial class ChurinDNC
     {
         try
         {
-            if (ImGui.BeginTable("PotionStatusTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+            if (ImGui.BeginTable("PotionStatusTable", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
             {
                 ImGui.TableSetupColumn("Potion");
                 ImGui.TableSetupColumn("Enabled");
                 ImGui.TableSetupColumn("Used");
-                ImGui.TableSetupColumn("Can Use");
-                ImGui.TableSetupColumn("Condition");
+                ImGui.TableSetupColumn("Time");
                 ImGui.TableHeadersRow();
 
                 var trueColor = ImGuiColors.HealerGreen;
@@ -249,33 +248,81 @@ public sealed partial class ChurinDNC
                 for (var i = 0; i < _potions.Count; i++)
                 {
                     var (time, enabled, used) = _potions[i];
-                    var potionTimeInSeconds = time * 60;
-                    var isOpenerPotion = potionTimeInSeconds == 0;
-                    var isEvenMinutePotion = time % 2 == 0;
-
-                    var canUse = (isOpenerPotion && Countdown.TimeRemaining <= 1.5f) ||
-                                 (!isOpenerPotion && CombatTime >= potionTimeInSeconds &&
-                                  CombatTime < potionTimeInSeconds + 10);
-
-                    var condition = (isEvenMinutePotion ? InTwoMinuteWindow : InOddMinuteWindow) || isOpenerPotion;
-
                     ImGui.TableNextRow();
                     ImGui.TableSetColumnIndex(0);
                     ImGui.Text($"Potion {i + 1}");
-
                     ImGui.TableSetColumnIndex(1);
                     ImGui.TextColored(GetColor(enabled, trueColor, falseColor), enabled.ToString());
-
                     ImGui.TableSetColumnIndex(2);
                     ImGui.TextColored(GetColor(used, trueColor, falseColor), used.ToString());
-
                     ImGui.TableSetColumnIndex(3);
-                    ImGui.TextColored(GetColor(canUse, trueColor, falseColor), canUse.ToString());
-
-                    ImGui.TableSetColumnIndex(4);
-                    ImGui.TextColored(GetColor(condition, trueColor, falseColor), condition.ToString());
+                    ImGui.Text($"{time} min");
                 }
                 ImGui.EndTable();
+            }
+
+            // Additional tracked statuses
+            if (ImGui.TreeNode("Tracked Statuses"))
+            {
+                ImGui.Columns(2, "TrackedStatusesColumns", false);
+                ImGui.Text("Status");
+                ImGui.NextColumn();
+                ImGui.Text("Value");
+                ImGui.NextColumn();
+                ImGui.Separator();
+
+                ImGui.Text("Has Technical Step");
+                ImGui.NextColumn();
+                ImGui.Text(HasTechnicalStep.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Standard Step");
+                ImGui.NextColumn();
+                ImGui.Text(HasStandardStep.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Devilment");
+                ImGui.NextColumn();
+                ImGui.Text(HasDevilment.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Medicated");
+                ImGui.NextColumn();
+                ImGui.Text(IsMedicated.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Tillana");
+                ImGui.NextColumn();
+                ImGui.Text(HasTillana.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Last Dance");
+                ImGui.NextColumn();
+                ImGui.Text(HasLastDance.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Has Any Proc");
+                ImGui.NextColumn();
+                ImGui.Text(HasAnyProc.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Is Dancing");
+                ImGui.NextColumn();
+                ImGui.Text(IsDancing.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Is Burst Phase");
+                ImGui.NextColumn();
+                ImGui.Text(IsBurstPhase.ToString());
+                ImGui.NextColumn();
+
+                ImGui.Text("Flourish Cooldown");
+                ImGui.NextColumn();
+                ImGui.Text($"{FlourishPvE.Cooldown.RecastTimeElapsed:F1} / {FlourishCooldown}s");
+                ImGui.NextColumn();
+
+                ImGui.Columns(1);
+                ImGui.TreePop();
             }
         }
         catch (Exception ex)
