@@ -6,7 +6,7 @@ namespace ArgentiRotations.Ranged;
 [Rotation("Churin BRD", CombatType.PvE, GameVersion = "7.2.5",
     Description = "I sing the body electric. I gasp the body organic. I miss the body remembered.")]
 [SourceCode(Path = "ArgentiRotations/Ranged/Bard/ChurinBRD.cs")]
-[Api(4)]
+[Api(5)]
 public sealed partial class ChurinBRD : BardRotation
 {
     #region Properties
@@ -279,21 +279,14 @@ public sealed partial class ChurinBRD : BardRotation
 
     private bool TryUseIronJaws(out IAction? act)
     {
-        if (CurrentTarget != null && InCombat && CurrentTarget.StatusList != null && !CurrentTarget.HasStatus(true,
-                StatusID.VenomousBite, StatusID.CausticBite, StatusID.Windbite, StatusID.Stormbite))
-            return SetActToNull(out act);
-
-        // Ensure IronJawsPvE.Target.Target and its StatusList are not null before accessing
-        var ironJawsTarget = CurrentTarget != null && IronJawsPvE.Target.Target != null;
-        if (ironJawsTarget && IronJawsPvE.Target.Target?.StatusList != null &&
-            IronJawsPvE.Target.Target.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []))
-            if (InBurst &&
-                Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale,
-                    StatusID.RagingStrikes) &&
-                !BlastArrowPvE.CanUse(out _))
-                return IronJawsPvE.CanUse(out act, skipStatusProvideCheck: true, skipAoeCheck: true);
-
-        return IronJawsPvE.CanUse(out act) || SetActToNull(out act);
+        if (IronJawsPvE.CanUse(out act, skipStatusProvideCheck: true) && (IronJawsPvE.Target.Target?.WillStatusEnd(30, true, IronJawsPvE.Setting.TargetStatusProvide ?? []) ?? false))
+        {
+            if (InBurst && Player.WillStatusEndGCD(1, 1, true, StatusID.BattleVoice, StatusID.RadiantFinale, StatusID.RagingStrikes) && !BlastArrowPvE.CanUse(out _))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private bool TryUseDoTs(out IAction? act)
