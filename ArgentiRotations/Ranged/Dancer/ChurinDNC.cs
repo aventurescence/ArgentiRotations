@@ -4,7 +4,7 @@ namespace ArgentiRotations.Ranged;
 
 [Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.5", Description = "Candles lit, runes drawn upon the floor, sacrifice prepared. Everything is ready for the summoning. I begin the incantation: \"Shakira, Shakira!\"")]
 [SourceCode(Path = "ArgentiRotations/Ranged/Dancer/ChurinDNC.cs")]
-[Api(4)]
+[Api(5)]
 public sealed partial class ChurinDNC : DancerRotation
 {
 
@@ -157,7 +157,8 @@ public sealed partial class ChurinDNC : DancerRotation
     // Override the method for actions to be taken during the countdown phase of combat
     protected override IAction? CountDownAction(float remainTime)
     {
-        ResetPotions();
+        //ResetPotions();
+        InitializePotions();
         UpdatePotions();
         if (remainTime > 15) return base.CountDownAction(remainTime);
         if (TryUseClosedPosition(out var act) ||
@@ -527,12 +528,11 @@ public sealed partial class ChurinDNC : DancerRotation
         act = null;
         if (!InCombat || HasThreefoldFanDance || !FlourishPvE.IsEnabled) return false;
 
-        var useFlourish = IsBurstPhase || !IsBurstPhase && TechnicalStepPvE.Cooldown.IsCoolingDown && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(30);
+        var useFlourish = IsBurstPhase || !IsBurstPhase && TechnicalStepPvE.Cooldown.IsCoolingDown && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(25);
 
         if (ShouldUseTechStep && (!IsBurstPhase && TechnicalStepPvE.Cooldown is { IsCoolingDown: false, HasOneCharge: true } ||
-                                  !IsBurstPhase && TechnicalStepPvE.Cooldown.WillHaveOneCharge(45)) ||
                                   !ShouldUseTechStep && (TechnicalStepPvE.Cooldown is {IsCoolingDown:false,HasOneCharge:true} && !HasTillana ||
-                                  TechnicalStepPvE.Cooldown.WillHaveOneCharge(15)))
+                                  TechnicalStepPvE.Cooldown.WillHaveOneCharge(15))))
         {
             useFlourish = false;
         }
@@ -584,8 +584,16 @@ public sealed partial class ChurinDNC : DancerRotation
             var isOpenerPotion = potionTimeInSeconds == 0;
             var isEvenMinutePotion = time % 2 == 0;
 
-            var canUse = (isOpenerPotion && Countdown.TimeRemaining <= 1.5f) ||
-                         (!isOpenerPotion && CombatTime >= potionTimeInSeconds && CombatTime < potionTimeInSeconds + 59);
+            bool canUse = false;
+            if (isOpenerPotion)
+            {
+                // Allow a slightly larger window for opener potion
+                canUse = !InCombat && Countdown.TimeRemaining <= 2.0f && Countdown.TimeRemaining >= 0f;
+            }
+            else
+            {
+                canUse = InCombat && CombatTime >= potionTimeInSeconds && CombatTime < potionTimeInSeconds + 59;
+            }
 
             if (!canUse) continue;
 
@@ -616,7 +624,6 @@ public sealed partial class ChurinDNC : DancerRotation
 
             // Merge used state if in combat
             if (InCombat)
-            {
                 for (var i = 0; i < _potions.Count; i++)
                 {
                     var (time, enabled, _) = _potions[i];
@@ -624,7 +631,6 @@ public sealed partial class ChurinDNC : DancerRotation
                     if (old.Time == time)
                         _potions[i] = (time, enabled, old.Used);
                 }
-            }
 
             _lastPotionTiming = PotionTiming;
             _lastFirst = CustomFirstPotionTime;
@@ -633,9 +639,10 @@ public sealed partial class ChurinDNC : DancerRotation
         }
     }
 
-    private void ResetPotions()
+    /*private void ResetPotions()
     {
-        if (!InCombat || CombatTime == 0)
+        // Only reset if not in combat, combat time is 0, and the first potion is not an opener
+        if (!InCombat && CombatTime == 0 && _potions.Count > 0 && _potions[0].Time != 0)
         {
             for (var i = 0; i < _potions.Count; i++)
             {
@@ -643,7 +650,8 @@ public sealed partial class ChurinDNC : DancerRotation
                 _potions[i] = (time, enabled, false);
             }
         }
-    }
+    }*/
+
     #endregion
 
     #endregion
