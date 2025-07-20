@@ -47,5 +47,5 @@ https://github.com/aventurescence/ArgentiRotations/releases/latest/download/Arge
 ```
 
 ## To Do:
-1. [ ] **_ChurinMCH_**
-2. [ ] **_ChurinSCH_**
+1. [ ] **_ChurinSCH_**
+2. [ ] **_ChurinDRK_**
