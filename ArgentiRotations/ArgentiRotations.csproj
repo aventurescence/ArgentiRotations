@@ -2,7 +2,7 @@
           <PropertyGroup>
             <TargetFramework>.net9.0-windows</TargetFramework>
             <AssemblyName>$(MSBuildProjectName)</AssemblyName>
-            <AssemblyVersion>1.1.1.69</AssemblyVersion>
+            <AssemblyVersion>6.9.6.9</AssemblyVersion>
           </PropertyGroup>
   
           <PropertyGroup>
@@ -10,7 +10,7 @@
           </PropertyGroup>
   
           <ItemGroup>
-            <PackageReference Include="RotationSolverReborn.Basic" Version="7.2.5.87" />
+            <PackageReference Include="RotationSolverReborn.Basic" Version="7.2.5.*-*" />
           </ItemGroup>
   
           <ItemGroup>
