@@ -1,6 +1,14 @@
 using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState.Party;
+using Dalamud.Plugin.Services;
+using ECommons.ExcelServices;
+using ECommons.GameHelpers;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Arrays;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using Lumina.Text.ReadOnly;
 using Serilog;
 
 namespace ArgentiRotations.Common;
@@ -66,6 +74,14 @@ internal unsafe class ArgentiUtilities
 
     internal static bool CountDownActive => Countdown.IsCountdownActive;
     internal static float CountDownTime => Countdown.TimeRemaining;
+
+    #endregion
+
+    #region Party Composition
+
+
+    public bool IsInParty => CustomRotation.IsFullParty;
+
 
     #endregion
 
