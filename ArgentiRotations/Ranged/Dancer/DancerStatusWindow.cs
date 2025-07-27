@@ -1,6 +1,5 @@
 ﻿using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
-using Dalamud.Utility;
 
 namespace ArgentiRotations.Ranged;
 
@@ -12,6 +11,24 @@ public sealed partial class ChurinDNC
 
     #endregion
     #region Status Window Override
+
+    public override void DisplayStatus()
+    {
+        try
+        {
+            DisplayStatusHelper.BeginPaddedChild("ChurinDNC Status", true,
+                ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
+            DrawRotationStatus();
+            DrawPartyCompositionHeader();
+            DrawCombatStatusHeader();
+            DrawPotionStatusHeader();
+            DisplayStatusHelper.EndPaddedChild();
+        }
+        catch (Exception ex)
+        {
+            ImGui.TextColored(ImGuiColors.DalamudRed, $"Error displaying status: {ex.Message}");
+        }
+    }
     private void DrawRotationStatus()
     {
         var text = "Rotation: " + Name;
@@ -23,6 +40,79 @@ public sealed partial class ChurinDNC
         }, ImGui.GetWindowWidth(), textSize);
     }
 
+    #region Party Composition
+    private static void DrawPartyCompositionHeader()
+    {
+        try
+        {
+            ImGui.BeginGroup();
+            if (ImGui.CollapsingHeader("Party Composition", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                DrawPartyCompositionText();
+            }
+            ImGui.EndGroup();
+        }
+        catch (Exception)
+        {
+            ImGui.TextColored(ImGuiColors.DalamudRed, "Error displaying party composition");
+        }
+    }
+    private static void DrawPartyCompositionText()
+    {
+        ArgentiRotations.Common.PartyComposition.StatusList();
+        if (ImGui.BeginTable("PartyCompositionTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        {
+            ImGui.TableSetupColumn("Role");
+            ImGui.TableSetupColumn("Job");
+            ImGui.TableSetupColumn("Buffs Provided");
+            ImGui.TableHeadersRow();
+
+            if (PartyComposition.Count == 0)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableSetColumnIndex(0);
+                ImGui.Text(Player.ClassJob.Value.GetJobRole().ToString());
+
+                ImGui.TableSetColumnIndex(1);
+                var jobAbbr = Player.ClassJob.Value.Abbreviation.ToString();
+                ImGui.Text(jobAbbr);
+
+                ImGui.TableSetColumnIndex(2);
+                var buffs = ArgentiRotations.Common.PartyComposition.Buffs
+                    .Where(b => b.JobAbbr == jobAbbr)
+                    .Select(b => b.Name)
+                    .ToList();
+
+                var buffText = buffs.Count != 0 ? string.Join(", ", buffs) : "None";
+                ImGui.Text(buffText);
+            }
+
+            foreach (var member in PartyComposition)
+            {
+                ImGui.TableNextRow();
+
+                ImGui.TableSetColumnIndex(0);
+                ImGui.Text(member.Value.GetJobRole().ToString());
+
+                ImGui.TableSetColumnIndex(1);
+                var jobAbbr = member.Value.Abbreviation.ToString();
+                ImGui.Text(jobAbbr);
+
+                ImGui.TableSetColumnIndex(2);
+                var buffs = ArgentiRotations.Common.PartyComposition.Buffs
+                    .Where(b => b.JobAbbr == jobAbbr)
+                    .Select(b => b.Name)
+                    .ToList();
+
+                var buffText = buffs.Count != 0 ? string.Join(", ", buffs) : "None";
+                ImGui.Text(buffText);
+            }
+        }
+        ImGui.EndTable();
+    }
+
+    #endregion
+    #region Combat Status
     private void DrawCombatStatusHeader()
     {
         try
@@ -88,17 +178,6 @@ public sealed partial class ChurinDNC
             ImGui.TextColored(ImGuiColors.DalamudRed, "Error displaying combat status");
         }
     }
-
-    private void DrawPotionStatusHeader()
-    {
-        ImGui.BeginGroup();
-        if (ImGui.CollapsingHeader("Potion Status", ImGuiTreeNodeFlags.DefaultOpen))
-        {
-            DrawPotionStatusText();
-        }
-        ImGui.EndGroup();
-    }
-
     private void DrawCombatStatusText()
     {
         try
@@ -153,6 +232,11 @@ public sealed partial class ChurinDNC
                 ImGui.TextColored(_shouldUseConditions[7], "Should Hold For Standard Step?");
                 ImGui.NextColumn();
                 ImGui.TextColored(_shouldUseConditions[7], CanUseStandardStep.ToString());
+                ImGui.NextColumn();
+
+                ImGui.TextColored(_shouldUseConditions[8], "Are Dance Targets In Range?");
+                ImGui.NextColumn();
+                ImGui.TextColored(_shouldUseConditions[8], AreDanceTargetsInRange.ToString());
                 ImGui.NextColumn();
 
                 // Reset columns
@@ -229,7 +313,17 @@ public sealed partial class ChurinDNC
             ImGui.TextColored(ImGuiColors.DalamudRed, "Error displaying combat status");
         }
     }
-
+    #endregion
+    #region Potion Status
+    private void DrawPotionStatusHeader()
+    {
+        ImGui.BeginGroup();
+        if (ImGui.CollapsingHeader("Potion Status", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            DrawPotionStatusText();
+        }
+        ImGui.EndGroup();
+    }
     private void DrawPotionStatusText()
     {
         try
@@ -260,93 +354,14 @@ public sealed partial class ChurinDNC
                 }
                 ImGui.EndTable();
             }
-
-            // Additional tracked statuses
-            if (ImGui.TreeNode("Tracked Statuses"))
-            {
-                ImGui.Columns(2, "TrackedStatusesColumns", false);
-                ImGui.Text("Status");
-                ImGui.NextColumn();
-                ImGui.Text("Value");
-                ImGui.NextColumn();
-                ImGui.Separator();
-
-                ImGui.Text("Has Technical Step");
-                ImGui.NextColumn();
-                ImGui.Text(HasTechnicalStep.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Has Standard Step");
-                ImGui.NextColumn();
-                ImGui.Text(HasStandardStep.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Has Devilment");
-                ImGui.NextColumn();
-                ImGui.Text(HasDevilment.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Has Medicated");
-                ImGui.NextColumn();
-                ImGui.Text(IsMedicated.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Has Tillana");
-                ImGui.NextColumn();
-                ImGui.Text(HasTillana.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Has Last Dance");
-                ImGui.NextColumn();
-                ImGui.Text(HasLastDance.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Has Any Proc");
-                ImGui.NextColumn();
-                ImGui.Text(HasAnyProc.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Is Dancing");
-                ImGui.NextColumn();
-                ImGui.Text(IsDancing.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Is Burst Phase");
-                ImGui.NextColumn();
-                ImGui.Text(IsBurstPhase.ToString());
-                ImGui.NextColumn();
-
-                ImGui.Text("Flourish Cooldown");
-                ImGui.NextColumn();
-                ImGui.Text($"{FlourishPvE.Cooldown.RecastTimeElapsed:F1} / {FlourishCooldown}s");
-                ImGui.NextColumn();
-
-                ImGui.Columns(1);
-                ImGui.TreePop();
-            }
         }
         catch (Exception ex)
         {
             ImGui.TextColored(ImGuiColors.DalamudRed, $"Error displaying potion status: {ex.Message}");
         }
     }
+    #endregion
 
-    public override void DisplayStatus()
-    {
-        try
-        {
-            DisplayStatusHelper.BeginPaddedChild("ChurinDNC Status", true,
-                ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar);
-            DrawRotationStatus();
-            DrawCombatStatusHeader();
-            DrawPotionStatusHeader();
-            DisplayStatusHelper.EndPaddedChild();
-        }
-        catch (Exception ex)
-        {
-            ImGui.TextColored(ImGuiColors.DalamudRed, $"Error displaying status: {ex.Message}");
-        }
-    }
 
     #endregion
     #region Status Window Helper Methods
@@ -358,7 +373,8 @@ public sealed partial class ChurinDNC
         var shouldUseConditions = new[]
         {
             ShouldUseTechStep, ShouldUseStandardStep, TryUseSaberDance(out _), TryUseStarfallDance(out _),
-            TryUseLastDance(out _), TryUseFlourish(out _), CanUseTechnicalStep, CanUseStandardStep, TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(1,0.5f)
+            TryUseLastDance(out _), TryUseFlourish(out _), CanUseTechnicalStep, CanUseStandardStep, TechnicalStepPvE.Cooldown.WillHaveOneChargeGCD(1,0.5f),
+            AreDanceTargetsInRange
         };
 
         var statusConditions = new[]
