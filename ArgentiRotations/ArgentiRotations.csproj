@@ -34,6 +34,7 @@
             <Folder Include="ArgentiRotations\Common"/>
             <Folder Include="ArgentiRotations\Ranged"/>
             <Folder Include="ArgentiRotations\Encounter"/>
+            <Folder Include="Encounter.tmp\Savage.tmp\M6SSugarRiot\" />
           </ItemGroup>
           <ItemGroup>
             <None Update="ArgentiRotations.json">
