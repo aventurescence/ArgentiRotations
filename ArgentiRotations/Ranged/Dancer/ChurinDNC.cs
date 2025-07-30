@@ -1,6 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
-using ArgentiRotations.Common;
 
 namespace ArgentiRotations.Ranged;
 
@@ -9,8 +7,6 @@ namespace ArgentiRotations.Ranged;
 [Api(5)]
 public sealed partial class ChurinDNC : DancerRotation
 {
-
-
     #region Properties
 
     #region Constants
@@ -27,20 +23,12 @@ public sealed partial class ChurinDNC : DancerRotation
     #endregion
 
     #region Status Booleans
-    private static bool InTwoMinuteWindow => HasTechnicalStep || HasTechnicalStep && CompletedSteps == 4 || IsLastGCD(ActionID.TechnicalStepPvE);
-    private bool InOddMinuteWindow => !InTwoMinuteWindow && FlourishPvE.Cooldown.IsCoolingDown && FlourishCooldown - FlourishPvE.Cooldown.RecastTimeElapsed < 10;
-    private new static bool IsDancing => Player.HasStatus(true, StatusID.StandardStep, StatusID.TechnicalStep) && !Player.WillStatusEnd(0, true, StatusID.StandardStep, StatusID.TechnicalStep);
-    private new static bool HasStandardStep => Player.HasStatus(true, StatusID.StandardStep) && !Player.WillStatusEnd(0, true, StatusID.StandardStep);
-    private new static bool HasTechnicalStep => Player.HasStatus(true, StatusID.TechnicalStep) && !Player.WillStatusEnd(0, true, StatusID.TechnicalStep);
+    private bool InTwoMinuteWindow => HasTechnicalStep || HasTechnicalStep && CompletedSteps == 4 || IsLastGCD(ActionID.TechnicalStepPvE);
+    private bool InOddMinuteWindow => TechnicalStepPvE.Cooldown.IsCoolingDown && FlourishPvE.Cooldown.IsCoolingDown && HasStandardStep;
     private static bool HasTillana => Player.HasStatus(true, StatusID.FlourishingFinish) && !Player.WillStatusEnd(0, true, StatusID.FlourishingFinish);
-    private new static bool HasTechnicalFinish => Player.HasStatus(true, StatusID.TechnicalFinish);
-    private new static bool HasDevilment => Player.HasStatus(true, StatusID.Devilment);
-    private new static bool HasLastDance => Player.HasStatus(true, StatusID.LastDanceReady) && !Player.WillStatusEnd(0, true, StatusID.LastDanceReady);
     private static bool IsBurstPhase => HasDevilment && HasTechnicalFinish;
     private static bool IsMedicated => Player.HasStatus(true, StatusID.Medicated) && !Player.WillStatusEnd(0, true, StatusID.Medicated);
-
-    private static bool HasAnyProc => Player.HasStatus(true, StatusID.SilkenFlow, StatusID.SilkenSymmetry,
-        StatusID.FlourishingFlow, StatusID.FlourishingSymmetry);
+    private static bool HasAnyProc => Player.HasStatus(true, StatusID.SilkenFlow, StatusID.SilkenSymmetry, StatusID.FlourishingFlow, StatusID.FlourishingSymmetry);
     private static bool HasFinishingMove => Player.HasStatus(true, StatusID.FinishingMoveReady) && !Player.WillStatusEnd(0, true, StatusID.FinishingMoveReady);
     private static bool HasStarfall => HasFlourishingStarfall && !Player.WillStatusEnd(0, true, StatusID.FlourishingStarfall);
     private static bool AreDanceTargetsInRange => AllHostileTargets.Any(target => target.DistanceToPlayer() <= DanceTargetRange) || CurrentTarget?.DistanceToPlayer() <= DanceTargetRange;
@@ -52,58 +40,76 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool ShouldUseTechStep => TechnicalStepPvE.IsEnabled;
     private bool ShouldUseStandardStep => StandardStepPvE.IsEnabled && !HasLastDance;
     private static bool CanWeave => WeaponRemain >= DefaultAnimationLock;
-    private bool CanUseTechnicalStep => ShouldUseTechStep && !HasTillana && !IsDancing &&
-                                        (AreDanceTargetsInRange && (HoldTechStepOnly || HoldTechStepAndFinish) ||
-                                        DontHoldTech || HoldTechFinishOnly) &&
-                                        TechnicalStepIn(1);
+
+    private bool CanUseTechnicalStep
+    {
+        get
+        {
+            if (ShouldUseTechStep && !HasTillana && !IsDancing && TechnicalStepIn(1.5f))
+            {
+                switch (TechHoldStrategy)
+                {
+                    case HoldTechStrategy.HoldTechStepOnly when AreDanceTargetsInRange:
+                    case HoldTechStrategy.DontHoldTechStepAndFinish:
+                    case HoldTechStrategy.HoldTechFinishOnly:
+                    case HoldTechStrategy.HoldTechStepAndFinish when AreDanceTargetsInRange:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+
+            return false;
+        }
+    }
 
     private bool CanUseStandardStep
     {
         get
         {
-            if (ShouldUseStandardStep && (!CanUseTechnicalStep || !TechnicalStepIn(5)) && !IsDancing)
+            if (ShouldUseStandardStep && (!CanUseTechnicalStep || !TechnicalStepIn(7)) && !IsDancing)
             {
-                if (AreDanceTargetsInRange && (HoldStandardStepOnly || HoldStandardStepAndFinish || HasFinishingMove && HoldStandardFinishOnly) ||
-                     DontHoldStandard || !HasFinishingMove && HoldStandardFinishOnly)
+                if (StandardStepIn(0.5f) && (FlourishPvE.Cooldown is { IsCoolingDown:true,HasOneCharge: false } && ShouldUseTechStep || !ShouldUseTechStep ))
                 {
-                    if (StandardStepIn(0.5f) && FlourishPvE.Cooldown is {HasOneCharge:false})
+                    if ((IsBurstPhase && !DisableStandardInBurst ||
+                        IsBurstPhase && DisableStandardInBurst && HasFinishingMove) && Esprit <= BurstEspritThreshold ||
+                        !IsBurstPhase && Esprit <= HighEspritThreshold)
                     {
-                        switch (IsBurstPhase)
+                        switch (StandardHoldStrategy)
                         {
-                            case true when !HasFinishingMove && !DisableStandardInBurst && Esprit < BurstEspritThreshold:
-                            case true when HasFinishingMove && Esprit < BurstEspritThreshold:
-                            case false when !HasFinishingMove && Esprit < HighEspritThreshold:
-                            case false when HasFinishingMove && Esprit < HighEspritThreshold:
-                                    return true;
+                            case HoldStandardStrategy.HoldStandardStepOnly when AreDanceTargetsInRange:
+                            case HoldStandardStrategy.DontHoldStandardStepAndFinish:
+                            case HoldStandardStrategy.HoldStandardFinishOnly:
+                            case HoldStandardStrategy.HoldStandardStepAndFinish when AreDanceTargetsInRange:
+                                return true;
                             default:
                                 return false;
                         }
                     }
-
                 }
-
             }
             return false;
         }
     }
 
-    private bool StandardStepIn(float remainTime) => ShouldUseStandardStep && (StandardStepPvE.Cooldown is { IsCoolingDown: true } &&
-                                                                               StandardStepCooldown - StandardStepPvE.Cooldown.RecastTimeElapsed <= remainTime ||
-                                                                               StandardStepPvE.Cooldown.WillHaveOneCharge(remainTime) ||
+    private bool StandardStepIn(float remainTime) => ShouldUseStandardStep && ((StandardStepPvE.Cooldown is { IsCoolingDown: true } &&
+                                                                               (StandardStepCooldown - StandardStepPvE.Cooldown.RecastTimeElapsed <= remainTime ||
+                                                                               StandardStepPvE.Cooldown.WillHaveOneCharge(remainTime))) ||
                                                                                StandardStepPvE.Cooldown.HasOneCharge);
-    private bool TechnicalStepIn(float remainTime) => ShouldUseTechStep && (TechnicalStepPvE.Cooldown is { IsCoolingDown: true } &&
-                                                      TechnicalStepCooldown - TechnicalStepPvE.Cooldown.RecastTimeElapsed <= remainTime ||
-                                                      TechnicalStepPvE.Cooldown.WillHaveOneCharge(remainTime) ||
+    private bool TechnicalStepIn(float remainTime) => ShouldUseTechStep && ((TechnicalStepPvE.Cooldown is { IsCoolingDown: true } &&
+                                                      (TechnicalStepCooldown - TechnicalStepPvE.Cooldown.RecastTimeElapsed <= remainTime ||
+                                                      TechnicalStepPvE.Cooldown.WillHaveOneCharge(remainTime))) ||
                                                       TechnicalStepPvE.Cooldown.HasOneCharge);
 
 
     private bool HoldTechStepOnly => TechHoldStrategy == HoldTechStrategy.HoldTechStepOnly;
     private bool HoldTechFinishOnly => TechHoldStrategy == HoldTechStrategy.HoldTechFinishOnly;
+    private bool HoldTechStepAndFinish => TechHoldStrategy == HoldTechStrategy.HoldTechStepAndFinish;
+    private bool DontHoldTech => TechHoldStrategy == HoldTechStrategy.DontHoldTechStepAndFinish;
     private bool HoldStandardStepOnly => StandardHoldStrategy == HoldStandardStrategy.HoldStandardStepOnly && !HasFinishingMove;
     private bool HoldStandardFinishOnly => StandardHoldStrategy == HoldStandardStrategy.HoldStandardFinishOnly;
-    private bool HoldTechStepAndFinish => TechHoldStrategy == HoldTechStrategy.HoldTechStepAndFinish;
     private bool HoldStandardStepAndFinish => StandardHoldStrategy == HoldStandardStrategy.HoldStandardStepAndFinish;
-    private bool DontHoldTech => TechHoldStrategy == HoldTechStrategy.DontHoldTechStepAndFinish;
+
     private bool DontHoldStandard => StandardHoldStrategy == HoldStandardStrategy.DontHoldStandardStepAndFinish;
 
     #endregion
@@ -138,17 +144,17 @@ public sealed partial class ChurinDNC : DancerRotation
 
     #region Config Options
     [RotationConfig(CombatType.PvE, Name = "Technical Step, Technical Finish & Tillana Hold Strategy")]
-    private HoldTechStrategy TechHoldStrategy  { get; set; }
+    private HoldTechStrategy TechHoldStrategy  { get; set; } = HoldTechStrategy.HoldTechStepAndFinish;
 
     [RotationConfig(CombatType.PvE, Name = "Standard Step, Standard Finish & Finishing Move Hold Strategy")]
-    private HoldStandardStrategy StandardHoldStrategy { get; set; }
+    private HoldStandardStrategy StandardHoldStrategy { get; set; } = HoldStandardStrategy.HoldStandardStepAndFinish;
 
-    [Range(0, 20, ConfigUnitType.None, 1)]
+    [Range(0, 20, ConfigUnitType.Seconds, 0.5f)]
     [RotationConfig(CombatType.PvE, Name = "Use Opener Potion at minus time in seconds")]
-    private int OpenerPotionTime { get; set; }
+    private float OpenerPotionTime { get; set; } = 1f;
 
     [RotationConfig(CombatType.PvE, Name = "Potion Presets")]
-    private static PotionTimings PotionTiming { get; set; }
+    private static PotionTimings PotionTiming { get; set; } = PotionTimings.None;
 
     [RotationConfig(CombatType.PvE, Name = "Use Custom Potion Timing")]
     private static bool CustomPotionTiming { get; set; } = false;
@@ -288,9 +294,7 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool TryUseDance(out IAction? act)
     {
         if (CanUseTechnicalStep && TechnicalStepPvE.CanUse(out act)) return true;
-        if (CanUseStandardStep && StandardStepPvE.CanUse(out act) &&
-            ((DisableStandardInBurst && !IsBurstPhase && !HasFinishingMove)||
-             !DisableStandardInBurst)) return true;
+        if (CanUseStandardStep && StandardStepPvE.CanUse(out act)) return true;
         if (TryUseFinishingMove(out act)) return true;
 
         act = null;
@@ -305,7 +309,7 @@ public sealed partial class ChurinDNC : DancerRotation
         if (HasStandardStep)
         {
             var shouldFinish = CompletedSteps == 2 && ((HoldStandardFinishOnly || HoldStandardStepAndFinish) && AreDanceTargetsInRange ||
-                                                       DontHoldStandard);
+                                                       DontHoldStandard || HoldStandardStepOnly);
             var aboutToTimeOut = Player.WillStatusEnd(1, true, StatusID.StandardStep);
 
             if ((shouldFinish || aboutToTimeOut) && DoubleStandardFinishPvE.CanUse(out act, skipAoeCheck: true))
@@ -316,7 +320,7 @@ public sealed partial class ChurinDNC : DancerRotation
 
         if (HasTechnicalStep)
         {
-            var shouldFinish = CompletedSteps == 4 && ((HoldTechFinishOnly || HoldTechStepAndFinish) && AreDanceTargetsInRange || DontHoldTech);
+            var shouldFinish = CompletedSteps == 4 && ((HoldTechFinishOnly || HoldTechStepAndFinish) && AreDanceTargetsInRange || DontHoldTech || HoldTechStepOnly);
             var aboutToTimeOut = Player.WillStatusEnd(1, true, StatusID.TechnicalStep);
 
             if ((shouldFinish || aboutToTimeOut) && QuadrupleTechnicalFinishPvE.CanUse(out act, skipAoeCheck: true))
@@ -349,15 +353,15 @@ public sealed partial class ChurinDNC : DancerRotation
 
         if (IsDancing) return false;
 
+        if (TryUseDance(out act)) return true;
+
         if (TryUseTillana(out act)) return true;
 
         if (TryUseDanceOfTheDawn(out act)) return true;
 
-        if (TryUseLastDance(out act)) return true;
-
-        if (TryUseFinishingMove(out act)) return true;
-
         if (TryUseStarfallDance(out act)) return true;
+
+        if (TryUseLastDance(out act)) return true;
 
         return TryUseSaberDance(out act) || TryUseFillerGCD(out act);
     }
@@ -398,7 +402,7 @@ public sealed partial class ChurinDNC : DancerRotation
         {
             return IsBurstPhase switch
             {
-                true when !HasFinishingMove && !HasStarfall && Esprit > SaberDanceEspritCost => false,
+                true when !HasFinishingMove && Esprit > SaberDanceEspritCost => false,
                 true when HasLastDance && Player.WillStatusEnd(3, true, StatusID.LastDanceReady) => true,
                 true when HasFinishingMove && StandardStepIn(5) => true,
                 true when HasFinishingMove && Esprit < MidEspritThreshold => true,
@@ -421,6 +425,7 @@ public sealed partial class ChurinDNC : DancerRotation
         {
             return Esprit switch
             {
+                >= 0 when HasStarfall && Player.WillStatusEnd(5, true, StatusID.FlourishingStarfall) && DevilmentPvE.Cooldown.RecastTimeElapsed > 5 => true,
                 < MidEspritThreshold when !HasFinishingMove || DevilmentPvE.Cooldown.RecastTimeElapsed > 7 => true,
                 > MidEspritThreshold when DevilmentPvE.Cooldown.RecastTimeElapsed > 15 => true,
                 _ => false
@@ -429,7 +434,6 @@ public sealed partial class ChurinDNC : DancerRotation
         return false;
     }
     #endregion
-
     #region GCD Skills
     private bool TryUseFillerGCD(out IAction? act)
     {
@@ -550,7 +554,6 @@ public sealed partial class ChurinDNC : DancerRotation
     }
 
     #endregion
-
     #region OGCD Abilities
 
     /// <summary>
@@ -580,11 +583,10 @@ public sealed partial class ChurinDNC : DancerRotation
         act = null;
         if (!InCombat || HasThreefoldFanDance || !FlourishPvE.IsEnabled) return false;
 
-        var useFlourish = IsBurstPhase || !IsBurstPhase && TechnicalStepPvE.Cooldown.IsCoolingDown && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(25);
+        var useFlourish = IsBurstPhase || ShouldUseTechStep &&!IsBurstPhase && (TechnicalStepPvE.Cooldown.IsCoolingDown && !TechnicalStepPvE.Cooldown.WillHaveOneCharge(25) || !ShouldUseTechStep);
 
-        if (ShouldUseTechStep && (!IsBurstPhase && TechnicalStepPvE.Cooldown is { IsCoolingDown: false, HasOneCharge: true } ||
-                                  !ShouldUseTechStep && (TechnicalStepPvE.Cooldown is {IsCoolingDown:false,HasOneCharge:true} && !HasTillana ||
-                                  TechnicalStepPvE.Cooldown.WillHaveOneCharge(15))))
+        if (ShouldUseTechStep && !IsBurstPhase && (TechnicalStepPvE.Cooldown is { IsCoolingDown: false, HasOneCharge: true } && !HasTillana ||
+                                  TechnicalStepPvE.Cooldown.WillHaveOneCharge(15)))
         {
             useFlourish = false;
         }
