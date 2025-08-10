@@ -3,10 +3,10 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin BRD", CombatType.PvE, GameVersion = "7.2.5",
+[Rotation("Churin BRD", CombatType.PvE, GameVersion = "7.3",
     Description = "I sing the body electric. I gasp the body organic. I miss the body remembered.")]
 [SourceCode(Path = "main/ArgentiRotations/Ranged/Bard/ChurinBRD.cs")]
-[Api(5)]
+[Api(6)]
 public sealed partial class ChurinBRD : BardRotation
 {
     #region Properties

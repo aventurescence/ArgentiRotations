@@ -1,4 +1,5 @@
 ﻿using ArgentiRotations.Common;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Ranged;
@@ -57,7 +58,7 @@ public sealed partial class ChurinMCH
             ImGui.Text($"{diff:F1} seconds");
             ImGui.NextColumn();
             ImGui.TextColored(ImGuiColors.ParsedGold, $"Last Summon Battery Power: {LastSummonBatteryPower}");
-            ImGui.Columns(1);
+            ImGui.Columns();
             DrawCombatStatusText();
         }
         ImGui.EndGroup();
@@ -281,7 +282,7 @@ public sealed partial class ChurinMCH
                 ImGui.NextColumn();
 
                 // Reset columns
-                ImGui.Columns(1);
+                ImGui.Columns();
                 ImGui.TreePop();
             }
             ImGui.TreePop();
@@ -347,7 +348,7 @@ public sealed partial class ChurinMCH
     }
 
 
-    public override void DisplayStatus()
+    public override void DisplayRotationStatus()
     {
         try
         {

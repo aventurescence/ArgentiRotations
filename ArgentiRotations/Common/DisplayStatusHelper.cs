@@ -1,4 +1,4 @@
-using System;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
@@ -83,7 +83,7 @@ internal static class DisplayStatusHelper
     }
 
 
-    public static bool BeginPaddedChild(string strId, bool border = false, ImGuiWindowFlags flags = 0)
+    public static void BeginPaddedChild(string strId, bool border = false, ImGuiWindowFlags flags = 0)
     {
         var padding = ImGui.GetStyle().WindowPadding.X;
         // Set cursor position with padding
@@ -97,7 +97,7 @@ internal static class DisplayStatusHelper
         size.Y -= 2 * padding;
 
         // Begin the child window
-        return ImGui.BeginChild(strId, size, border, flags);
+        ImGui.BeginChild(strId, size, border, flags);
     }
 
     public static void EndPaddedChild()

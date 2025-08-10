@@ -1,5 +1,6 @@
 ﻿using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
+using Dalamud.Bindings.ImGui;
 
 namespace ArgentiRotations.Ranged;
 
@@ -8,11 +9,10 @@ public sealed partial class ChurinDNC
     #region Fields
     private Vector4[] _shouldUseConditions = [];
     private Vector4[] _statusConditions = [];
-
     #endregion
     #region Status Window Override
 
-    public override void DisplayStatus()
+    public override void DisplayRotationStatus()
     {
         try
         {
@@ -67,11 +67,12 @@ public sealed partial class ChurinDNC
             ImGui.TableSetupColumn("Buffs Provided");
             ImGui.TableHeadersRow();
 
-            if (PartyComposition.Count == 0)
+            if (PartyComposition == null || PartyComposition.Count == 0)
             {
                 ImGui.TableNextRow();
                 ImGui.TableSetColumnIndex(0);
-                ImGui.Text(Player.ClassJob.Value.GetJobRole().ToString());
+                var jobRole = Player.ClassJob.Value.GetJobRole().ToString();
+                ImGui.Text(jobRole);
 
                 ImGui.TableSetColumnIndex(1);
                 var jobAbbr = Player.ClassJob.Value.Abbreviation.ToString();
@@ -87,25 +88,29 @@ public sealed partial class ChurinDNC
                 ImGui.Text(buffText);
             }
 
-            foreach (var member in PartyComposition)
+            if (PartyComposition is not null or { Count: > 0 })
             {
-                ImGui.TableNextRow();
+                foreach (var member in PartyComposition)
+                {
+                    ImGui.TableNextRow();
 
-                ImGui.TableSetColumnIndex(0);
-                ImGui.Text(member.Value.GetJobRole().ToString());
+                    ImGui.TableSetColumnIndex(0);
+                    var role = member.Value.GetJobRole().ToString();
+                    ImGui.Text(role);
 
-                ImGui.TableSetColumnIndex(1);
-                var jobAbbr = member.Value.Abbreviation.ToString();
-                ImGui.Text(jobAbbr);
+                    ImGui.TableSetColumnIndex(1);
+                    var jobAbbr = member.Value.Abbreviation.ToString();
+                    ImGui.Text(jobAbbr);
 
-                ImGui.TableSetColumnIndex(2);
-                var buffs = ArgentiRotations.Common.PartyComposition.Buffs
-                    .Where(b => b.JobAbbr == jobAbbr)
-                    .Select(b => b.Name)
-                    .ToList();
+                    ImGui.TableSetColumnIndex(2);
+                    var buffs = ArgentiRotations.Common.PartyComposition.Buffs
+                        .Where(b => b.JobAbbr == jobAbbr)
+                        .Select(b => b.Name)
+                        .ToList();
 
-                var buffText = buffs.Count != 0 ? string.Join(", ", buffs) : "None";
-                ImGui.Text(buffText);
+                    var buffText = buffs.Count != 0 ? string.Join(", ", buffs) : "None";
+                    ImGui.Text(buffText);
+                }
             }
         }
         ImGui.EndTable();
@@ -168,7 +173,7 @@ public sealed partial class ChurinDNC
                 ImGui.TextColored(_shouldUseConditions[8], TechnicalStepPvE.Cooldown.WillHaveOneCharge( 0.5f).ToString());
                 ImGui.NextColumn();
 
-                ImGui.Columns(1);
+                ImGui.Columns();
                 DrawCombatStatusText();
             }
             ImGui.EndGroup();
@@ -240,7 +245,7 @@ public sealed partial class ChurinDNC
                 ImGui.NextColumn();
 
                 // Reset columns
-                ImGui.Columns(1);
+                ImGui.Columns();
                 ImGui.TreePop();
             }
             if (ImGui.TreeNode("Status Booleans"))
@@ -304,7 +309,7 @@ public sealed partial class ChurinDNC
 
 
                 // Reset columns
-                ImGui.Columns(1);
+                ImGui.Columns();
                 ImGui.TreePop();
             }
         }
