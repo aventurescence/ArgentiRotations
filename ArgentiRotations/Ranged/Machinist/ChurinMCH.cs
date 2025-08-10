@@ -3,9 +3,9 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin MCH", CombatType.PvE, GameVersion = "7.2.5", Description = "Be the angel with a shotgun!")]
+[Rotation("Churin MCH", CombatType.PvE, GameVersion = "7.3", Description = "Kill it with kindness. And if that fails, kill it with sharp sticks or knives...or guns!")]
 [SourceCode(Path = "ArgentiRotations/Ranged/Machinist/ChurinMCH.cs")]
-[Api(5)]
+[Api(6)]
 public sealed partial class ChurinMCH: MachinistRotation
 {
     #region Properties
@@ -18,6 +18,7 @@ public sealed partial class ChurinMCH: MachinistRotation
     private bool InOddMinuteWindow => !InTwoMinuteWindow && AirAnchorPvE.Cooldown.IsCoolingDown && AirAnchorPvE.Cooldown.WillHaveOneChargeGCD(1);
 
     #endregion
+
     #region Status Booleans
 
     private static bool IsMedicated => Player.HasStatus(true,StatusID.Medicated) ||
@@ -49,8 +50,6 @@ public sealed partial class ChurinMCH: MachinistRotation
     #endregion
 
     #endregion
-
-
 
     #region Potion Properties
     private enum PotionTimings

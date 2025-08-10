@@ -1,4 +1,4 @@
-<Project Sdk="Dalamud.NET.Sdk/12.0.2">
+<Project Sdk="Dalamud.NET.Sdk/13.0.0">
           <PropertyGroup>
             <TargetFramework>.net9.0-windows</TargetFramework>
             <AssemblyName>$(MSBuildProjectName)</AssemblyName>
@@ -10,14 +10,14 @@
           </PropertyGroup>
   
           <ItemGroup>
-            <PackageReference Include="RotationSolverReborn.Basic" Version="7.2.5.*-*" />
+            <PackageReference Include="RotationSolverReborn.Basic" Version= "*" />
+            <PackageReference Update="DalamudPackager" Version="13.0.0" />
           </ItemGroup>
   
           <ItemGroup>
             <Using Include="Dalamud.Game.ClientState.JobGauge.Enums"/>
             <Using Include="Dalamud.Game.ClientState.Objects.Types"/>
             <Using Include="Dalamud.Interface"/>
-            <Using Include="ImGuiNET"/>
             <Using Include="Newtonsoft.Json"/>
             <Using Include="RotationSolver.Basic"/>
             <Using Include="RotationSolver.Basic.Actions"/>
@@ -34,7 +34,6 @@
             <Folder Include="ArgentiRotations\Common"/>
             <Folder Include="ArgentiRotations\Ranged"/>
             <Folder Include="ArgentiRotations\Encounter"/>
-            <Folder Include="Encounter.tmp\Savage.tmp\M6SSugarRiot\" />
           </ItemGroup>
           <ItemGroup>
             <None Update="ArgentiRotations.json">
