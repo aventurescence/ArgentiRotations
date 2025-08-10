@@ -1,7 +1,6 @@
-using System.Globalization;
 using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 namespace ArgentiRotations.Ranged;
 
@@ -17,7 +16,7 @@ public sealed partial class ChurinBRD
     
 #endregion
     #region Status Window Override
-    public override void DisplayStatus()
+    public override void DisplayRotationStatus()
     {
         try
         {
@@ -178,7 +177,7 @@ public sealed partial class ChurinBRD
                 ImGui.NextColumn();
 
                 // Reset columns
-                ImGui.Columns(1);
+                ImGui.Columns();
                 ImGui.TreePop();
             }
 
@@ -222,7 +221,7 @@ public sealed partial class ChurinBRD
                 ImGui.NextColumn();
 
                 // Reset columns
-                ImGui.Columns(1);
+                ImGui.Columns();
                 ImGui.TreePop();
             }
         }

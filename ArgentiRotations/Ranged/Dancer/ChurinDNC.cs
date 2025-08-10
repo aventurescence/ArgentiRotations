@@ -2,9 +2,9 @@ using System.ComponentModel;
 
 namespace ArgentiRotations.Ranged;
 
-[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.2.5", Description = "Candles lit, runes drawn upon the floor, sacrifice prepared. Everything is ready for the summoning. I begin the incantation: \"Shakira, Shakira!\"")]
+[Rotation("Churin DNC", CombatType.PvE, GameVersion = "7.3", Description = "Candles lit, runes drawn upon the floor, sacrifice prepared. Everything is ready for the summoning. I begin the incantation: \"Shakira, Shakira!\"")]
 [SourceCode(Path = "main/ArgentiRotations/Ranged/Dancer/ChurinDNC.cs")]
-[Api(5)]
+[Api(6)]
 public sealed partial class ChurinDNC : DancerRotation
 {
     #region Properties
@@ -23,7 +23,7 @@ public sealed partial class ChurinDNC : DancerRotation
     #endregion
 
     #region Status Booleans
-    private bool InTwoMinuteWindow => HasTechnicalStep || HasTechnicalStep && CompletedSteps == 4 || IsLastGCD(ActionID.TechnicalStepPvE);
+    private static bool InTwoMinuteWindow => HasTechnicalStep || HasTechnicalStep && CompletedSteps == 4 || IsLastGCD(ActionID.TechnicalStepPvE);
     private bool InOddMinuteWindow => TechnicalStepPvE.Cooldown.IsCoolingDown && FlourishPvE.Cooldown.IsCoolingDown && HasStandardStep;
     private static bool HasTillana => Player.HasStatus(true, StatusID.FlourishingFinish) && !Player.WillStatusEnd(0, true, StatusID.FlourishingFinish);
     private static bool IsBurstPhase => HasDevilment && HasTechnicalFinish;
@@ -669,7 +669,6 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool TryUsePotion(out IAction? act)
     {
         act = null;
-        if (IsMedicated) return false;
 
         for (var i = 0; i < _potions.Count; i++)
         {
@@ -688,6 +687,12 @@ public sealed partial class ChurinDNC : DancerRotation
             else
             {
                 canUse = InCombat && CombatTime >= potionTimeInSeconds && CombatTime <= potionTimeInSeconds + 59;
+            }
+
+            if (IsMedicated && canUse)
+            {
+                _potions[i] = (time, enabled, true);
+                continue;
             }
 
             if (!canUse) continue;
