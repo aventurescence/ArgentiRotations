@@ -29,6 +29,9 @@
             <Using Include="RotationSolver.Basic.Rotations.Basic"/>
             <Using Include="System.Numerics"/>
             <Using Include="System.Reflection"/>
+              <Using Include="Dalamud.Bindings.ImGui"/>
+              <Using Include="Dalamud.Bindings.ImPlot"/>
+              <Using Include="Dalamud.Bindings.ImGuizmo"/>
           </ItemGroup>
           <ItemGroup>
             <Folder Include="ArgentiRotations\Common"/>
