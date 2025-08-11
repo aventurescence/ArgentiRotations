@@ -1,6 +1,5 @@
 using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
-using Dalamud.Bindings.ImGui;
 
 namespace ArgentiRotations.Ranged;
 

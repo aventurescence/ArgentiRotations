@@ -219,7 +219,7 @@ public sealed partial class ChurinDNC : DancerRotation
         if (SwapDancePartner(out act)) return true;
         if (TryUseClosedPosition(out act)) return true;
         if (TryUseDevilment(out act)) return true;
-        if (!CanUseStandardStep || !CanUseTechnicalStep)
+        if (!CanUseStandardStep || !CanUseTechnicalStep || IsDancing)
             return base.EmergencyAbility(nextGCD, out act);
 
         act = null;
@@ -266,7 +266,6 @@ public sealed partial class ChurinDNC : DancerRotation
     #region Extra Methods
 
     #region Dance Partner Logic
-
     private bool TryUseClosedPosition(out IAction? act)
     {
         act = null;
@@ -288,7 +287,6 @@ public sealed partial class ChurinDNC : DancerRotation
     }
 
     #endregion
-
     #region Dance Logic
 
     private bool TryUseDance(out IAction? act)
@@ -345,7 +343,6 @@ public sealed partial class ChurinDNC : DancerRotation
     }
 
     #endregion
-
     #region Burst Logic
     private bool TryUseBurstGCD(out IAction? act)
     {
@@ -425,7 +422,7 @@ public sealed partial class ChurinDNC : DancerRotation
         {
             return Esprit switch
             {
-                >= 0 when HasStarfall && Player.WillStatusEnd(5, true, StatusID.FlourishingStarfall) && DevilmentPvE.Cooldown.RecastTimeElapsed > 5 => true,
+                >= 0 when HasStarfall && (Player.WillStatusEnd(5, true, StatusID.FlourishingStarfall) || DevilmentPvE.Cooldown.RecastTimeElapsed > 5 && !HasFinishingMove) => true,
                 < MidEspritThreshold when !HasFinishingMove || DevilmentPvE.Cooldown.RecastTimeElapsed > 7 => true,
                 > MidEspritThreshold when DevilmentPvE.Cooldown.RecastTimeElapsed > 15 => true,
                 _ => false
