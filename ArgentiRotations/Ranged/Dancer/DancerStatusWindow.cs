@@ -1,6 +1,5 @@
 ﻿using ArgentiRotations.Common;
 using Dalamud.Interface.Colors;
-using Dalamud.Bindings.ImGui;
 
 namespace ArgentiRotations.Ranged;
 
@@ -11,7 +10,6 @@ public sealed partial class ChurinDNC
     private Vector4[] _statusConditions = [];
     #endregion
     #region Status Window Override
-
     public override void DisplayRotationStatus()
     {
         try
@@ -39,7 +37,6 @@ public sealed partial class ChurinDNC
             DisplayStatusHelper.HoveredTooltip(Description);
         }, ImGui.GetWindowWidth(), textSize);
     }
-
     #region Party Composition
     private static void DrawPartyCompositionHeader()
     {
@@ -115,7 +112,6 @@ public sealed partial class ChurinDNC
         }
         ImGui.EndTable();
     }
-
     #endregion
     #region Combat Status
     private void DrawCombatStatusHeader()
@@ -366,8 +362,6 @@ public sealed partial class ChurinDNC
         }
     }
     #endregion
-
-
     #endregion
     #region Status Window Helper Methods
 

@@ -1,5 +1,4 @@
 ﻿using ArgentiRotations.Common;
-using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 
 namespace ArgentiRotations.Tank;
