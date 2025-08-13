@@ -10,7 +10,7 @@
           </PropertyGroup>
   
           <ItemGroup>
-            <PackageReference Include="RotationSolverReborn.Basic" Version= "*" />
+            <PackageReference Include="RotationSolverReborn.Basic" Version="7.3.0.30" />
             <PackageReference Update="DalamudPackager" Version="13.0.0" />
           </ItemGroup>
   
