@@ -23,8 +23,8 @@ public sealed partial class ChurinDNC : DancerRotation
     #endregion
 
     #region Status Booleans
-    private static bool InTwoMinuteWindow => HasTechnicalStep || HasTechnicalStep && CompletedSteps == 4 || IsLastGCD(ActionID.TechnicalStepPvE);
-    private bool InOddMinuteWindow => TechnicalStepPvE.Cooldown.IsCoolingDown && FlourishPvE.Cooldown.IsCoolingDown && HasStandardStep;
+    private static bool InTwoMinuteWindow => HasTechnicalStep || IsDancing && CompletedSteps == 4 || IsLastGCD(ActionID.TechnicalStepPvE);
+    private bool InOddMinuteWindow => FlourishPvE.Cooldown.IsCoolingDown && FlourishPvE.Cooldown.WillHaveOneCharge(30) && HasStandardStep && !HasFinishingMove;
     private static bool HasTillana => Player.HasStatus(true, StatusID.FlourishingFinish) && !Player.WillStatusEnd(0, true, StatusID.FlourishingFinish);
     private static bool IsBurstPhase => HasDevilment && HasTechnicalFinish;
     private static bool IsMedicated => Player.HasStatus(true, StatusID.Medicated) && !Player.WillStatusEnd(0, true, StatusID.Medicated);
@@ -199,7 +199,7 @@ public sealed partial class ChurinDNC : DancerRotation
         UpdatePotions();
         if (remainTime > 15) return base.CountDownAction(remainTime);
         if (TryUseClosedPosition(out var act) ||
-            StandardStepPvE.CanUse(out act) ||
+            remainTime <= 15 &&StandardStepPvE.CanUse(out act) ||
             ExecuteStepGCD(out act) ||
             TryUsePotion(out act)
             || remainTime <= OpenerFinishTime && DoubleStandardFinishPvE.CanUse(out act)) return act;
@@ -416,13 +416,14 @@ public sealed partial class ChurinDNC : DancerRotation
     private bool TryUseStarfallDance(out IAction? act)
     {
         act = null;
-        if (!HasStarfall) return false;
+        if (!HasStarfall || HasLastDance && HasFinishingMove && StandardStepIn(5)) return false;
 
         if (StarfallDancePvE.CanUse(out act))
         {
             return Esprit switch
             {
-                >= 0 when HasStarfall && (Player.WillStatusEnd(5, true, StatusID.FlourishingStarfall) || DevilmentPvE.Cooldown.RecastTimeElapsed > 5 && !HasFinishingMove) => true,
+                >= 0 when HasStarfall && (Player.WillStatusEnd(5, true, StatusID.FlourishingStarfall) || 
+                                          DevilmentPvE.Cooldown.RecastTimeElapsed > 5 && !HasFinishingMove) => true,
                 < MidEspritThreshold when !HasFinishingMove || DevilmentPvE.Cooldown.RecastTimeElapsed > 7 => true,
                 > MidEspritThreshold when DevilmentPvE.Cooldown.RecastTimeElapsed > 15 => true,
                 _ => false
@@ -496,11 +497,8 @@ public sealed partial class ChurinDNC : DancerRotation
                 true when !HasLastDance && HasFinishingMove && !StandardStepIn(3) &&
                           Esprit >= SaberDanceEspritCost => true,
                 true when HasLastDance && !HasFinishingMove && Esprit >= SaberDanceEspritCost => true,
-                true when HostileTarget?.GetHealthRatio() < 0.05f && HostileTarget.IsBossFromNameplateIcon() &&
-                          Esprit >= SaberDanceEspritCost => true,
                 false when Esprit >= MidEspritThreshold => true,
                 false when Esprit >= SaberDanceEspritCost && Feathers > 3 && HasAnyProc => true,
-                false when HostileTarget?.GetHealthRatio() < 0.05f && HostileTarget.IsBossFromNameplateIcon() && Esprit >= SaberDanceEspritCost => true,
                 _ => false
             };
         }
@@ -611,7 +609,7 @@ public sealed partial class ChurinDNC : DancerRotation
         if (HasFourfoldFanDance && FanDanceIvPvE.CanUse(out act)) return true;
         if (HasThreefoldFanDance && FanDanceIiiPvE.CanUse(out act)) return true;
 
-        if (IsBurstPhase || (hasEnoughFeathers && HasAnyProc && !CanUseTechnicalStep) || IsMedicated || HostileTarget?.GetHealthRatio() < 0.05f && HostileTarget.IsBossFromNameplateIcon())
+        if (IsBurstPhase || (hasEnoughFeathers && HasAnyProc && !CanUseTechnicalStep) || IsMedicated)
         {
             if (FanDanceIiPvE.CanUse(out act)) return true;
             if (FanDancePvE.CanUse(out act)) return true;
@@ -674,7 +672,6 @@ public sealed partial class ChurinDNC : DancerRotation
 
             var potionTimeInSeconds = time * 60;
             var isOpenerPotion = potionTimeInSeconds == 0;
-            var isEvenMinutePotion = time % 2 == 0;
 
             bool canUse;
             if (isOpenerPotion)
@@ -694,7 +691,7 @@ public sealed partial class ChurinDNC : DancerRotation
 
             if (!canUse) continue;
 
-            var condition = (isEvenMinutePotion ? InTwoMinuteWindow : InOddMinuteWindow) || isOpenerPotion || InTwoMinuteWindow;
+            var condition =  isOpenerPotion || InTwoMinuteWindow || InOddMinuteWindow;
 
             if (condition && UseBurstMedicine(out act, false))
             {
